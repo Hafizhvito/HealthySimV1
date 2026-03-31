@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5aa518e4af5578b49bceaf67d84d4250, type: 3}
+  m_Name: Trust1_Dialogue_2
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueGraphData
+  npcId: dr_sari
+  npcDisplayName: Sari
+  initialTrust: 50
+  startNodeId: start
+  nodes:
+  - nodeId: start
+    fallbackLine: Hari ini aku keliling agak jauh. Lagi pengen liat jalan yang belum pernah kulewatin.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Kamu kalau gabut biasanya ngapain sih?
+    isConversationEnd: 1
+    isTerminal: 1

@@ -1,0 +1,300 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5aa518e4af5578b49bceaf67d84d4250, type: 3}
+  m_Name: NPCRestoran_FirstVisit
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueGraphData
+  npcId: npc_restoran_first
+  npcDisplayName: Pak Yono
+  initialTrust: 45
+  startNodeId: node_0
+  nodes:
+  - nodeId: node_0
+    fallbackLine: Eh, silakan silakan- duduk dulu. Lagi ngebersihin ini sebentar.
+      Pertama kali ke sini? Biasanya kalau orang baru, bingung mau pesen apa. Tenang,
+      nanti aku bantu.
+    variationPool: []
+    choices:
+    - choiceText: Yang paling laku apa?
+      nextNodeId: node_1_bestseller
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Yang paling murah aja.
+      nextNodeId: node_1_cheap
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Rekomendasiin yang enak menurut kamu.
+      nextNodeId: node_1_rec
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_1_bestseller
+    fallbackLine: Nasi goreng. Dari dulu sampai sekarang. Ada pelanggan saya- tiap
+      pagi mesen ini, udah bertahun-tahun. Katanya kalau ga sarapan nasi goreng sini,
+      harinya ga bener.
+    variationPool: []
+    choices:
+    - choiceText: Iya, pesen itu.
+      nextNodeId: node_end_order
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Ntar dulu, lihat-lihat dulu.
+      nextNodeId: node_2_browse
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: Entah karena emang enak, atau udah jadi ritual. Mau coba?
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_1_cheap
+    fallbackLine: Haha, jujur ya. Suka yang jujur. Pisang goreng sama teh manis paling
+      terjangkau. Tapi kalau mau yang ngenyangkin, nasi sama tempe lebih worth it
+      dikit.
+    variationPool: []
+    choices:
+    - choiceText: Pesen nasi tempe.
+      nextNodeId: node_end_order
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Pisang goreng aja dulu.
+      nextNodeId: node_end_order
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: Banyak yang langganan combo itu. Murah, cukup buat kerja setengah
+      hari.
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_1_rec
+    fallbackLine: Kalau aku yang milih... gado-gado. Bukan yang paling rame dipesan,
+      tapi yang paling sering bikin orang kaget enak. Bahan-bahannya fresh, aku ga
+      kompromi soal itu.
+    variationPool: []
+    choices:
+    - choiceText: Oke, pesen gado-gado.
+      nextNodeId: node_end_order
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Boleh lihat pilihan lain dulu?
+      nextNodeId: node_2_browse
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: Pelanggan yang pertama kali nyoba biasanya langsung balik lagi.
+      Itu ukuran paling jujur.
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_2_browse
+    fallbackLine: Silakan. Mau yang berat atau yang ringan? Kalau habis aktivitas
+      banyak, mending yang ada nasinya. Kalau mau santai aja, yang sayur atau buah
+      juga ada.
+    variationPool: []
+    choices:
+    - choiceText: Yang berat sekalian.
+      nextNodeId: node_3_heavy
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Yang ringan aja.
+      nextNodeId: node_3_light
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_3_heavy
+    fallbackLine: Ayam goreng sama nasi. Atau kalau mau yang beda, nasi goreng spesial-
+      ada telurnya. Yang paling sering dipesan habis olahraga pagi.
+    variationPool: []
+    choices:
+    - choiceText: Pesen ayam goreng nasi.
+      nextNodeId: node_end_order
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Nasi goreng spesial.
+      nextNodeId: node_end_order
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_3_light
+    fallbackLine: Salad sayur, buah apel, atau jus jeruk. Yang jus jeruk itu aku
+      peres sendiri- ga pake sirup. Beda rasanya.
+    variationPool: []
+    choices:
+    - choiceText: Jus jeruk.
+      nextNodeId: node_end_order
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Salad sayur.
+      nextNodeId: node_end_order
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: Pelanggan yang lagi jaga makan sering minta itu. Katanya ga
+      bikin eneg.
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_end_order
+    fallbackLine: Oke, sebentar ya.
+    variationPool: []
+    choices: []
+    npcFollowUpText: 
+    isConversationEnd: 1
+    isTerminal: 1
