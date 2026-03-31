@@ -71,7 +71,7 @@ public class WorkReminderUI : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(showDelaySeconds);
 
-        while (TutorialSequentialUI.IsSequentialVisible)
+        while (IntroCutsceneController.IsAnyCutscenePlaying || TutorialSequentialUI.IsSequentialVisible)
             yield return null;
 
         if (WorkSessionManager.Instance != null && WorkSessionManager.Instance.HasWorkedToday)
@@ -101,7 +101,9 @@ public class WorkReminderUI : MonoBehaviour
         if (reminderGroup == null)
             return;
 
-        if (TutorialSequentialUI.IsSequentialVisible)
+        bool blockedByOverlay = IntroCutsceneController.IsAnyCutscenePlaying || TutorialSequentialUI.IsSequentialVisible;
+
+        if (blockedByOverlay)
         {
             if (reminderGroup.alpha > 0.001f)
             {
@@ -139,7 +141,7 @@ public class WorkReminderUI : MonoBehaviour
 
     private IEnumerator ResumeReminderAfterTutorial()
     {
-        while (TutorialSequentialUI.IsSequentialVisible)
+        while (IntroCutsceneController.IsAnyCutscenePlaying || TutorialSequentialUI.IsSequentialVisible)
             yield return null;
 
         if (reminderDismissed)

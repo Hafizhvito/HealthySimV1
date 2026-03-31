@@ -13,12 +13,18 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
     [SerializeField] private string firstVisitNpcId = "npc_restoran_first";
     [SerializeField] private string returnVisitNpcId = "npc_restoran_return";
 
+    [Header("Social Recovery")]
+    [SerializeField] private float socialEnergyGain = 1.2f;
+    [SerializeField] private float socialMoodGain = 0.5f;
+    [SerializeField] private float socialEnergyCooldown = 45f;
+
     private Collider cachedCollider;
     private CameraSystem cameraSystem;
     private DialogueCatalogProvider dialogueCatalogProvider;
     private DialogueGraphData firstVisitFallbackGraph;
     private DialogueGraphData returnVisitFallbackGraph;
     private bool isMenuCloseSubscribed;
+    private float nextSocialRewardTime = -999f;
 
     void Awake()
     {
@@ -412,6 +418,23 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
     {
         if (cameraSystem != null)
             cameraSystem.DialogueZoomOut();
+
+        TryGrantSocialRecovery();
+    }
+
+    private void TryGrantSocialRecovery()
+    {
+        if (PlayerStats.Instance == null)
+            return;
+
+        if (socialEnergyGain <= 0f && socialMoodGain <= 0f)
+            return;
+
+        if (Time.unscaledTime < nextSocialRewardTime)
+            return;
+
+        nextSocialRewardTime = Time.unscaledTime + Mathf.Max(3f, socialEnergyCooldown);
+        PlayerStats.Instance.AddFood(Mathf.Max(0f, socialEnergyGain), 0f, Mathf.Max(0f, socialMoodGain));
     }
 
     private void TrySubscribeMenuClose()

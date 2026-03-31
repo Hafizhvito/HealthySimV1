@@ -10,6 +10,9 @@ public class FoodChoiceMenuController : MonoBehaviour
     private bool isOpen;
     private Vector2 scrollPosition;
     private Rect windowRect = new Rect(0f, 0f, 760f, 520f);
+    private string panelStatusMessage = string.Empty;
+    private float panelStatusUntil;
+    private bool panelStatusIsWarning;
 
     void Awake()
     {
@@ -33,6 +36,9 @@ public class FoodChoiceMenuController : MonoBehaviour
             currentFoods.AddRange(foods);
 
         isOpen = true;
+        panelStatusMessage = string.Empty;
+        panelStatusUntil = 0f;
+        panelStatusIsWarning = false;
 
         if (TimeManager.Instance != null)
             TimeManager.Instance.PauseTime();
@@ -83,6 +89,9 @@ public class FoodChoiceMenuController : MonoBehaviour
         GUILayout.Space(8f);
         GUILayout.Label($"Lokasi: {currentLocationName}");
         GUILayout.Label($"Item tersedia: {currentFoods.Count}");
+        int money = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0;
+        GUILayout.Label($"Uang: Rp{money}");
+        DrawPanelStatus();
         GUILayout.Space(8f);
 
         scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(360f));
@@ -125,9 +134,10 @@ public class FoodChoiceMenuController : MonoBehaviour
 
     private void DrawFoodRow(FoodData food)
     {
+        int price = food.GetEffectivePrice();
         GUILayout.BeginVertical("box");
         GUILayout.Label(food.foodName);
-        GUILayout.Label($"Kategori: {food.category}");
+        GUILayout.Label($"Kategori: {food.category} | Harga: Rp{price}");
         GUILayout.Label($"Kalori: {food.calories:0} | Energi: +{food.energyRestored:0} | Mood: +{food.moodEffect:0}");
 
         GUILayout.BeginHorizontal();
@@ -139,14 +149,19 @@ public class FoodChoiceMenuController : MonoBehaviour
 
         if (GUILayout.Button("Simpan", GUILayout.Height(30f)))
         {
+            if (!TryPurchaseFood(food))
+                return;
+
             if (SessionFoodStash.Instance != null)
             {
                 SessionFoodStash.Instance.AddToStash(food);
-                Debug.Log($"[FoodMenu] Disimpan: {food.foodName}");
+                Debug.Log($"[FoodMenu] Dibeli dan disimpan: {food.foodName} (Rp{food.GetEffectivePrice()})");
+                ShowPanelStatus($"{food.foodName} disimpan ke stash.", false);
             }
             else
             {
                 Debug.LogWarning("[FoodMenu] SessionFoodStash tidak ditemukan.");
+                ShowPanelStatus("Stash tidak tersedia.", true);
             }
         }
 
@@ -160,13 +175,64 @@ public class FoodChoiceMenuController : MonoBehaviour
         if (food == null)
             return;
 
+        if (!TryPurchaseFood(food))
+            return;
+
         if (PlayerStats.Instance != null)
             PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect);
 
         if (StoryManager.Instance != null)
             StoryManager.Instance.OnFoodEaten(food);
 
-        Debug.Log($"[FoodMenu] Dimakan: {food.foodName}");
+        Debug.Log($"[FoodMenu] Dibeli dan dimakan: {food.foodName} (Rp{food.GetEffectivePrice()})");
+        ShowPanelStatus($"Kamu makan {food.foodName}.", false, 1.2f);
         CloseMenu();
+    }
+
+    private bool TryPurchaseFood(FoodData food)
+    {
+        if (food == null)
+            return false;
+
+        if (PlayerStats.Instance == null)
+        {
+            Debug.LogWarning("[FoodMenu] PlayerStats tidak ditemukan. Pembelian dibatalkan.");
+            ShowPanelStatus("Data player belum siap.", true);
+            return false;
+        }
+
+        int price = food.GetEffectivePrice();
+        if (price <= 0)
+            return true;
+
+        if (PlayerStats.Instance.Money < price)
+        {
+            Debug.LogWarning($"[FoodMenu] Uang tidak cukup untuk membeli {food.foodName}. Butuh Rp{price}, uang sekarang Rp{PlayerStats.Instance.Money}.");
+            ShowPanelStatus($"Uang tidak cukup. Butuh Rp{price}.", true);
+            return false;
+        }
+
+        PlayerStats.Instance.SpendMoney(price);
+        return true;
+    }
+
+    private void DrawPanelStatus()
+    {
+        if (string.IsNullOrWhiteSpace(panelStatusMessage) || Time.unscaledTime > panelStatusUntil)
+            return;
+
+        Color prev = GUI.color;
+        GUI.color = panelStatusIsWarning
+            ? new Color(1f, 0.76f, 0.45f, 1f)
+            : new Color(0.68f, 1f, 0.68f, 1f);
+        GUILayout.Label(panelStatusMessage);
+        GUI.color = prev;
+    }
+
+    private void ShowPanelStatus(string message, bool isWarning, float duration = 2f)
+    {
+        panelStatusMessage = message;
+        panelStatusIsWarning = isWarning;
+        panelStatusUntil = Time.unscaledTime + Mathf.Max(0.5f, duration);
     }
 }

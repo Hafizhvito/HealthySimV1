@@ -20,6 +20,9 @@ public class FoodData : ScriptableObject
     public FoodCategory category;
     public bool isHealthy = true;
 
+    [Header("Economy")]
+    [Min(0)] public int price = 0;
+
     [Header("Availability")]
     public bool availableMorning = true;
     public bool availableAfternoon = true;
@@ -47,5 +50,23 @@ public class FoodData : ScriptableObject
             TimeManager.TimePeriod.Night => availableNight,
             _ => false
         };
+    }
+
+    public int GetEffectivePrice()
+    {
+        if (price > 0)
+            return price;
+
+        int fallback = category switch
+        {
+            FoodCategory.Minuman => isHealthy ? 14 : 18,
+            FoodCategory.Buah => isHealthy ? 12 : 16,
+            FoodCategory.MakananRingan => isHealthy ? 16 : 21,
+            FoodCategory.Dessert => isHealthy ? 18 : 24,
+            FoodCategory.FastFood => isHealthy ? 24 : 33,
+            _ => isHealthy ? 24 : 31
+        };
+
+        return Mathf.Max(1, fallback);
     }
 }

@@ -68,6 +68,7 @@ public class TutorialSequentialUI : MonoBehaviour
     private bool cursorStateCaptured;
     private CursorLockMode previousCursorLockMode;
     private bool previousCursorVisible;
+    private bool waitingCutsceneRelease;
 
     private void OnEnable()
     {
@@ -119,6 +120,22 @@ public class TutorialSequentialUI : MonoBehaviour
         if (_hasShown || IsSequentialVisible || !IsInSampleScene())
             return;
 
+        if (IntroCutsceneController.IsAnyCutscenePlaying)
+        {
+            if (!waitingCutsceneRelease)
+            {
+                waitingCutsceneRelease = true;
+                if (flowRoutine != null)
+                    StopCoroutine(flowRoutine);
+
+                flowRoutine = StartCoroutine(ShowWhenCutsceneReleasedRoutine());
+            }
+
+            return;
+        }
+
+        waitingCutsceneRelease = false;
+
         EnsureEventSystemReady();
         AcquireGameplayLockAndCursor();
 
@@ -139,6 +156,16 @@ public class TutorialSequentialUI : MonoBehaviour
     private IEnumerator FallbackShowRoutine()
     {
         yield return new WaitForSecondsRealtime(fallbackDelayWhenNoIntroEvent);
+        Show();
+    }
+
+    private IEnumerator ShowWhenCutsceneReleasedRoutine()
+    {
+        while (IntroCutsceneController.IsAnyCutscenePlaying)
+            yield return null;
+
+        waitingCutsceneRelease = false;
+        flowRoutine = null;
         Show();
     }
 
@@ -224,6 +251,7 @@ public class TutorialSequentialUI : MonoBehaviour
 
         _hasShown = true;
         showScheduled = false;
+        waitingCutsceneRelease = false;
         currentHintIndex = -1;
 
         OnSequentialComplete?.Invoke();

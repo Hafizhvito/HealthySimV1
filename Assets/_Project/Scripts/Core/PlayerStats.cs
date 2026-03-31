@@ -7,9 +7,11 @@ public class PlayerStats : MonoBehaviour
     [Header("Energy")]
     [SerializeField] private float maxEnergy = 100f;
     [SerializeField] private float currentEnergy = 100f;
-    [SerializeField] private float energyDrainIdle = 0.3f;
-    [SerializeField] private float energyDrainWalk = 0.8f;
-    [SerializeField] private float energyDrainRun = 1.5f;
+    [SerializeField] private float energyDrainIdle = 0.2f;
+    [SerializeField] private float energyDrainWalk = 0.45f;
+    [SerializeField] private float energyDrainRun = 0.95f;
+    [SerializeField] [Range(0.05f, 1f)] private float movementDrainScale = 0.40f;
+    [SerializeField] private float runDrainRampSeconds = 1.2f;
 
     [Header("Calories")]
     [SerializeField] private float totalCaloriesConsumed = 0f;
@@ -37,6 +39,7 @@ public class PlayerStats : MonoBehaviour
     private EnergyState currentEnergyState = EnergyState.Normal;
     private float faintTimer = 0f;
     private float faintDuration = 3f;
+    private float runningDuration;
 
     // Public getters
     public float CurrentEnergy => currentEnergy;
@@ -88,10 +91,25 @@ public class PlayerStats : MonoBehaviour
         if (currentEnergyState == EnergyState.Fainted) return;
 
         float drainRate = energyDrainIdle;
-        if (isRunning) drainRate = energyDrainRun;
-        else if (isWalking) drainRate = energyDrainWalk;
+        if (isRunning)
+        {
+            runningDuration += Mathf.Max(0f, deltaTime);
+            float runRamp = Mathf.Clamp01(runningDuration / Mathf.Max(0.1f, runDrainRampSeconds));
+            drainRate = Mathf.Lerp(energyDrainWalk, energyDrainRun, runRamp);
+        }
+        else if (isWalking)
+        {
+            runningDuration = 0f;
+            drainRate = energyDrainWalk;
+        }
+        else
+        {
+            runningDuration = 0f;
+        }
 
-        ModifyEnergy(-drainRate * deltaTime);
+        float scaledDrain = drainRate * Mathf.Clamp(movementDrainScale, 0.05f, 1f);
+
+        ModifyEnergy(-(scaledDrain * deltaTime));
     }
 
     public void AddFood(float energyAmount, float calories, float moodEffect)

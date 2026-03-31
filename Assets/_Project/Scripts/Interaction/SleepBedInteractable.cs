@@ -16,9 +16,25 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] private float blockedBurstWindow = 4f;
     [SerializeField] private int blockedBurstThreshold = 3;
 
+    [Header("Sleep Confirm UX")]
+    [SerializeField] private bool requireConfirmBeforeSleep = true;
+    [SerializeField] private float confirmWindowDuration = 2.2f;
+    [SerializeField] private float confirmPromptDuration = 1.8f;
+    [SerializeField] private string confirmPromptText = "Tekan E sekali lagi untuk tidur.";
+    [SerializeField] private string confirmPromptWithRiskTemplate = "Tekan E sekali lagi untuk tidur. Risiko tidur terganggu: {0}%";
+
     [Header("Sleep Recovery")]
     [SerializeField] [Range(0f, 1f)] private float fullRecoveryNormalized = 1f;
     [SerializeField] [Range(0f, 1f)] private float lowEnergyWarningThreshold = 0.35f;
+
+    [Header("Sleep Disturbance Chance")]
+    [SerializeField] private bool enableSleepDisturbance = true;
+    [SerializeField] [Range(0f, 1f)] private float baseDisturbChance = 0.05f;
+    [SerializeField] [Range(0f, 1f)] private float chanceIfNoWork = 0.20f;
+    [SerializeField] [Range(0f, 1f)] private float chanceIfOverwork = 0.25f;
+    [SerializeField] [Range(0f, 1f)] private float chanceIfPoorDiet = 0.15f;
+    [SerializeField] [Range(0f, 1f)] private float disturbedRecoveryNormalized = 0.65f;
+    [SerializeField] private int poorDietThresholdDelta = 2;
 
     [Header("Transition")]
     [SerializeField] private bool requireNightToSleep = true;
@@ -31,6 +47,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] private string wakeIntroTemplate = "Kamu bangun di Hari {0}.";
     [SerializeField] private string wakeWarningNoWork = "Peringatan: Kemarin kamu belum kerja. Atur ritme harimu lebih baik.";
     [SerializeField] private string wakeWarningLowEnergy = "Peringatan: Kemarin kamu tidur saat energi sangat rendah.";
+    [SerializeField] private string wakeWarningDisturbedSleep = "Peringatan: Tidurmu kurang nyenyak, jadi energimu belum pulih penuh.";
 
     [Header("Optional References")]
     [SerializeField] private Transform bedSpawnPoint;
@@ -49,6 +66,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private float lastBlockedWarningTime = -999f;
     private float blockedWindowStartTime = -999f;
     private int blockedClickCount;
+    private float confirmExpiresAt = -999f;
 
     private void Awake()
     {
@@ -72,6 +90,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (!CanSleepNow())
             return blockedBeforeNightText;
 
+        if (HasActiveSleepConfirm())
+            return confirmPromptText;
+
         return interactionText;
     }
 
@@ -87,9 +108,18 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         if (!CanSleepNow())
         {
+            ResetSleepConfirm();
             HandleBlockedSleepAttempt();
             return;
         }
+
+        if (ShouldRequestSleepConfirm())
+        {
+            RequestSleepConfirm();
+            return;
+        }
+
+        ResetSleepConfirm();
 
         sleepRoutine = StartCoroutine(SleepRoutine(interactor));
     }
@@ -120,6 +150,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         bool workedYesterday = workSessionManager != null && workSessionManager.HasWorkedToday;
         float energyBeforeSleep = playerStats.EnergyPercent;
+        bool overworkedYesterday = workedYesterday && DidOverworkYesterday(workSessionManager);
+        bool poorDietYesterday = HasPoorDietPattern();
+        bool disturbedSleep = RollSleepDisturbance(workedYesterday, overworkedYesterday, poorDietYesterday);
 
         if (playerController != null)
             playerController.LockInput(sleepLockSource);
@@ -138,7 +171,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             yield return new WaitUntil(() => clockDone);
         }
 
-        ApplyRecovery(playerStats);
+        ApplyRecovery(playerStats, disturbedSleep);
 
         timeManager.AdvanceToNextDayFromSleep();
 
@@ -158,14 +191,16 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (playerController != null)
             playerController.UnlockInput(sleepLockSource);
 
-        ShowWakeMessage(BuildWakeMessage(timeManager.GetDayNameIndonesia(), workedYesterday, energyBeforeSleep), wakeMessageDuration);
+        ShowWakeMessage(BuildWakeMessage(timeManager.GetDayNameIndonesia(), workedYesterday, energyBeforeSleep, disturbedSleep), wakeMessageDuration);
 
         sleepRoutine = null;
     }
 
-    private void ApplyRecovery(PlayerStats stats)
+    private void ApplyRecovery(PlayerStats stats, bool disturbedSleep)
     {
         float targetNormalized = Mathf.Clamp01(fullRecoveryNormalized);
+        if (disturbedSleep)
+            targetNormalized = Mathf.Min(targetNormalized, Mathf.Clamp01(disturbedRecoveryNormalized));
 
         float targetEnergy = stats.MaxEnergy * targetNormalized;
         float recovery = Mathf.Max(0f, targetEnergy - stats.CurrentEnergy);
@@ -287,19 +322,111 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         ShowWakeMessage(message, duration);
     }
 
-    private string BuildWakeMessage(string dayName, bool workedYesterday, float energyBeforeSleep)
+    private bool DidOverworkYesterday(WorkSessionManager workSessionManager)
+    {
+        if (workSessionManager == null || workSessionManager.LastSession == null)
+            return false;
+
+        WorkSessionData session = workSessionManager.LastSession;
+        bool lowStartEnergy = session.energyAtStart <= 0.25f;
+        bool heavyDrainAtLowReserve = session.energyConsumed >= 0.32f && session.energyAtStart <= 0.50f;
+        return session.result != WorkResult.Full || session.performanceDropped || lowStartEnergy || heavyDrainAtLowReserve;
+    }
+
+    private bool ShouldRequestSleepConfirm()
+    {
+        if (!requireConfirmBeforeSleep)
+            return false;
+
+        return !HasActiveSleepConfirm();
+    }
+
+    private bool HasActiveSleepConfirm()
+    {
+        return Time.unscaledTime <= confirmExpiresAt;
+    }
+
+    private void RequestSleepConfirm()
+    {
+        confirmExpiresAt = Time.unscaledTime + Mathf.Max(0.5f, confirmWindowDuration);
+
+        string prompt = confirmPromptText;
+        float chance = BuildCurrentDisturbanceChancePreview();
+        if (enableSleepDisturbance)
+        {
+            int percentage = Mathf.RoundToInt(chance * 100f);
+            prompt = string.Format(confirmPromptWithRiskTemplate, percentage);
+        }
+
+        ShowWakeMessage(prompt, Mathf.Max(0.5f, confirmPromptDuration));
+    }
+
+    private void ResetSleepConfirm()
+    {
+        confirmExpiresAt = -999f;
+    }
+
+    private bool HasPoorDietPattern()
+    {
+        if (PlayerActionTracker.Instance == null)
+            return false;
+
+        int healthy = PlayerActionTracker.Instance.GetCount(PlayerActionTracker.ActionType.HealthyFoodTaken);
+        int unhealthy = PlayerActionTracker.Instance.GetCount(PlayerActionTracker.ActionType.UnhealthyFoodTaken);
+        return unhealthy - healthy >= Mathf.Max(1, poorDietThresholdDelta);
+    }
+
+    private bool RollSleepDisturbance(bool workedYesterday, bool overworkedYesterday, bool poorDietYesterday)
+    {
+        if (!enableSleepDisturbance)
+            return false;
+
+        float chance = CalculateSleepDisturbanceChance(workedYesterday, overworkedYesterday, poorDietYesterday);
+        return chance > 0f && UnityEngine.Random.value < chance;
+    }
+
+    private float BuildCurrentDisturbanceChancePreview()
+    {
+        WorkSessionManager workSessionManager = ResolveWorkSessionManager();
+        bool workedYesterday = workSessionManager != null && workSessionManager.HasWorkedToday;
+        bool overworkedYesterday = workedYesterday && DidOverworkYesterday(workSessionManager);
+        bool poorDietYesterday = HasPoorDietPattern();
+        return CalculateSleepDisturbanceChance(workedYesterday, overworkedYesterday, poorDietYesterday);
+    }
+
+    private float CalculateSleepDisturbanceChance(bool workedYesterday, bool overworkedYesterday, bool poorDietYesterday)
+    {
+        float chance = Mathf.Clamp01(baseDisturbChance);
+        if (!workedYesterday)
+            chance += chanceIfNoWork;
+
+        if (overworkedYesterday)
+            chance += chanceIfOverwork;
+
+        if (poorDietYesterday)
+            chance += chanceIfPoorDiet;
+
+        return Mathf.Clamp01(chance);
+    }
+
+    private string BuildWakeMessage(string dayName, bool workedYesterday, float energyBeforeSleep, bool disturbedSleep)
     {
         string intro = string.Format(wakeIntroTemplate, dayName);
         bool lowEnergySleep = energyBeforeSleep <= lowEnergyWarningThreshold;
 
-        if (!workedYesterday && lowEnergySleep)
-            return intro + "\n" + wakeWarningNoWork + "\n" + wakeWarningLowEnergy;
+        System.Collections.Generic.List<string> warnings = new System.Collections.Generic.List<string>();
 
         if (!workedYesterday)
-            return intro + "\n" + wakeWarningNoWork;
+            warnings.Add(wakeWarningNoWork);
 
         if (lowEnergySleep)
-            return intro + "\n" + wakeWarningLowEnergy;
+            warnings.Add(wakeWarningLowEnergy);
+
+        if (disturbedSleep)
+            warnings.Add(wakeWarningDisturbedSleep);
+
+        if (warnings.Count > 0)
+            return intro + "\n" + string.Join("\n", warnings);
 
         return intro + "\nIstirahatmu cukup. Lanjutkan harimu dengan pilihan sehat.";
     }

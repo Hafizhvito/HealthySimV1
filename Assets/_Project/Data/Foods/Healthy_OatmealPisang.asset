@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 679df606234031d41a0d6a0ffd67a089, type: 3}
+  m_Name: Healthy_OatmealPisang
+  m_EditorClassIdentifier: Assembly-CSharp::FoodData
+  foodName: Oatmeal Pisang
+  description: Sarapan praktis dengan serat tinggi.
+  icon: {fileID: 0}
+  calories: 250
+  energyRestored: 16
+  moodEffect: 4
+  fat: 6
+  protein: 7
+  carbohydrate: 40
+  category: 1
+  isHealthy: 1
+  price: 19
+  availableMorning: 1
+  availableAfternoon: 0
+  availableEvening: 0
+  availableNight: 0

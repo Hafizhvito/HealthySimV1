@@ -7,6 +7,9 @@ public class IntroCutsceneController : MonoBehaviour
 {
     public event System.Action OnCutsceneCompleted;
 
+    public static bool IsAnyCutscenePlaying { get; private set; }
+    public bool IsPlayingCutscene { get; private set; }
+
     [Header("Narration")]
     [SerializeField] private float lineDuration = 2.2f;
     [SerializeField] private float introDelay = 0.6f;
@@ -47,8 +50,13 @@ public class IntroCutsceneController : MonoBehaviour
 
     public IEnumerator PlayIntro(StoryTemplate template)
     {
+        IsPlayingCutscene = true;
+        IsAnyCutscenePlaying = true;
+
         if (template == null)
         {
+            IsPlayingCutscene = false;
+            IsAnyCutscenePlaying = false;
             OnCutsceneCompleted?.Invoke();
             yield break;
         }
@@ -108,7 +116,19 @@ public class IntroCutsceneController : MonoBehaviour
             interactionController.enabled = true;
         }
 
+        IsPlayingCutscene = false;
+        IsAnyCutscenePlaying = false;
+
         OnCutsceneCompleted?.Invoke();
+    }
+
+    private void OnDisable()
+    {
+        if (IsPlayingCutscene)
+        {
+            IsPlayingCutscene = false;
+            IsAnyCutscenePlaying = false;
+        }
     }
 
     private void SetupCameraForIntro()

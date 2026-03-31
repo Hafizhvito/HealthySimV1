@@ -72,6 +72,12 @@ public class TutorialContextualUI : MonoBehaviour
         if (!IsInSampleScene())
             return;
 
+        if (IntroCutsceneController.IsAnyCutscenePlaying)
+        {
+            HideImmediate();
+            return;
+        }
+
         CacheReferencesFromSingletons();
 
         checkTimer += Time.deltaTime;

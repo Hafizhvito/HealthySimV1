@@ -20,6 +20,12 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
     [SerializeField] private float hintDuration = 2.8f;
     [SerializeField] private float speechCooldown = 0.3f;
 
+    [Header("Social Recovery")]
+    [SerializeField] private float socialEnergyGain = 1.5f;
+    [SerializeField] private float socialMoodGain = 0.5f;
+    [SerializeField] private float socialEnergyCooldown = 45f;
+    [SerializeField] private string socialEnergyHintTemplate = "Ngobrol bikin kamu agak fresh. Energi +{0:0.#}";
+
     private Collider cachedCollider;
     private Canvas hintCanvas;
     private TextMeshProUGUI hintText;
@@ -29,6 +35,7 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
     private CameraSystem cameraSystem;
     private bool isMenuCloseSubscribed;
     private string lastDialogueId = string.Empty;
+    private float nextSocialRewardTime = -999f;
     private readonly Dictionary<string, int> usageByDialogueId = new Dictionary<string, int>();
     private readonly Queue<string> recentDialogueQueue = new Queue<string>();
     private const int RecentDialogueHistorySize = 2;
@@ -131,6 +138,29 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
     {
         if (cameraSystem != null)
             cameraSystem.DialogueZoomOut();
+
+        TryGrantSocialRecovery();
+    }
+
+    private void TryGrantSocialRecovery()
+    {
+        if (PlayerStats.Instance == null)
+            return;
+
+        if (socialEnergyGain <= 0f && socialMoodGain <= 0f)
+            return;
+
+        if (Time.unscaledTime < nextSocialRewardTime)
+            return;
+
+        nextSocialRewardTime = Time.unscaledTime + Mathf.Max(3f, socialEnergyCooldown);
+
+        float energyGain = Mathf.Max(0f, socialEnergyGain);
+        float moodGain = Mathf.Max(0f, socialMoodGain);
+        PlayerStats.Instance.AddFood(energyGain, 0f, moodGain);
+
+        if (energyGain > 0f && !string.IsNullOrWhiteSpace(socialEnergyHintTemplate))
+            ShowHint(string.Format(socialEnergyHintTemplate, energyGain));
     }
 
     public List<DialogueChoiceData> GetAvailableChoices(DialogueNodeData node)

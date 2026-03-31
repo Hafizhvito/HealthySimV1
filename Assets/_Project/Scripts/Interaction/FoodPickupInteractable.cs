@@ -134,6 +134,9 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
 
         FoodData food = selectedFood != null ? selectedFood : GetFallbackFood();
 
+        if (!TrySpendForFood(food))
+            return;
+
         PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect);
 
         if (PlayerActionTracker.Instance != null)
@@ -144,7 +147,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
             );
         }
 
-        Debug.Log($"[Interaction] {food.foodName} dipilih. Energi +{food.energyRestored}, Kalori +{food.calories}, Mood {food.moodEffect:+0.##;-0.##;0}");
+        Debug.Log($"[Interaction] {food.foodName} dibeli Rp{food.GetEffectivePrice()}. Energi +{food.energyRestored}, Kalori +{food.calories}, Mood {food.moodEffect:+0.##;-0.##;0}");
 
         if (consumeOnInteract)
             gameObject.SetActive(false);
@@ -153,6 +156,9 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
     public bool SaveForLater(GameObject interactor, FoodData selectedFood)
     {
         FoodData food = selectedFood != null ? selectedFood : GetFallbackFood();
+
+        if (!TrySpendForFood(food))
+            return false;
 
         if (foodStash == null)
         {
@@ -168,7 +174,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
 
         int stashCount = foodStash != null ? foodStash.Count : 0;
         Debug.Log(saved
-            ? $"[Interaction] {food.foodName} disimpan ke stash sesi. Total stash: {stashCount}."
+            ? $"[Interaction] {food.foodName} dibeli Rp{food.GetEffectivePrice()} dan disimpan ke stash sesi. Total stash: {stashCount}."
             : $"[Interaction] Gagal simpan {food.foodName} (stash tidak tersedia).");
 
         return saved;
@@ -190,6 +196,29 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
         fallbackFood.availableAfternoon = true;
         fallbackFood.availableEvening = true;
         fallbackFood.availableNight = true;
+        fallbackFood.price = 18;
         return fallbackFood;
+    }
+
+    private bool TrySpendForFood(FoodData food)
+    {
+        if (food == null)
+            return false;
+
+        if (PlayerStats.Instance == null)
+            return false;
+
+        int price = food.GetEffectivePrice();
+        if (price <= 0)
+            return true;
+
+        if (PlayerStats.Instance.Money < price)
+        {
+            Debug.LogWarning($"[Interaction] Uang tidak cukup untuk membeli {food.foodName}. Butuh Rp{price}, uang sekarang Rp{PlayerStats.Instance.Money}.");
+            return false;
+        }
+
+        PlayerStats.Instance.SpendMoney(price);
+        return true;
     }
 }

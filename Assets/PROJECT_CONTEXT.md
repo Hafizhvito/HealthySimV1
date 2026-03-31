@@ -11,10 +11,20 @@ This file is the technical truth snapshot for current architecture, behavior, an
   - jump force applies only when grounded
   - no coyote time and no jump buffer extensions
 - Step assist is probe-based (lower/upper forward checks plus top validation).
+- Movement energy drain is behavior-scaled:
+  - walk/run/idle drain values are rebalanced for current short-session pacing
+  - sprint uses ramp-up timing so drain does not spike instantly at run start
 - Modal safety is source-keyed and centralized:
   - ModalStateManager controls global modal lock intent
   - PlayerController stores lock sources and suppresses movement/actions while locked
   - startup/scene-load paths include stale lock cleanup
+- Onboarding overlays are cutscene-aware:
+  - Tutorial and reminder surfaces must stay suppressed while intro cutscene is active
+  - Work reminder can only appear after cutscene and sequential tutorial release
+- Sleep flow is period-gated and behavior-aware:
+  - Sleep interaction is night-only by default
+  - Sleep uses confirm-before-transition UX
+  - Recovery can be reduced by disturbed sleep chance based on recent behavior
 
 Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physics dan sistem lock input berbasis sumber.
 
@@ -23,6 +33,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
 - Player and core runtime:
   - PlayerController handles locomotion, strict jump, step assist, and lock integration
   - PlayerStats manages hunger/fullness/hydration/mood/stress/energy values
+  - PlayerStats movement energy drain now includes global scale and sprint ramp timing controls
   - TimeManager runs day periods (morning to night)
   - EnergySystem handles faint/recover flow
 - Interaction and prompts:
@@ -30,7 +41,10 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - InteractableRegistry and IInteractable standardize registration and interaction calls
 - Food and stash:
   - FoodCatalogProvider loads food data assets
+  - FoodData supports explicit economy pricing and fallback effective-price calculation
   - FoodPickupInteractable and FoodChoiceMenuController drive consume-or-save flow
+  - FoodChoiceMenuController and FoodPickupInteractable both enforce purchase checks and spend player money
+  - Food menu shows live money, per-item price, and in-panel purchase status feedback
   - SessionFoodStash and stash UI controllers manage saved food lifecycle
 - Dialogue:
   - DialogueGraphData and DialogueCatalogProvider supply graph/content
@@ -47,9 +61,11 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - HUDManager updates stat bars and energy visuals
   - TutorialSequentialUI handles step-by-step onboarding panel
   - TutorialContextualUI handles queued one-time contextual hints
-  - WorkReminderUI suppresses reminders while sequential tutorial is active
+  - TutorialSequentialUI and TutorialContextualUI are gated by intro cutscene active state
+  - WorkReminderUI suppresses while cutscene/sequential tutorial overlays are active
+  - SleepBedInteractable now handles sleep transition UX (confirm, fade, clock skip, wake reminder)
 
-Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial berlapis (sequential + contextual) dan pengingat kerja yang sadar state tutorial.
+Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial/reminder yang sadar state cutscene, serta alur tidur dan ekonomi makanan berharga.
 
 ## PROGRESS STATUS
 
@@ -61,6 +77,11 @@ Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial berlapi
   - Safe migration micro-step: optional manager references added in work-door path without removing fallback behavior
   - Intro completion events and tutorial UI implementation
   - Reminder/tutorial overlap handling
+  - Cutscene-gated onboarding/reminder display to prevent overlap noise
+  - Sleep/day transition flow with wake warning logic and behavior-based disturbance chance
+  - Food price system with money deduction on buy/consume/save actions
+  - Placeholder healthy vs less-healthy food catalog generation for rapid restaurant iteration
+  - Movement energy drain tuning pass (reduced immediate depletion feel during run)
 - In progress:
   - UI consistency unification between IMGUI-era menus and modern runtime canvas screens
   - Readability/layout polish standardization across generated UI
@@ -76,12 +97,14 @@ Ringkasan (ID): Status proyek dominan selesai di fitur gameplay utama, tetapi st
 - Some legacy scene UI objects remain and may cause confusion during scene editing.
 - Automated regression coverage is absent, so behavior drift risk is higher.
 - Runtime canvas/scaler conventions are not yet fully uniform across all generated UI roots.
+- Current economy balancing is functional but still early-stage (price-value curve tuning pending).
+- Movement-energy pacing may still need iterative tuning after broader playtest sessions.
 
 Ringkasan (ID): Debt teknis terbesar ada di konsistensi UI dan belum adanya test otomatis yang menjaga regresi.
 
 ## DATA SNAPSHOT
 
-- Food assets detected: 13
+- Food assets detected: 25
 - Dialogue assets detected: 30
 - Primary scenes:
   - Assets/Scenes/SampleScene.unity
@@ -93,9 +116,11 @@ Ringkasan (ID): Data konten dasar sudah tersedia dan cukup untuk menjalankan loo
 ## NEXT FOCUS (PRIORITY ORDER)
 
 1. Unify food/stash menu UX into the same runtime canvas design language used by dialogue/tutorial
-2. Add PlayMode smoke tests for movement, interaction, dialogue open-close, and work completion paths
-3. Remove or retire legacy duplicate scene objects
-4. Standardize runtime canvas scaler/reference resolution across all auto-generated UI
+2. Tune healthy vs less-healthy economy and behavior impact (price, value, sleep-risk interactions)
+3. Continue movement-energy pacing calibration using playtest feedback (especially sprint feel)
+4. Add PlayMode smoke tests for movement, interaction, dialogue, sleep transitions, and work completion paths
+5. Remove or retire legacy duplicate scene objects
+6. Standardize runtime canvas scaler/reference resolution across all auto-generated UI
 
 Ringkasan (ID): Prioritas berikutnya adalah merapikan arsitektur UI lalu menambah test otomatis agar perubahan berikutnya lebih aman.
 
