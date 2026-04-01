@@ -78,6 +78,31 @@ Ringkasan (ID): Fitur inti gameplay, dialog, kerja, onboarding, tidur, ekonomi m
 
 Ringkasan (ID): Untuk cek cepat, jalankan SampleScene lalu uji movement, interaksi makanan, dialog NPC, dan sesi kerja sekali.
 
+## Asset Swap Contract (Phase 1 - Safe)
+
+Tujuan: memudahkan penggantian aset sementara ke aset final tanpa memutus alur gameplay.
+
+- Player contract:
+  - Tag tetap `Player`
+  - Komponen minimum: `PlayerController`, `Rigidbody`, `CapsuleCollider`, `Animator`, `UniversalInteractionController`
+  - Animator parameter minimum: `Speed`, `IsGrounded`, `IsJumping`
+- Office flow contract:
+  - Office scene memiliki `PlayerSpawnPoint`
+  - Boss office dapat ditemukan stabil (tag `NPCBoss` atau reference serialized)
+- Interactable contract:
+  - Interactable gameplay implement `IInteractable`
+  - Collider aktif dan terdaftar melalui `InteractableRegistry`
+- UI contract:
+  - `HUD_Canvas` tersedia saat runtime
+  - Dialog/food/stash/tutorial binding tidak boleh bergantung pada rename child tanpa update wiring
+
+Validator dan telemetry:
+
+- Gunakan menu editor: `HealthSim/Validate/Swap Contract (Warning Only)`
+- Fallback runtime tetap dipertahankan untuk kompatibilitas, tetapi sekarang mengeluarkan log peringatan agar gap kontrak cepat terlihat
+
+Ringkasan (ID): Fase 1 tidak mengubah behavior gameplay. Fokusnya menambah pagar aman (kontrak + validator + telemetry) sebelum swap aset besar.
+
 ## Known Limitations and Risks
 
 - No automated PlayMode/regression tests yet

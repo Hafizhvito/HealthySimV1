@@ -67,6 +67,34 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
 
 Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial/reminder yang sadar state cutscene, serta alur tidur dan ekonomi makanan berharga.
 
+## SWAP CONTRACT CHECKLIST (PHASE-1)
+
+- Scope fase ini:
+  - non-destructive hardening only
+  - tidak menghapus fallback runtime
+  - tidak mengubah behavior gameplay utama
+- Player contract minimum:
+  - tag `Player`
+  - `PlayerController`, `Rigidbody`, `CapsuleCollider`, `Animator`, `UniversalInteractionController`
+  - animator parameter: `Speed`, `IsGrounded`, `IsJumping`
+- Office contract minimum:
+  - object `PlayerSpawnPoint` ada di OfficeScene
+  - boss office dapat di-resolve stabil (reference serialized atau tag `NPCBoss`)
+- Interactable contract minimum:
+  - implement `IInteractable`
+  - collider valid + register/unregister ke `InteractableRegistry`
+- UI contract minimum:
+  - `HUD_Canvas` tersedia
+  - rename child/hierarchy wajib diikuti update binding script
+
+Validator workflow:
+
+- Jalankan menu editor `HealthSim/Validate/Swap Contract (Warning Only)`
+- Semua hasil fase ini warning-only agar aman untuk iterasi aset
+- Fallback runtime yang aktif harus dianggap sinyal debt, bukan jalur final production
+
+Ringkasan (ID): Kontrak swap sekarang didokumentasikan sebagai checklist operasional sehingga pergantian aset bisa bertahap dan aman.
+
 ## PROGRESS STATUS
 
 - Done:
@@ -82,6 +110,7 @@ Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial/reminde
   - Food price system with money deduction on buy/consume/save actions
   - Placeholder healthy vs less-healthy food catalog generation for rapid restaurant iteration
   - Movement energy drain tuning pass (reduced immediate depletion feel during run)
+  - Phase-1 swap safety hardening: warning-only contract validator + fallback telemetry in critical runtime paths
 - In progress:
   - UI consistency unification between IMGUI-era menus and modern runtime canvas screens
   - Readability/layout polish standardization across generated UI

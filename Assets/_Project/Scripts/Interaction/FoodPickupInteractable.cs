@@ -16,10 +16,15 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
     [SerializeField] private bool fallbackHealthy = true;
     [SerializeField] private bool consumeOnInteract = true;
 
+    [Header("Optional References")]
+    [SerializeField] private FoodCatalogProvider foodCatalogProviderOverride;
+    [SerializeField] private SessionFoodStash foodStashOverride;
+
     private Collider cachedCollider;
     private FoodData fallbackFood;
     private FoodCatalogProvider foodCatalogProvider;
     private SessionFoodStash foodStash;
+    private const string FallbackLogPrefix = "[SwapContract/Fallback]";
 
     public bool FilterByTime => filterByTime;
 
@@ -47,11 +52,23 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
     void Awake()
     {
         cachedCollider = GetComponent<Collider>();
+        foodCatalogProvider = foodCatalogProviderOverride;
+        foodStash = foodStashOverride;
+
+        if (foodCatalogProvider != null && foodStash != null)
+            return;
+
         GameObject manager = GameObject.Find("GameManager");
         if (manager != null)
         {
-            foodCatalogProvider = manager.GetComponent<FoodCatalogProvider>();
-            foodStash = manager.GetComponent<SessionFoodStash>();
+            if (foodCatalogProvider == null)
+                foodCatalogProvider = manager.GetComponent<FoodCatalogProvider>();
+
+            if (foodStash == null)
+                foodStash = manager.GetComponent<SessionFoodStash>();
+
+            if (foodCatalogProvider != null || foodStash != null)
+                Debug.LogWarning($"{FallbackLogPrefix} Resolved FoodCatalogProvider/SessionFoodStash via GameManager lookup on {gameObject.name}.");
         }
     }
 
@@ -162,9 +179,15 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
 
         if (foodStash == null)
         {
+            foodStash = foodStashOverride;
+
             GameObject manager = GameObject.Find("GameManager");
             if (manager != null)
+            {
                 foodStash = manager.GetComponent<SessionFoodStash>();
+                if (foodStash != null)
+                    Debug.LogWarning($"{FallbackLogPrefix} Resolved SessionFoodStash via GameManager lookup during SaveForLater on {gameObject.name}.");
+            }
         }
 
         bool saved = foodStash != null && foodStash.Add(food);

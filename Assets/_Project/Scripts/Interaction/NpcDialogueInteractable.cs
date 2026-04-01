@@ -26,6 +26,10 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
     [SerializeField] private float socialEnergyCooldown = 45f;
     [SerializeField] private string socialEnergyHintTemplate = "Ngobrol bikin kamu agak fresh. Energi +{0:0.#}";
 
+    [Header("Optional References")]
+    [SerializeField] private DialogueCatalogProvider dialogueCatalogProviderOverride;
+    [SerializeField] private Transform playerOverride;
+
     private Collider cachedCollider;
     private Canvas hintCanvas;
     private TextMeshProUGUI hintText;
@@ -40,11 +44,13 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
     private readonly Queue<string> recentDialogueQueue = new Queue<string>();
     private const int RecentDialogueHistorySize = 2;
     private TimeManager.TimePeriod? lastGreetingPeriod;
+    private const string FallbackLogPrefix = "[SwapContract/Fallback]";
 
     void Awake()
     {
         cachedCollider = GetComponent<Collider>();
         cameraSystem = FindFirstObjectByType<CameraSystem>();
+        dialogueCatalogProvider = dialogueCatalogProviderOverride;
         trustLevel = Mathf.Clamp(Mathf.RoundToInt(trustScore / 33.4f), 0, 3);
     }
 
@@ -301,7 +307,11 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
         {
             GameObject manager = GameObject.Find("GameManager");
             if (manager != null)
+            {
                 dialogueCatalogProvider = manager.GetComponent<DialogueCatalogProvider>();
+                if (dialogueCatalogProvider != null)
+                    Debug.LogWarning($"{FallbackLogPrefix} Resolved DialogueCatalogProvider via GameManager lookup on {gameObject.name}.");
+            }
         }
 
         if (dialogueOptions.Count == 0 && dialogueCatalogProvider != null)
@@ -457,7 +467,7 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
         if (lastGreetingPeriod.HasValue && lastGreetingPeriod.Value == period)
             return;
 
-        GameObject player = GameObject.FindWithTag("Player");
+        GameObject player = playerOverride != null ? playerOverride.gameObject : GameObject.FindWithTag("Player");
         if (player == null)
             return;
 

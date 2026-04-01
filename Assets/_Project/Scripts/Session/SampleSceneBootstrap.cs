@@ -13,6 +13,7 @@ using UnityEngine.UI;
 public class SampleSceneBootstrap : MonoBehaviour
 {
     private const string TargetSceneName = "SampleScene";
+    private const string FallbackLogPrefix = "[SwapContract/Fallback]";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoBootstrapAfterSceneLoad()
@@ -46,7 +47,10 @@ public class SampleSceneBootstrap : MonoBehaviour
     {
         GameObject manager = GameObject.Find("GameManager");
         if (manager == null)
+        {
             manager = new GameObject("GameManager");
+            Debug.LogWarning($"{FallbackLogPrefix} Created GameManager at runtime. Prefer authored scene object to keep swap contract stable.");
+        }
 
         EnsureComponent<SessionSeedManager>(manager);
         EnsureComponent<PlayerActionTracker>(manager);
@@ -73,14 +77,21 @@ public class SampleSceneBootstrap : MonoBehaviour
         {
             GameObject eventObj = new GameObject("EventSystem");
             eventSystem = eventObj.AddComponent<EventSystem>();
+            Debug.LogWarning($"{FallbackLogPrefix} Created EventSystem at runtime.");
         }
 
         if (eventSystem.GetComponent<StandaloneInputModule>() == null)
+        {
             eventSystem.gameObject.AddComponent<StandaloneInputModule>();
+            Debug.LogWarning($"{FallbackLogPrefix} Added StandaloneInputModule to EventSystem at runtime.");
+        }
 
 #if ENABLE_INPUT_SYSTEM
         if (eventSystem.GetComponent<InputSystemUIInputModule>() == null)
+        {
             eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+            Debug.LogWarning($"{FallbackLogPrefix} Added InputSystemUIInputModule to EventSystem at runtime.");
+        }
 #endif
     }
 
@@ -106,6 +117,7 @@ public class SampleSceneBootstrap : MonoBehaviour
             foodObj.transform.localScale = new Vector3(1.2f, 1.2f, 1.2f);
             foodObj.GetComponent<Renderer>().material.color = new Color(0.2f, 0.8f, 0.2f);
             EnsureComponent<FoodPickupInteractable>(foodObj);
+            Debug.LogWarning($"{FallbackLogPrefix} Created placeholder Interactable_FoodCube at runtime.");
         }
 
         if (GameObject.Find("Interactable_NPC") == null)
@@ -115,6 +127,7 @@ public class SampleSceneBootstrap : MonoBehaviour
             npcObj.transform.position = new Vector3(-52f, 1f, 31f);
             npcObj.GetComponent<Renderer>().material.color = new Color(0.2f, 0.5f, 0.95f);
             EnsureComponent<NpcDialogueInteractable>(npcObj);
+            Debug.LogWarning($"{FallbackLogPrefix} Created placeholder Interactable_NPC at runtime.");
         }
 
         if (GameObject.Find("Interactable_NPC_Restoran") == null)
@@ -124,6 +137,7 @@ public class SampleSceneBootstrap : MonoBehaviour
             npcObj.transform.position = new Vector3(-49f, 1f, 34f);
             npcObj.GetComponent<Renderer>().material.color = new Color(0.95f, 0.55f, 0.2f);
             EnsureComponentByTypeName(npcObj, "NpcRestaurantInteractable");
+            Debug.LogWarning($"{FallbackLogPrefix} Created placeholder Interactable_NPC_Restoran at runtime.");
         }
 
         if (GameObject.Find("Interactable_Bed") == null)
@@ -140,6 +154,7 @@ public class SampleSceneBootstrap : MonoBehaviour
             spawnObj.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
             EnsureComponent<SleepBedInteractable>(bedObj);
+            Debug.LogWarning($"{FallbackLogPrefix} Created placeholder Interactable_Bed at runtime.");
         }
     }
 
@@ -219,7 +234,10 @@ public class SampleSceneBootstrap : MonoBehaviour
     {
         T component = target.GetComponent<T>();
         if (component == null)
+        {
             component = target.AddComponent<T>();
+            Debug.LogWarning($"{FallbackLogPrefix} Added {typeof(T).Name} to {target.name} at runtime.");
+        }
 
         return component;
     }
@@ -248,6 +266,7 @@ public class SampleSceneBootstrap : MonoBehaviour
             return null;
         }
 
+        Debug.LogWarning($"{FallbackLogPrefix} Added {typeName} to {target.name} at runtime.");
         return target.AddComponent(found);
     }
 }

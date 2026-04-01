@@ -15,9 +15,17 @@ public class TutorialSequentialUI : MonoBehaviour
     private const string SampleSceneName = "SampleScene";
 
     private static TutorialSequentialUI instance;
-
     private static bool _hasShown;
+
     public static bool IsSequentialVisible { get; private set; }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        instance = null;
+        _hasShown = false;
+        IsSequentialVisible = false;
+    }
 
     [System.Serializable]
     private struct HintData
@@ -37,6 +45,7 @@ public class TutorialSequentialUI : MonoBehaviour
     [Header("Timing")]
     [SerializeField] private float delayAfterIntroComplete = 1f;
     [SerializeField] private float fallbackDelayWhenNoIntroEvent = 2f;
+    [SerializeField] private float startupVisualLockSeconds = 0.2f;
 
     [Header("Events")]
     public UnityEvent OnSequentialComplete;
@@ -62,13 +71,20 @@ public class TutorialSequentialUI : MonoBehaviour
     private Coroutine flowRoutine;
     private int currentHintIndex = -1;
     private bool introHookFound;
-    private bool showScheduled;
     private bool tutorialInputLockApplied;
     private bool modalOpened;
     private bool cursorStateCaptured;
     private CursorLockMode previousCursorLockMode;
     private bool previousCursorVisible;
-    private bool waitingCutsceneRelease;
+    private bool pendingShowRequest;
+    private bool showScheduled;
+    private bool startupReady;
+
+    private void Awake()
+    {
+        startupReady = false;
+        ForceHideExistingPanelEarly();
+    }
 
     private void OnEnable()
     {
@@ -79,6 +95,11 @@ public class TutorialSequentialUI : MonoBehaviour
         }
 
         instance = this;
+        startupReady = false;
+        pendingShowRequest = false;
+        showScheduled = false;
+        IsSequentialVisible = false;
+        ForceHideExistingPanelEarly();
     }
 
     private void Start()
@@ -87,12 +108,17 @@ public class TutorialSequentialUI : MonoBehaviour
         EnsureUi();
         HideImmediate();
 
+        pendingShowRequest = false;
+        showScheduled = false;
+
         playerController = FindFirstObjectByType<PlayerController>();
 
         if (!IsInSampleScene())
             return;
 
         HookIntroCompletionEvents();
+
+        StartCoroutine(MarkStartupReadyNextFrame());
 
         if (!introHookFound)
             flowRoutine = StartCoroutine(FallbackShowRoutine());
@@ -110,31 +136,57 @@ public class TutorialSequentialUI : MonoBehaviour
         }
 
         IsSequentialVisible = false;
+        pendingShowRequest = false;
+        showScheduled = false;
+        startupReady = false;
 
         if (instance == this)
             instance = null;
     }
 
-    public void Show()
+    private void Update()
     {
-        if (_hasShown || IsSequentialVisible || !IsInSampleScene())
+        if (!IsInSampleScene())
             return;
 
-        if (IntroCutsceneController.IsAnyCutscenePlaying)
+        if (!startupReady)
         {
-            if (!waitingCutsceneRelease)
-            {
-                waitingCutsceneRelease = true;
-                if (flowRoutine != null)
-                    StopCoroutine(flowRoutine);
-
-                flowRoutine = StartCoroutine(ShowWhenCutsceneReleasedRoutine());
-            }
-
+            ForceHideExistingPanelEarly();
             return;
         }
 
-        waitingCutsceneRelease = false;
+        if (IntroCutsceneController.IsAnyCutscenePlaying)
+        {
+            SuppressWhileCutsceneActive();
+            return;
+        }
+
+        if (pendingShowRequest && !_hasShown && !IsSequentialVisible && flowRoutine == null)
+            Show();
+    }
+
+    public void Show()
+    {
+        if (!IsInSampleScene())
+            return;
+
+        if (_hasShown || IsSequentialVisible)
+            return;
+
+        if (!startupReady)
+        {
+            pendingShowRequest = true;
+            return;
+        }
+
+        if (IntroCutsceneController.IsAnyCutscenePlaying)
+        {
+            pendingShowRequest = true;
+            return;
+        }
+
+        pendingShowRequest = false;
+        showScheduled = false;
 
         EnsureEventSystemReady();
         AcquireGameplayLockAndCursor();
@@ -156,17 +208,35 @@ public class TutorialSequentialUI : MonoBehaviour
     private IEnumerator FallbackShowRoutine()
     {
         yield return new WaitForSecondsRealtime(fallbackDelayWhenNoIntroEvent);
+
+        if (_hasShown)
+            yield break;
+
+        if (showScheduled)
+            yield break;
+
+        showScheduled = true;
+        pendingShowRequest = true;
         Show();
     }
 
-    private IEnumerator ShowWhenCutsceneReleasedRoutine()
+    private void SuppressWhileCutsceneActive()
     {
-        while (IntroCutsceneController.IsAnyCutscenePlaying)
-            yield return null;
+        bool wasVisible = IsSequentialVisible || (panelRoot != null && panelRoot.gameObject.activeSelf);
+        if (wasVisible)
+        {
+            HideImmediate();
+            ReleaseGameplayLockAndCursor();
+        }
 
-        waitingCutsceneRelease = false;
-        flowRoutine = null;
-        Show();
+        if (flowRoutine != null)
+        {
+            StopCoroutine(flowRoutine);
+            flowRoutine = null;
+        }
+
+        if (!_hasShown)
+            pendingShowRequest = true;
     }
 
     private void HookIntroCompletionEvents()
@@ -206,7 +276,10 @@ public class TutorialSequentialUI : MonoBehaviour
 
     private void HandleIntroOrCutsceneCompleted()
     {
-        if (_hasShown || showScheduled || !IsInSampleScene())
+        if (_hasShown || IsSequentialVisible || !IsInSampleScene())
+            return;
+
+        if (showScheduled)
             return;
 
         showScheduled = true;
@@ -220,7 +293,18 @@ public class TutorialSequentialUI : MonoBehaviour
     private IEnumerator ShowAfterIntroCompleteDelayRoutine()
     {
         yield return new WaitForSecondsRealtime(delayAfterIntroComplete);
+        flowRoutine = null;
+        pendingShowRequest = true;
         Show();
+    }
+
+    private IEnumerator MarkStartupReadyNextFrame()
+    {
+        if (startupVisualLockSeconds > 0f)
+            yield return new WaitForSecondsRealtime(startupVisualLockSeconds);
+
+        yield return null;
+        startupReady = true;
     }
 
     private void HandleDismissPressed()
@@ -250,8 +334,8 @@ public class TutorialSequentialUI : MonoBehaviour
         HideImmediate();
 
         _hasShown = true;
+        pendingShowRequest = false;
         showScheduled = false;
-        waitingCutsceneRelease = false;
         currentHintIndex = -1;
 
         OnSequentialComplete?.Invoke();
@@ -346,6 +430,11 @@ public class TutorialSequentialUI : MonoBehaviour
         }
 
         panelGroup = panelRoot.GetComponent<CanvasGroup>();
+        panelGroup.alpha = 0f;
+        panelGroup.interactable = false;
+        panelGroup.blocksRaycasts = false;
+        panelRoot.gameObject.SetActive(false);
+
         ConfigureSequentialPanelVisual();
         RebuildSequentialPanelChildren();
 
@@ -613,6 +702,27 @@ public class TutorialSequentialUI : MonoBehaviour
         panelGroup.blocksRaycasts = false;
         panelRoot.gameObject.SetActive(false);
         IsSequentialVisible = false;
+    }
+
+    private static void ForceHideExistingPanelEarly()
+    {
+        GameObject canvasObj = GameObject.Find("HUD_Canvas");
+        if (canvasObj == null)
+            return;
+
+        Transform panel = canvasObj.transform.Find("TutorialSequentialPanel");
+        if (panel == null)
+            return;
+
+        CanvasGroup cg = panel.GetComponent<CanvasGroup>();
+        if (cg != null)
+        {
+            cg.alpha = 0f;
+            cg.interactable = false;
+            cg.blocksRaycasts = false;
+        }
+
+        panel.gameObject.SetActive(false);
     }
 
     private static bool IsInSampleScene()

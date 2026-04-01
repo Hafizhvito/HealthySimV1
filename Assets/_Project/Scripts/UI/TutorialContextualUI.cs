@@ -10,6 +10,13 @@ public class TutorialContextualUI : MonoBehaviour
     private const string SampleSceneName = "SampleScene";
     private const int MaxQueueSize = 8;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        HasTalkedToNPC = false;
+        HasPickedUpFood = false;
+    }
+
     public static bool HasTalkedToNPC;
     public static bool HasPickedUpFood;
 
@@ -74,7 +81,7 @@ public class TutorialContextualUI : MonoBehaviour
 
         if (IntroCutsceneController.IsAnyCutscenePlaying)
         {
-            HideImmediate();
+            SuppressWhileCutsceneActive();
             return;
         }
 
@@ -89,6 +96,18 @@ public class TutorialContextualUI : MonoBehaviour
 
         if (!isShowingToast && queue.Count > 0 && !TutorialSequentialUI.IsSequentialVisible)
             StartNextToast();
+    }
+
+    private void SuppressWhileCutsceneActive()
+    {
+        if (toastRoutine != null)
+        {
+            StopCoroutine(toastRoutine);
+            toastRoutine = null;
+        }
+
+        isShowingToast = false;
+        HideImmediate();
     }
 
     private void OnDisable()

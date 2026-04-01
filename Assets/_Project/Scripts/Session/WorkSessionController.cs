@@ -8,12 +8,18 @@ public class WorkSessionController : MonoBehaviour
     [SerializeField] private NpcDialogueMenuController _dialogueUI;
     [SerializeField] private string _mainSceneName = "SampleScene";
 
+    [Header("Optional Scene References")]
+    [SerializeField] private NpcDialogueInteractable _bossInteractableOverride;
+    [SerializeField] private Transform _playerSpawnPointOverride;
+    [SerializeField] private GameObject _playerOverride;
+
     [Header("Flow Timings")]
     [SerializeField] private float _postLoadDelay = 0.5f;
     [SerializeField] private float _dialoguePollInterval = 0.05f;
 
     private WorkSessionData _activeSession;
     private NpcDialogueInteractable _bossInteractable;
+    private const string FallbackLogPrefix = "[SwapContract/Fallback]";
 
     private void Start()
     {
@@ -79,6 +85,7 @@ public class WorkSessionController : MonoBehaviour
         {
             GameObject dialogueObj = new GameObject("NpcDialogueMenuController_Runtime");
             _dialogueUI = dialogueObj.AddComponent<NpcDialogueMenuController>();
+            Debug.LogWarning($"{FallbackLogPrefix} Created runtime NpcDialogueMenuController in OfficeScene.");
         }
 
         if (_dialogueUI == null)
@@ -91,17 +98,27 @@ public class WorkSessionController : MonoBehaviour
         {
             GameObject clockObj = new GameObject("ClockAnimationUI");
             _clockUI = clockObj.AddComponent<ClockAnimationUI>();
+            Debug.LogWarning($"{FallbackLogPrefix} Created runtime ClockAnimationUI in OfficeScene.");
         }
+
+        if (_bossInteractable == null && _bossInteractableOverride != null)
+            _bossInteractable = _bossInteractableOverride;
 
         if (_bossInteractable == null)
         {
             GameObject bossObj = GameObject.FindWithTag("NPCBoss");
             if (bossObj != null)
+            {
                 _bossInteractable = bossObj.GetComponent<NpcDialogueInteractable>();
+                Debug.LogWarning($"{FallbackLogPrefix} Resolved boss via NPCBoss tag lookup.");
+            }
         }
 
         if (_bossInteractable == null)
+        {
+            Debug.LogWarning($"{FallbackLogPrefix} Boss interactable missing in OfficeScene. Set optional reference on WorkSessionController for stable swaps.");
             return false;
+        }
 
         return true;
     }
@@ -324,17 +341,33 @@ public class WorkSessionController : MonoBehaviour
         return graph;
     }
 
-    private static void MovePlayerToSpawnPoint()
+    private void MovePlayerToSpawnPoint()
     {
-        GameObject spawn = GameObject.Find("PlayerSpawnPoint");
-        if (spawn == null)
-            return;
+        Transform spawnTransform = _playerSpawnPointOverride;
+        if (spawnTransform == null)
+        {
+            GameObject spawn = GameObject.Find("PlayerSpawnPoint");
+            if (spawn != null)
+                spawnTransform = spawn.transform;
+        }
 
-        GameObject player = GameObject.FindWithTag("Player");
+        if (spawnTransform == null)
+        {
+            Debug.LogWarning($"{FallbackLogPrefix} Missing PlayerSpawnPoint in OfficeScene.");
+            return;
+        }
+
+        GameObject player = _playerOverride;
         if (player == null)
-            return;
+            player = GameObject.FindWithTag("Player");
 
-        player.transform.position = spawn.transform.position;
-        player.transform.rotation = spawn.transform.rotation;
+        if (player == null)
+        {
+            Debug.LogWarning($"{FallbackLogPrefix} Missing Player in OfficeScene when moving to spawn point.");
+            return;
+        }
+
+        player.transform.position = spawnTransform.position;
+        player.transform.rotation = spawnTransform.rotation;
     }
 }

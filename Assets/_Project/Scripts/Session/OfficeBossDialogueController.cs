@@ -7,8 +7,10 @@ public class OfficeBossDialogueController : MonoBehaviour
     [SerializeField] private NpcDialogueInteractable bossInteractable;
     [SerializeField] private DialogueGraphData preWorkDialogue;
     [SerializeField] private DialogueGraphData postWorkDialogue;
+    [SerializeField] private string bossTag = "NPCBoss";
 
     private const string OfficeSceneName = "OfficeScene";
+    private const string FallbackLogPrefix = "[SwapContract/Fallback]";
     private bool subscribed;
 
     public void Configure(NpcDialogueInteractable boss, DialogueGraphData preWork, DialogueGraphData postWork)
@@ -25,9 +27,13 @@ public class OfficeBossDialogueController : MonoBehaviour
 
         if (bossInteractable == null)
         {
-            GameObject bossObj = GameObject.FindWithTag("NPCBoss");
+            GameObject bossObj = GameObject.FindWithTag(bossTag);
             if (bossObj != null)
+            {
                 bossInteractable = bossObj.GetComponent<NpcDialogueInteractable>();
+                if (bossInteractable != null)
+                    Debug.LogWarning($"{FallbackLogPrefix} Resolved Office boss via tag lookup ({bossTag}).");
+            }
         }
 
         if (bossInteractable != null && preWorkDialogue != null)
