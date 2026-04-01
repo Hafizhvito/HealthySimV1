@@ -21,6 +21,7 @@ This file is the technical truth snapshot for current architecture, behavior, an
 - Onboarding overlays are cutscene-aware:
   - Tutorial and reminder surfaces must stay suppressed while intro cutscene is active
   - Work reminder can only appear after cutscene and sequential tutorial release
+  - Sequential tutorial first-show uses a single pending-request gate plus short startup visual lock to avoid startup flicker
 - Sleep flow is period-gated and behavior-aware:
   - Sleep interaction is night-only by default
   - Sleep uses confirm-before-transition UX
@@ -62,6 +63,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - TutorialSequentialUI handles step-by-step onboarding panel
   - TutorialContextualUI handles queued one-time contextual hints
   - TutorialSequentialUI and TutorialContextualUI are gated by intro cutscene active state
+  - TutorialSequentialUI now applies startup visual lock and early panel force-hide to avoid millisecond flash before cutscene state settles
   - WorkReminderUI suppresses while cutscene/sequential tutorial overlays are active
   - SleepBedInteractable now handles sleep transition UX (confirm, fade, clock skip, wake reminder)
 
@@ -106,6 +108,7 @@ Ringkasan (ID): Kontrak swap sekarang didokumentasikan sebagai checklist operasi
   - Intro completion events and tutorial UI implementation
   - Reminder/tutorial overlap handling
   - Cutscene-gated onboarding/reminder display to prevent overlap noise
+  - Sequential tutorial startup race cleanup: single-request trigger path plus startup visual lock/force-hide guard
   - Sleep/day transition flow with wake warning logic and behavior-based disturbance chance
   - Food price system with money deduction on buy/consume/save actions
   - Placeholder healthy vs less-healthy food catalog generation for rapid restaurant iteration

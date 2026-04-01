@@ -51,6 +51,7 @@ Ringkasan (ID): Proyek sudah bisa dimainkan end-to-end untuk loop utama, tetapi 
   - Contextual tutorial toast queue (NPC/energy/food/work conditions)
   - Sequential/contextual tutorial and work reminder are suppressed while cutscene is active
   - Work reminder now appears only after cutscene and sequential tutorial have both finished
+  - Sequential tutorial first-show flow now uses a single pending request path with short startup visual lock to prevent initial flicker
 - Sleep loop and day transition:
   - Sleep is night-gated and uses a confirmation step before transition
   - Sleep transition uses fade plus clock time-skip animation
