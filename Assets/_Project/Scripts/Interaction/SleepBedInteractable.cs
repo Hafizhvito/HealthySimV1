@@ -55,6 +55,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] private PlayerStats playerStatsOverride;
     [SerializeField] private FadeManager fadeManagerOverride;
     [SerializeField] private WorkSessionManager workSessionManagerOverride;
+    [SerializeField] private GymProgressionSystem gymProgressionSystemOverride;
     [SerializeField] private ClockAnimationUI clockAnimationUiOverride;
 
     private Collider cachedCollider;
@@ -130,6 +131,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         PlayerStats playerStats = ResolvePlayerStats();
         FadeManager fadeManager = ResolveFadeManager();
         WorkSessionManager workSessionManager = ResolveWorkSessionManager();
+        GymProgressionSystem gymProgressionSystem = ResolveGymProgressionSystem();
         ClockAnimationUI clockUi = ResolveClockAnimationUi();
         PlayerController playerController = interactor != null ? interactor.GetComponent<PlayerController>() : null;
 
@@ -177,6 +179,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         if (workSessionManager != null)
             workSessionManager.NotifyDayResetFromSleep();
+
+        if (gymProgressionSystem != null)
+            gymProgressionSystem.NotifyDayResetFromSleep();
 
         MoveInteractorToBedSpawn(interactor);
         Debug.Log($"[SleepBedInteractable] {sleepingLogText} Hari {timeManager.GetDayNameIndonesia()}.");
@@ -286,6 +291,22 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         GameObject managerObj = GameObject.Find("GameManager");
         return managerObj != null ? managerObj.GetComponent<WorkSessionManager>() : null;
+    }
+
+    private GymProgressionSystem ResolveGymProgressionSystem()
+    {
+        if (gymProgressionSystemOverride != null)
+            return gymProgressionSystemOverride;
+
+        if (GymProgressionSystem.Instance != null)
+            return GymProgressionSystem.Instance;
+
+        GameObject managerObj = GameObject.Find("GameManager");
+        if (managerObj == null)
+            return null;
+
+        GymProgressionSystem existing = managerObj.GetComponent<GymProgressionSystem>();
+        return existing != null ? existing : managerObj.AddComponent<GymProgressionSystem>();
     }
 
     private bool CanSleepNow()

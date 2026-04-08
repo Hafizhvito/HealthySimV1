@@ -2,6 +2,36 @@
 
 This file is the technical truth snapshot for current architecture, behavior, and risks.
 
+## TEAM ONBOARDING OPERATIONS
+
+- Required editor version:
+  - Unity `6000.3.10f1` (see `ProjectSettings/ProjectVersion.txt`)
+- Required startup flow:
+  - clone repo
+  - open project via Unity Hub
+  - wait for package restore and compile idle
+  - open `Assets/Scenes/SampleScene.unity`
+  - run smoke checklist before making changes
+- Daily teammate routine:
+  - pull latest branch first
+  - run quick smoke before and after changes
+  - keep commits focused and small
+- Branching baseline:
+  - `main` for stable baseline
+  - `feature/<topic>` and `fix/<topic>` for active work
+- Commit style baseline:
+  - `feat(scope): ...`
+  - `fix(scope): ...`
+  - `docs(scope): ...`
+  - `chore(scope): ...`
+- Common first-open risks:
+  - wrong Unity version
+  - package restore not finished
+  - opening wrong scene instead of `SampleScene`
+  - missing `.meta` files after partial pull/merge
+
+Ringkasan (ID): Onboarding tim disederhanakan ke alur clone -> open -> compile -> smoke test agar teammate baru bisa langsung jalan tanpa bingung.
+
 ## CORE ARCHITECTURE RULES (CURRENT)
 
 - Player movement is Rigidbody-driven and resolved in FixedUpdate.
@@ -55,6 +85,9 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - WorkSessionManager orchestrates office session flow and HasWorkedToday state
   - WorkDoorInteractable gates entry by period/energy rules
   - WorkDoorInteractable supports optional serialized references for manager wiring, while retaining existing runtime fallback paths
+  - GymProgressionSystem orchestrates gym session progression and HasTrainedToday state
+  - GymDoorInteractable mirrors work-door entry contract with period/energy gating and pending gym session setup
+  - GymSessionController runs trainer pre/post dialogue and clock-based session animation before applying progression
   - StoryIntroManager and IntroCutsceneController expose completion events
   - SessionFlowController and StoryManager coordinate progression transitions
 - UI and onboarding:
@@ -66,6 +99,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - TutorialSequentialUI now applies startup visual lock and early panel force-hide to avoid millisecond flash before cutscene state settles
   - WorkReminderUI suppresses while cutscene/sequential tutorial overlays are active
   - SleepBedInteractable now handles sleep transition UX (confirm, fade, clock skip, wake reminder)
+  - SleepBedInteractable now triggers both work and gym day-reset hooks after sleep transition
 
 Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial/reminder yang sadar state cutscene, serta alur tidur dan ekonomi makanan berharga.
 
@@ -104,6 +138,9 @@ Ringkasan (ID): Kontrak swap sekarang didokumentasikan sebagai checklist operasi
   - Modal/input lock discipline through centralized manager
   - NPC dialogue routing and cinematic UI flow
   - Work session loop with result and payout branches
+  - Gym activity loop with mirrored office flow contract and trainer dialogue stages
+  - PlayerStats hidden gym progression state added (training adaptation and fatigue debt)
+  - Sleep day-reset integration for gym daily lock reset and overnight fatigue recovery
   - Safe migration micro-step: optional manager references added in work-door path without removing fallback behavior
   - Intro completion events and tutorial UI implementation
   - Reminder/tutorial overlap handling

@@ -11,6 +11,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/OfficeScene.unity
     guid: 27312bb4720081f40b0891836d239113
+  - enabled: 1
+    path: Assets/Scenes/GymScene.unity
+    guid: 48cf3a46bca2e8646ae0b0d0841cc972
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

@@ -31,6 +31,10 @@ public class PlayerStats : MonoBehaviour
     [Header("Economy")]
     [SerializeField] private int _money = 500;
 
+    [Header("Gym Progression (Hidden)")]
+    [SerializeField] [HideInInspector] private float trainingAdaptation = 0f;
+    [SerializeField] [HideInInspector] private float fatigueDebt = 0f;
+
     [Header("Energy State Thresholds")]
     [SerializeField] private float warningThreshold = 40f;
     [SerializeField] private float criticalThreshold = 15f;
@@ -54,6 +58,8 @@ public class PlayerStats : MonoBehaviour
     public string PlayerName => playerName;
     public float PlayerBMI => playerBMI;
     public int Money => _money;
+    public float TrainingAdaptation => trainingAdaptation;
+    public float FatigueDebt => fatigueDebt;
 
     // Events
     public System.Action<EnergyState> OnEnergyStateChanged;
@@ -137,6 +143,13 @@ public class PlayerStats : MonoBehaviour
     {
         int safeAmount = Mathf.Max(0, amount);
         _money = Mathf.Max(0, _money - safeAmount);
+    }
+
+    // Gym progression values are hidden gameplay stats used by gym systems.
+    public void ApplyGymProgression(float adaptationDelta, float fatigueDelta)
+    {
+        trainingAdaptation = Mathf.Clamp(trainingAdaptation + adaptationDelta, 0f, 100f);
+        fatigueDebt = Mathf.Clamp(fatigueDebt + fatigueDelta, 0f, 100f);
     }
 
     void ModifyEnergy(float amount)

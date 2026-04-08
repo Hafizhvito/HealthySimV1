@@ -13,6 +13,153 @@ HealthySimV1 is a Unity 6 URP prototype focused on a short daily loop: move, int
 
 Ringkasan (ID): Proyek sudah bisa dimainkan end-to-end untuk loop utama, tetapi QA masih manual dan belum ada test otomatis.
 
+## Team Onboarding
+
+### Teammate Quick Start
+
+1. Install Unity Hub and Unity Editor `6000.3.10f1`.
+2. Clone this repository.
+3. Open the project folder in Unity Hub.
+4. Wait for package import and script compilation to finish.
+5. Open `Assets/Scenes/SampleScene.unity`.
+6. Press Play and run the smoke test checklist below.
+
+Catatan (ID): Untuk mulai cepat, pakai Unity versi yang sama, buka `SampleScene`, lalu Play setelah compile selesai.
+
+### Full Setup (GitHub Clone to Play Mode)
+
+1. Clone repository:
+
+- `git clone <repo-url>`
+- `cd HealthySimV1`
+
+2. Confirm required folders exist after clone:
+
+- `Assets/`
+- `Packages/`
+- `ProjectSettings/`
+
+3. Open Unity Hub:
+
+- `Add` project folder `HealthySimV1`
+- Select Unity version `6000.3.10f1`
+
+4. First open checks:
+
+- Let Unity resolve `Packages/manifest.json` and `packages-lock.json`
+- Wait until Console compile activity is idle
+
+5. Open scenes:
+
+- Main: `Assets/Scenes/SampleScene.unity`
+- Office: `Assets/Scenes/OfficeScene.unity`
+
+6. Run Play Mode in `SampleScene`.
+
+Catatan (ID): Jika pertama kali buka project terasa lama, itu normal karena import package dan domain reload.
+
+### Daily Workflow (Teammates)
+
+1. `git pull` on your branch.
+2. Open Unity and wait for compile to finish.
+3. Run smoke test in `SampleScene` before coding.
+4. Make changes in a focused scope.
+5. Re-run smoke test after changes.
+6. Commit with clear message.
+7. Push branch and open PR.
+
+Catatan (ID): Biasakan test cepat sebelum dan sesudah ngoding supaya regresi cepat ketahuan.
+
+### Minimal Branching Recommendation
+
+1. Keep it simple:
+
+- `main`: stable baseline
+- `feature/<short-topic>` for new work
+- `fix/<short-topic>` for bug fixes
+
+2. Prefer short-lived branches and small PRs.
+
+Catatan (ID): Branch pendek dan PR kecil bikin review lebih cepat dan minim konflik.
+
+### First Commit and Commit Convention
+
+Use Conventional Commit style:
+
+- `feat(scope): ...`
+- `fix(scope): ...`
+- `docs(scope): ...`
+- `chore(scope): ...`
+
+Examples:
+
+- `feat(core): add swap-contract warning validator`
+- `fix(ui): stabilize tutorial startup cutscene gating`
+- `docs(onboarding): add teammate setup and smoke tests`
+
+Catatan (ID): Format commit konsisten memudahkan tracking perubahan di tim.
+
+### Smoke Test Checklist (Run After Open and Before PR)
+
+1. Open `Assets/Scenes/SampleScene.unity`.
+2. Press Play.
+3. Verify movement:
+
+- Walk/run/jump works.
+- Camera toggle `F`/`V` works.
+
+4. Verify interaction:
+
+- Interact with food (`E`) and complete buy/eat or stash flow.
+- Interact with NPC dialogue and finish one branch.
+
+5. Verify onboarding:
+
+- Intro cutscene plays.
+- Sequential tutorial appears after cutscene.
+
+6. Verify work flow:
+
+- Use `KantorDoor` logic path and validate office transition behavior.
+
+7. Verify gym flow:
+
+- Use `GymDoor` logic path and validate gym transition plus trainer dialogue flow.
+- Confirm gym can only be done once per day and resets after sleep.
+
+8. Check Console for new errors.
+
+Catatan (ID): Checklist ini cukup untuk validasi cepat bahwa loop utama tetap aman.
+
+### Common Errors and Quick Fixes
+
+1. Unity version mismatch:
+
+- Symptom: package/asset import issues.
+- Fix: use `6000.3.10f1` from `ProjectSettings/ProjectVersion.txt`.
+
+2. Package errors on first open:
+
+- Symptom: unresolved package or compile red errors.
+- Fix: open Package Manager, wait for restore, reimport if needed.
+
+3. Long compile delay:
+
+- Symptom: scripts not ready for Play.
+- Fix: wait until compile is idle; avoid editing while importing.
+
+4. Scene not loading:
+
+- Symptom: wrong/empty scene opens.
+- Fix: manually open `Assets/Scenes/SampleScene.unity`.
+
+5. Missing references after pull:
+
+- Symptom: null/missing component warnings.
+- Fix: close Unity, ensure all files including `.meta` are present, pull again, reopen.
+
+Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unity yang tepat dan menunggu import selesai.
+
 ## Implemented Features (Verified)
 
 - Player movement and camera:
@@ -45,6 +192,9 @@ Ringkasan (ID): Proyek sudah bisa dimainkan end-to-end untuk loop utama, tetapi 
   - Office session flow with pre/post dialogue and payout logic
   - Partial/fail outcomes for low-energy runs
   - Safe migration note: WorkDoorInteractable now supports optional serialized manager references while preserving existing GameManager fallback behavior
+  - Gym door/session flow mirrors office contract (door gate -> session scene -> trainer dialogue -> progression apply -> return)
+  - Gym progression uses hidden PlayerStats fields (training adaptation and fatigue debt) without adding new HUD bars
+  - Sleep day-reset now clears gym daily lock and applies overnight fatigue recovery
 - Intro and tutorial onboarding:
   - Intro cutscene sequence and completion events
   - Sequential tutorial panel after intro
@@ -76,6 +226,7 @@ Ringkasan (ID): Fitur inti gameplay, dialog, kerja, onboarding, tidur, ekonomi m
   3. Interact with food and test stash actions
   4. Open NPC dialogue and complete one dialogue branch
   5. Enter office flow and return to main scene
+  6. Enter gym flow and confirm trainer pre/post dialogue plus daily lock behavior
 
 Ringkasan (ID): Untuk cek cepat, jalankan SampleScene lalu uji movement, interaksi makanan, dialog NPC, dan sesi kerja sekali.
 
