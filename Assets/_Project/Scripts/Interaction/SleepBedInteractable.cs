@@ -27,6 +27,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] [Range(0f, 1f)] private float fullRecoveryNormalized = 1f;
     [SerializeField] [Range(0f, 1f)] private float lowEnergyWarningThreshold = 0.35f;
 
+    [Header("Next-Day Energy Sustainability")]
+    [SerializeField] [Range(0.75f, 1.25f)] private float bestTrainingDrainModifier = 0.85f;
+    [SerializeField] [Range(0.75f, 1.25f)] private float worstTrainingDrainModifier = 1.15f;
+
     [Header("Sleep Disturbance Chance")]
     [SerializeField] private bool enableSleepDisturbance = true;
     [SerializeField] [Range(0f, 1f)] private float baseDisturbChance = 0.05f;
@@ -42,12 +46,51 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] private float fadeDuration = 0.35f;
     [SerializeField] private string sleepLockSource = "SleepTransition";
 
+    [Header("Pre-Sleep Cinematic")]
+    [SerializeField] private bool enablePreSleepCinematic = true;
+    [SerializeField] private float eyeCloseDuration = 0.95f;
+    [SerializeField] private float warmLineHoldDuration = 0.9f;
+    [SerializeField] private string[] warmSleepLines = new string[]
+    {
+        "Hari ini mungkin belum sempurna, tapi tubuhmu tetap layak dipeluk oleh istirahat.",
+        "Kamu sudah berjuang seharian. Sekarang biarkan malam menyelesaikan sisanya.",
+        "Tarik napas pelan. Besok bukan untuk menebus, tapi untuk memulai lagi.",
+        "Tidak apa-apa melambat. Tubuhmu bukan mesin, ia teman seperjalanan.",
+        "Kadang yang paling sehat bukan berlari lebih jauh, tapi berhenti tepat waktu."
+    };
+
+    [Header("Wake Eye-Open Cinematic")]
+    [SerializeField] private bool enableWakeEyeOpenCinematic = true;
+    [SerializeField] private float eyeOpenDuration = 1f;
+    [SerializeField] private float wakeLineHoldDuration = 0.5f;
+    [SerializeField] private string[] warmWakeLines = new string[]
+    {
+        "Pelan-pelan buka mata. Hari ini masih memberi ruang untuk memulai dengan lembut.",
+        "Pagi datang tanpa menuntutmu sempurna. Cukup hadir, lalu lanjut satu langkah.",
+        "Napasmu sudah kembali tenang. Sekarang giliran ritmemu kembali seimbang.",
+        "Tubuhmu sudah bekerja semalaman untuk pulih. Dengarkan dia hari ini.",
+        "Cahaya pagi selalu baru. Kamu juga boleh mulai dari versi baru dirimu."
+    };
+
     [Header("Wake Reminder")]
     [SerializeField] private float wakeMessageDuration = 3f;
     [SerializeField] private string wakeIntroTemplate = "Kamu bangun di Hari {0}.";
     [SerializeField] private string wakeWarningNoWork = "Peringatan: Kemarin kamu belum kerja. Atur ritme harimu lebih baik.";
     [SerializeField] private string wakeWarningLowEnergy = "Peringatan: Kemarin kamu tidur saat energi sangat rendah.";
     [SerializeField] private string wakeWarningDisturbedSleep = "Peringatan: Tidurmu kurang nyenyak, jadi energimu belum pulih penuh.";
+
+    [Header("Late Wake Penalty (Energy + Narrative Only)")]
+    [SerializeField] private bool enableLateWakePenalty = true;
+    [SerializeField] [Range(0f, 1f)] private float sugarSignalWeight = 0.15f;
+    [SerializeField] [Range(0f, 1f)] private float overworkSignalWeight = 0.20f;
+    [SerializeField] [Range(0f, 1f)] private float fatigueSignalWeight = 0.15f;
+    [SerializeField] [Range(0f, 1f)] private float lowEnergySignalWeight = 0.25f;
+    [SerializeField] [Range(0f, 1f)] private float lateWakeChanceCap = 0.75f;
+    [SerializeField] [Range(0f, 100f)] private float lateWakePenaltyAmount = 15f;
+    [SerializeField] [Range(0f, 1f)] private float lowEnergySleepPenaltyThreshold = 0.20f;
+    [SerializeField] [Range(0f, 100f)] private float highFatigueDebtThreshold = 60f;
+    [SerializeField] [Range(0f, 200f)] private float highSugarEstimateThreshold = 45f;
+    [SerializeField] private string wakeWarningLateWakePenalty = "Kamu bangun dengan badan terasa berat. Pola hidupmu mulai berdampak...";
 
     [Header("Optional References")]
     [SerializeField] private Transform bedSpawnPoint;
@@ -64,6 +107,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private CanvasGroup wakeCanvasGroup;
     private TextMeshProUGUI wakeText;
     private Coroutine wakeMessageRoutine;
+    private Canvas sleepCinematicCanvas;
+    private CanvasGroup sleepCinematicCanvasGroup;
+    private TextMeshProUGUI sleepCinematicText;
     private float lastBlockedWarningTime = -999f;
     private float blockedWindowStartTime = -999f;
     private int blockedClickCount;
@@ -152,12 +198,20 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         bool workedYesterday = workSessionManager != null && workSessionManager.HasWorkedToday;
         float energyBeforeSleep = playerStats.EnergyPercent;
+        bool trainedYesterday = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
+        float adaptationBeforeSleep = playerStats.TrainingAdaptation;
+        float fatigueBeforeSleep = playerStats.FatigueDebt;
         bool overworkedYesterday = workedYesterday && DidOverworkYesterday(workSessionManager);
         bool poorDietYesterday = HasPoorDietPattern();
         bool disturbedSleep = RollSleepDisturbance(workedYesterday, overworkedYesterday, poorDietYesterday);
+        float lateWakeChance = CalculateLateWakeChance(workSessionManager, gymProgressionSystem, playerStats, energyBeforeSleep);
+        bool lateWakePenaltyTriggered = enableLateWakePenalty && UnityEngine.Random.value < lateWakeChance;
 
         if (playerController != null)
             playerController.LockInput(sleepLockSource);
+
+        if (enablePreSleepCinematic)
+            yield return StartCoroutine(PlayPreSleepCinematic());
 
         if (fadeManager != null)
         {
@@ -165,6 +219,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             fadeManager.FadeToBlack(fadeDuration, () => fadeToBlackDone = true);
             yield return new WaitUntil(() => fadeToBlackDone);
         }
+
+        HidePreSleepCinematic();
 
         if (clockUi != null)
         {
@@ -176,6 +232,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         ApplyRecovery(playerStats, disturbedSleep);
 
         timeManager.AdvanceToNextDayFromSleep();
+        string wakeDayName = timeManager.GetDayNameIndonesia();
 
         if (workSessionManager != null)
             workSessionManager.NotifyDayResetFromSleep();
@@ -183,8 +240,16 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (gymProgressionSystem != null)
             gymProgressionSystem.NotifyDayResetFromSleep();
 
+        ApplyNextDayMovementDrainModifier(playerStats, trainedYesterday, adaptationBeforeSleep, fatigueBeforeSleep);
+
+        if (lateWakePenaltyTriggered)
+            ApplyLateWakePenalty(playerStats);
+
         MoveInteractorToBedSpawn(interactor);
-        Debug.Log($"[SleepBedInteractable] {sleepingLogText} Hari {timeManager.GetDayNameIndonesia()}.");
+        Debug.Log($"[SleepBedInteractable] {sleepingLogText} Hari {wakeDayName}.");
+
+        if (enableWakeEyeOpenCinematic)
+            PrepareWakeEyeOpenCinematic(wakeDayName);
 
         if (fadeManager != null)
         {
@@ -193,10 +258,13 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             yield return new WaitUntil(() => fadeFromBlackDone);
         }
 
+        if (enableWakeEyeOpenCinematic)
+            yield return StartCoroutine(PlayWakeEyeOpenCinematic(wakeDayName));
+
         if (playerController != null)
             playerController.UnlockInput(sleepLockSource);
 
-        ShowWakeMessage(BuildWakeMessage(timeManager.GetDayNameIndonesia(), workedYesterday, energyBeforeSleep, disturbedSleep), wakeMessageDuration);
+        ShowWakeMessage(BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep, disturbedSleep, lateWakePenaltyTriggered), wakeMessageDuration);
 
         sleepRoutine = null;
     }
@@ -212,6 +280,27 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         if (recovery > 0.01f)
             stats.AddFood(recovery, 0f, 0f);
+    }
+
+    private void ApplyNextDayMovementDrainModifier(PlayerStats stats, bool trainedYesterday, float adaptationBeforeSleep, float fatigueBeforeSleep)
+    {
+        if (stats == null)
+            return;
+
+        float nextModifier = 1f;
+        if (trainedYesterday)
+        {
+            float adaptationNorm = Mathf.Clamp01(adaptationBeforeSleep / 100f);
+            float fatigueNorm = Mathf.Clamp01(fatigueBeforeSleep / 100f);
+            float balance = Mathf.Clamp(adaptationNorm - fatigueNorm, -1f, 1f);
+            float blend = Mathf.Clamp01((balance + 1f) * 0.5f);
+
+            float best = Mathf.Min(1f, bestTrainingDrainModifier);
+            float worst = Mathf.Max(1f, worstTrainingDrainModifier);
+            nextModifier = Mathf.Lerp(worst, best, blend);
+        }
+
+        stats.SetMovementDrainModifier(nextModifier);
     }
 
     private void MoveInteractorToBedSpawn(GameObject interactor)
@@ -430,7 +519,86 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         return Mathf.Clamp01(chance);
     }
 
-    private string BuildWakeMessage(string dayName, bool workedYesterday, float energyBeforeSleep, bool disturbedSleep)
+    private float CalculateLateWakeChance(WorkSessionManager workSessionManager, GymProgressionSystem gymProgressionSystem, PlayerStats playerStats, float energyBeforeSleep)
+    {
+        if (!enableLateWakePenalty)
+            return 0f;
+
+        bool highSugarPattern = HasHighRecentSugarIntake();
+        bool overworkPattern = workSessionManager != null && workSessionManager.HasWorkedToday && DidOverworkYesterday(workSessionManager);
+        bool highFatigueDebt = gymProgressionSystem != null && playerStats != null && playerStats.FatigueDebt >= highFatigueDebtThreshold;
+        bool lowEnergyAtSleep = energyBeforeSleep <= lowEnergySleepPenaltyThreshold;
+
+        float chance = 0f;
+        if (highSugarPattern)
+            chance += sugarSignalWeight;
+
+        if (overworkPattern)
+            chance += overworkSignalWeight;
+
+        if (highFatigueDebt)
+            chance += fatigueSignalWeight;
+
+        if (lowEnergyAtSleep)
+            chance += lowEnergySignalWeight;
+
+        return Mathf.Clamp(chance, 0f, lateWakeChanceCap);
+    }
+
+    private bool HasHighRecentSugarIntake()
+    {
+        if (PlayerActionTracker.Instance == null)
+            return false;
+
+        int unhealthyCount = PlayerActionTracker.Instance.GetCount(PlayerActionTracker.ActionType.UnhealthyFoodTaken);
+        if (unhealthyCount <= 0)
+            return false;
+
+        float estimatedSugar = unhealthyCount * GetAverageUnhealthySugarEstimate();
+        return estimatedSugar >= highSugarEstimateThreshold;
+    }
+
+    private static float GetAverageUnhealthySugarEstimate()
+    {
+        FoodData[] foods = Resources.LoadAll<FoodData>("FoodData");
+        if (foods == null || foods.Length == 0)
+            return 12f;
+
+        float totalSugar = 0f;
+        int count = 0;
+        for (int i = 0; i < foods.Length; i++)
+        {
+            FoodData food = foods[i];
+            if (food == null || food.isHealthy)
+                continue;
+
+            float sugar = Mathf.Max(0f, food.Sugar);
+            if (sugar <= 0f)
+                sugar = Mathf.Max(0f, food.carbohydrate * 0.35f);
+
+            totalSugar += sugar;
+            count++;
+        }
+
+        if (count == 0)
+            return 12f;
+
+        return totalSugar / count;
+    }
+
+    private void ApplyLateWakePenalty(PlayerStats stats)
+    {
+        if (stats == null)
+            return;
+
+        float penalty = Mathf.Max(0f, lateWakePenaltyAmount);
+        if (penalty <= 0f)
+            return;
+
+        stats.AddFood(-penalty, 0f, 0f);
+    }
+
+    private string BuildWakeMessage(string dayName, bool workedYesterday, float energyBeforeSleep, bool disturbedSleep, bool lateWakePenaltyTriggered)
     {
         string intro = string.Format(wakeIntroTemplate, dayName);
         bool lowEnergySleep = energyBeforeSleep <= lowEnergyWarningThreshold;
@@ -445,6 +613,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         if (disturbedSleep)
             warnings.Add(wakeWarningDisturbedSleep);
+
+        if (lateWakePenaltyTriggered)
+            warnings.Add(wakeWarningLateWakePenalty);
 
         if (warnings.Count > 0)
             return intro + "\n" + string.Join("\n", warnings);
@@ -462,6 +633,173 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             StopCoroutine(wakeMessageRoutine);
 
         wakeMessageRoutine = StartCoroutine(ShowWakeMessageRoutine(message, duration));
+    }
+
+    private IEnumerator PlayPreSleepCinematic()
+    {
+        EnsurePreSleepCinematicUi();
+        if (sleepCinematicCanvas == null || sleepCinematicCanvasGroup == null || sleepCinematicText == null)
+            yield break;
+
+        sleepCinematicText.text = PickWarmSleepLine();
+        sleepCinematicCanvas.gameObject.SetActive(true);
+        sleepCinematicCanvasGroup.alpha = 0f;
+
+        float duration = Mathf.Max(0.2f, eyeCloseDuration);
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float eased = t * t * (3f - 2f * t);
+            sleepCinematicCanvasGroup.alpha = eased;
+            yield return null;
+        }
+
+        sleepCinematicCanvasGroup.alpha = 1f;
+        yield return new WaitForSecondsRealtime(Mathf.Max(0.2f, warmLineHoldDuration));
+    }
+
+    private void HidePreSleepCinematic()
+    {
+        if (sleepCinematicCanvasGroup != null)
+            sleepCinematicCanvasGroup.alpha = 0f;
+
+        if (sleepCinematicCanvas != null)
+            sleepCinematicCanvas.gameObject.SetActive(false);
+    }
+
+    private void PrepareWakeEyeOpenCinematic(string dayName)
+    {
+        EnsurePreSleepCinematicUi();
+        if (sleepCinematicCanvas == null || sleepCinematicCanvasGroup == null || sleepCinematicText == null)
+            return;
+
+        sleepCinematicText.text = PickWarmWakeLine(dayName);
+        Color warmColor = sleepCinematicText.color;
+        warmColor.a = 1f;
+        sleepCinematicText.color = warmColor;
+
+        sleepCinematicCanvas.gameObject.SetActive(true);
+        sleepCinematicCanvasGroup.alpha = 1f;
+    }
+
+    private IEnumerator PlayWakeEyeOpenCinematic(string dayName)
+    {
+        EnsurePreSleepCinematicUi();
+        if (sleepCinematicCanvas == null || sleepCinematicCanvasGroup == null || sleepCinematicText == null)
+            yield break;
+
+        sleepCinematicText.text = PickWarmWakeLine(dayName);
+        sleepCinematicCanvas.gameObject.SetActive(true);
+        sleepCinematicCanvasGroup.alpha = 1f;
+
+        float duration = Mathf.Max(0.25f, eyeOpenDuration);
+        float hold = Mathf.Max(0f, wakeLineHoldDuration);
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float eased = t * t;
+
+            sleepCinematicCanvasGroup.alpha = 1f - eased;
+
+            Color txtColor = sleepCinematicText.color;
+            float textFadeOutStart = Mathf.Clamp01((hold + duration * 0.45f) / duration);
+            float textAlpha = t < textFadeOutStart
+                ? 1f
+                : 1f - Mathf.InverseLerp(textFadeOutStart, 1f, t);
+            txtColor.a = Mathf.Clamp01(textAlpha);
+            sleepCinematicText.color = txtColor;
+
+            yield return null;
+        }
+
+        HidePreSleepCinematic();
+    }
+
+    private string PickWarmSleepLine()
+    {
+        if (warmSleepLines == null || warmSleepLines.Length == 0)
+            return "Tarik napas pelan. Besok kamu bisa mulai lagi dari awal yang lebih baik.";
+
+        int index = Random.Range(0, warmSleepLines.Length);
+        string line = warmSleepLines[index];
+        return string.IsNullOrWhiteSpace(line)
+            ? "Tarik napas pelan. Besok kamu bisa mulai lagi dari awal yang lebih baik."
+            : line.Trim();
+    }
+
+    private string PickWarmWakeLine(string dayName)
+    {
+        string fallback = string.IsNullOrWhiteSpace(dayName)
+            ? "Pagi datang lagi. Buka mata perlahan, lalu mulai dengan ritme yang lebih baik."
+            : $"{dayName} dimulai. Buka mata perlahan, lalu mulai dengan ritme yang lebih baik.";
+
+        if (warmWakeLines == null || warmWakeLines.Length == 0)
+            return fallback;
+
+        int index = Random.Range(0, warmWakeLines.Length);
+        string line = warmWakeLines[index];
+        if (string.IsNullOrWhiteSpace(line))
+            return fallback;
+
+        string trimmed = line.Trim();
+        if (trimmed.Contains("{0}"))
+            return string.Format(trimmed, dayName);
+
+        return trimmed;
+    }
+
+    private void EnsurePreSleepCinematicUi()
+    {
+        if (sleepCinematicCanvas != null && sleepCinematicCanvasGroup != null && sleepCinematicText != null)
+            return;
+
+        GameObject canvasObj = new GameObject("SleepPreCinematicCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
+        sleepCinematicCanvas = canvasObj.GetComponent<Canvas>();
+        sleepCinematicCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        sleepCinematicCanvas.sortingOrder = 998;
+
+        CanvasScaler scaler = canvasObj.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+
+        GraphicRaycaster raycaster = canvasObj.GetComponent<GraphicRaycaster>();
+        raycaster.enabled = false;
+
+        sleepCinematicCanvasGroup = canvasObj.GetComponent<CanvasGroup>();
+        sleepCinematicCanvasGroup.alpha = 0f;
+
+        GameObject panelObj = new GameObject("SleepEyeClosePanel", typeof(RectTransform), typeof(Image));
+        RectTransform panelRect = panelObj.GetComponent<RectTransform>();
+        panelRect.SetParent(canvasObj.transform, false);
+        panelRect.anchorMin = Vector2.zero;
+        panelRect.anchorMax = Vector2.one;
+        panelRect.offsetMin = Vector2.zero;
+        panelRect.offsetMax = Vector2.zero;
+
+        Image panelImage = panelObj.GetComponent<Image>();
+        panelImage.color = new Color(0f, 0f, 0f, 1f);
+
+        GameObject textObj = new GameObject("SleepWarmLine", typeof(RectTransform), typeof(TextMeshProUGUI));
+        RectTransform textRect = textObj.GetComponent<RectTransform>();
+        textRect.SetParent(panelObj.transform, false);
+        textRect.anchorMin = new Vector2(0.12f, 0.18f);
+        textRect.anchorMax = new Vector2(0.88f, 0.36f);
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        sleepCinematicText = textObj.GetComponent<TextMeshProUGUI>();
+        sleepCinematicText.alignment = TextAlignmentOptions.Center;
+        sleepCinematicText.fontSize = 30f;
+        sleepCinematicText.color = new Color(0.98f, 0.95f, 0.86f, 1f);
+        sleepCinematicText.textWrappingMode = TextWrappingModes.Normal;
+        sleepCinematicText.text = string.Empty;
+
+        sleepCinematicCanvas.gameObject.SetActive(false);
     }
 
     private IEnumerator ShowWakeMessageRoutine(string message, float duration)

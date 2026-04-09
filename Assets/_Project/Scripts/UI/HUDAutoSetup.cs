@@ -17,10 +17,12 @@ public class HUDAutoSetup : MonoBehaviour
     {
         Canvas canvas = EnsureCanvas();
 
-        RectTransform energyPanel = EnsurePanel(canvas.transform, "EnergyBar_Panel", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -40f), new Vector2(300f, 30f));
+        RemoveChildPanelIfExists(canvas.transform, "MoodBar_Panel");
+
+        RectTransform energyPanel = EnsurePanel(canvas.transform, "EnergyBar_Panel", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -36f), new Vector2(320f, 32f));
         Image energyBg = EnsureImage(energyPanel, "EnergyBar_BG", new Color32(50, 50, 50, 180), true, 1f);
         Image energyFill = EnsureImage(energyPanel, "EnergyBar_Fill", new Color32(80, 200, 80, 255), false, 1f);
-        Image energyWarning = EnsureImage(energyPanel, "EnergyBar_Warning_Fill", new Color32(255, 165, 0, 255), false, 0f);
+        Image energyWarning = EnsureImage(energyPanel, "EnergyBar_Warning_Fill", new Color32(255, 255, 255, 110), false, 0f);
         energyBg.rectTransform.SetSiblingIndex(0);
         energyFill.type = Image.Type.Filled;
         energyFill.fillMethod = Image.FillMethod.Horizontal;
@@ -30,20 +32,22 @@ public class HUDAutoSetup : MonoBehaviour
         SetupFillImage(energyWarning, 0f);
         TextMeshProUGUI energyLabel = EnsureText(energyPanel, "EnergyBar_Label", "ENERGI", 14, Color.white, TextAlignmentOptions.Left);
         ApplyHudTextStyle(energyLabel);
-        SetupLabelRect(energyLabel.rectTransform, new Vector2(-75f, 0f), new Vector2(70f, 30f));
+        SetupLabelRect(energyLabel.rectTransform, new Vector2(-78f, 0f), new Vector2(72f, 32f));
 
-        RectTransform moodPanel = EnsurePanel(canvas.transform, "MoodBar_Panel", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -90f), new Vector2(200f, 20f));
-        EnsureImage(moodPanel, "MoodBar_BG", new Color32(30, 30, 30, 200), true, 1f);
-        Image moodFill = EnsureImage(moodPanel, "MoodBar_Fill", new Color32(255, 220, 50, 255), false, 0.5f);
-        SetupFillImage(moodFill, 0.5f);
-        TextMeshProUGUI moodLabel = EnsureText(moodPanel, "MoodBar_Label", "MOOD", 13, Color.white, TextAlignmentOptions.Left);
-        ApplyHudTextStyle(moodLabel);
-        SetupLabelRect(moodLabel.rectTransform, new Vector2(-60f, 0f), new Vector2(55f, 20f));
-
-        RectTransform caloriesPanel = EnsurePanel(canvas.transform, "Calories_Panel", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -130f), new Vector2(250f, 25f));
-        TextMeshProUGUI caloriesText = EnsureText(caloriesPanel, "Calories_Text", "Kalori: 0 / 2000 kcal", 13, new Color32(200, 200, 200, 200), TextAlignmentOptions.Left);
+        RectTransform caloriesPanel = EnsurePanel(canvas.transform, "Calories_Panel", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -82f), new Vector2(320f, 30f));
+        Image caloriesBg = EnsureImage(caloriesPanel, "Calories_BG", new Color(14f / 255f, 20f / 255f, 28f / 255f, 180f / 255f), true, 1f);
+        caloriesBg.type = Image.Type.Simple;
+        Image caloriesFill = EnsureImage(caloriesPanel, "Calories_Fill", new Color32(86, 192, 116, 225), false, 0f);
+        SetupFillImage(caloriesFill, 0f);
+        caloriesFill.fillAmount = 0f;
+        caloriesFill.rectTransform.pivot = new Vector2(0f, 0.5f);
+        caloriesFill.rectTransform.localScale = Vector3.one;
+        caloriesBg.rectTransform.SetSiblingIndex(0);
+        caloriesFill.rectTransform.SetSiblingIndex(1);
+        TextMeshProUGUI caloriesText = EnsureText(caloriesPanel, "Calories_Text", "Kalori: 0 / 2000 kcal", 13, new Color32(220, 225, 230, 235), TextAlignmentOptions.Left);
         ApplyHudTextStyle(caloriesText);
-        StretchRect(caloriesText.rectTransform);
+        SetupInfoTextRect(caloriesText.rectTransform, 12f, -1f);
+        caloriesText.rectTransform.SetSiblingIndex(2);
 
         RectTransform timePanel = EnsurePanel(canvas.transform, "Time_Panel", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(300f, 60f));
         TextMeshProUGUI periodText = EnsureText(timePanel, "Period_Text", "Pagi", 22, Color.white, TextAlignmentOptions.Center);
@@ -62,7 +66,7 @@ public class HUDAutoSetup : MonoBehaviour
         warningPanel.gameObject.SetActive(false);
 
         HUDManager hudManager = EnsureHUDManager();
-        WireHUDManager(hudManager, energyFill, energyWarning, warningPanel.gameObject, moodFill, caloriesText, periodText, timeText);
+        WireHUDManager(hudManager, energyFill, energyWarning, warningPanel.gameObject, null, caloriesFill, caloriesText, periodText, timeText);
 
         if (Application.isPlaying)
             EnsureTutorialSystems(hudManager.gameObject);
@@ -179,6 +183,15 @@ public class HUDAutoSetup : MonoBehaviour
         rt.sizeDelta = size;
     }
 
+    private void SetupInfoTextRect(RectTransform rt, float leftPadding, float yOffset)
+    {
+        rt.anchorMin = new Vector2(0f, 0.5f);
+        rt.anchorMax = new Vector2(1f, 0.5f);
+        rt.pivot = new Vector2(0f, 0.5f);
+        rt.anchoredPosition = new Vector2(leftPadding, yOffset);
+        rt.sizeDelta = new Vector2(-leftPadding - 8f, 24f);
+    }
+
     private void StretchRect(RectTransform rt)
     {
         rt.anchorMin = new Vector2(0f, 0f);
@@ -215,12 +228,13 @@ public class HUDAutoSetup : MonoBehaviour
         return manager;
     }
 
-    private void WireHUDManager(HUDManager manager, Image energyFill, Image energyWarn, GameObject warningPanel, Image moodFill, TextMeshProUGUI calories, TextMeshProUGUI period, TextMeshProUGUI timeRemaining)
+    private void WireHUDManager(HUDManager manager, Image energyFill, Image energyWarn, GameObject warningPanel, Image moodFill, Image caloriesFill, TextMeshProUGUI calories, TextMeshProUGUI period, TextMeshProUGUI timeRemaining)
     {
         SetPrivateField(manager, "energyBarFill", energyFill);
         SetPrivateField(manager, "energyBarWarningFill", energyWarn);
         SetPrivateField(manager, "warningPanel", warningPanel);
         SetPrivateField(manager, "moodBarFill", moodFill);
+        SetPrivateField(manager, "caloriesBarFill", caloriesFill);
         SetPrivateField(manager, "caloriesText", calories);
         SetPrivateField(manager, "periodText", period);
         SetPrivateField(manager, "timeRemainingText", timeRemaining);
@@ -245,6 +259,18 @@ public class HUDAutoSetup : MonoBehaviour
 
         if (target.GetComponent<TutorialContextualUI>() == null)
             target.AddComponent<TutorialContextualUI>();
+    }
+
+    private void RemoveChildPanelIfExists(Transform parent, string childName)
+    {
+        Transform child = parent.Find(childName);
+        if (child == null)
+            return;
+
+        if (Application.isPlaying)
+            Destroy(child.gameObject);
+        else
+            DestroyImmediate(child.gameObject);
     }
 
     private static void SetPrivateField(object target, string fieldName, object value)

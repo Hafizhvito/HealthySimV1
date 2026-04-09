@@ -11,6 +11,7 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] private float energyDrainWalk = 0.45f;
     [SerializeField] private float energyDrainRun = 0.95f;
     [SerializeField] [Range(0.05f, 1f)] private float movementDrainScale = 0.40f;
+    [SerializeField] [Range(0.75f, 1.25f)] private float movementDrainModifier = 1f;
     [SerializeField] private float runDrainRampSeconds = 1.2f;
 
     [Header("Calories")]
@@ -60,6 +61,7 @@ public class PlayerStats : MonoBehaviour
     public int Money => _money;
     public float TrainingAdaptation => trainingAdaptation;
     public float FatigueDebt => fatigueDebt;
+    public float MovementDrainModifier => movementDrainModifier;
 
     // Events
     public System.Action<EnergyState> OnEnergyStateChanged;
@@ -113,7 +115,8 @@ public class PlayerStats : MonoBehaviour
             runningDuration = 0f;
         }
 
-        float scaledDrain = drainRate * Mathf.Clamp(movementDrainScale, 0.05f, 1f);
+        float drainModifier = Mathf.Clamp(movementDrainModifier, 0.75f, 1.25f);
+        float scaledDrain = drainRate * Mathf.Clamp(movementDrainScale, 0.05f, 1f) * drainModifier;
 
         ModifyEnergy(-(scaledDrain * deltaTime));
     }
@@ -150,6 +153,11 @@ public class PlayerStats : MonoBehaviour
     {
         trainingAdaptation = Mathf.Clamp(trainingAdaptation + adaptationDelta, 0f, 100f);
         fatigueDebt = Mathf.Clamp(fatigueDebt + fatigueDelta, 0f, 100f);
+    }
+
+    public void SetMovementDrainModifier(float value)
+    {
+        movementDrainModifier = Mathf.Clamp(value, 0.75f, 1.25f);
     }
 
     void ModifyEnergy(float amount)

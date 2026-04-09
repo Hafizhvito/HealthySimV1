@@ -56,6 +56,8 @@ Ringkasan (ID): Onboarding tim disederhanakan ke alur clone -> open -> compile -
   - Sleep interaction is night-only by default
   - Sleep uses confirm-before-transition UX
   - Recovery can be reduced by disturbed sleep chance based on recent behavior
+  - Next-day movement energy sustainability is applied as hidden `movementDrainModifier` on PlayerStats (clamped 0.75-1.25)
+  - Late-wake rule applies energy penalty + narrative warning only, without changing TimeManager schedule
 
 Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physics dan sistem lock input berbasis sumber.
 
@@ -100,8 +102,33 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - WorkReminderUI suppresses while cutscene/sequential tutorial overlays are active
   - SleepBedInteractable now handles sleep transition UX (confirm, fade, clock skip, wake reminder)
   - SleepBedInteractable now triggers both work and gym day-reset hooks after sleep transition
+  - SleepBedInteractable now computes lateWakeChance from behavior signals and applies wake energy penalty without time cut
 
 Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial/reminder yang sadar state cutscene, serta alur tidur dan ekonomi makanan berharga.
+
+## GYM + WAKE MICRO-STEP NOTES
+
+- Nutrient schema:
+  - FoodData now exposes protein, fat, and sugar for downstream logic and UI text usage.
+- Movement drain sustainability:
+  - `movementDrainModifier` is stored on PlayerStats and applied inside movement energy drain calculation.
+  - Clamp range: 0.75 to 1.25 (hidden gameplay modifier, not shown as HUD bar).
+  - Applied during sleep-to-morning transition based on gym adaptation/fatigue balance:
+    - better balance trends toward 0.85
+    - overtraining trends toward 1.15
+    - no gym training stays at 1.0
+- Late wake chance (energy-only consequence):
+  - Signal A (high sugar pattern): +0.15
+  - Signal B (overwork pattern): +0.20
+  - Signal C (high fatigue debt): +0.15
+  - Signal D (low energy at sleep): +0.25
+  - Final clamp: 0.00 to 0.75
+  - Penalty: configurable wake energy deduction (default 15), plus narrative warning line.
+  - Explicitly no time cut, no period skip, no morning clock offset.
+- Step skip audit:
+  - No implementation step skipped in this pass (all mandatory files were found).
+
+Ringkasan (ID): Update mikro ini menambah sinyal nutrisi dan konsekuensi wake berbasis perilaku, tapi tetap menjaga HUD sederhana dan tidak mengubah jadwal waktu pagi.
 
 ## SWAP CONTRACT CHECKLIST (PHASE-1)
 

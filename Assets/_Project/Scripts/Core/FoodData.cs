@@ -15,6 +15,11 @@ public class FoodData : ScriptableObject
     public float fat = 8f;
     public float protein = 6f;
     public float carbohydrate = 24f;
+    [SerializeField] private float sugar = 0f;
+
+    public float Protein => protein;
+    public float Fat => fat;
+    public float Sugar => sugar;
 
     [Header("Classification")]
     public FoodCategory category;

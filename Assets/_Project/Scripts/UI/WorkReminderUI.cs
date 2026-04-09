@@ -210,6 +210,8 @@ public class WorkReminderUI : MonoBehaviour
                 CreateStatusPanel();
         }
 
+        ConfigureStatusPanelLayout();
+
         if (hudWorkIndicator == null)
         {
             Transform existingWork = hudStatusPanel != null
@@ -230,6 +232,8 @@ public class WorkReminderUI : MonoBehaviour
                 CreateWorkHudIndicator();
         }
 
+        ConfigureWorkIndicatorLayout();
+
         if (hudMoneyIndicator == null)
         {
             Transform existingMoney = hudStatusPanel != null
@@ -249,6 +253,8 @@ public class WorkReminderUI : MonoBehaviour
             if (hudMoneyIndicator == null)
                 CreateMoneyHudIndicator();
         }
+
+        ConfigureMoneyIndicatorLayout();
     }
 
     private void CreateStatusPanel()
@@ -259,17 +265,31 @@ public class WorkReminderUI : MonoBehaviour
         GameObject panelObj = new GameObject("WorkStatusPanel", typeof(RectTransform), typeof(Image), typeof(Outline));
         hudStatusPanel = panelObj.GetComponent<RectTransform>();
         hudStatusPanel.SetParent(hudCanvas.transform, false);
+        ConfigureStatusPanelLayout();
+    }
+
+    private void ConfigureStatusPanelLayout()
+    {
+        if (hudStatusPanel == null)
+            return;
+
         hudStatusPanel.anchorMin = new Vector2(0f, 1f);
         hudStatusPanel.anchorMax = new Vector2(0f, 1f);
         hudStatusPanel.pivot = new Vector2(0f, 1f);
-        hudStatusPanel.anchoredPosition = new Vector2(16f, -158f);
-        hudStatusPanel.sizeDelta = new Vector2(250f, 56f);
+        hudStatusPanel.anchoredPosition = new Vector2(40f, -124f);
+        hudStatusPanel.sizeDelta = new Vector2(320f, 66f);
 
-        Image bg = panelObj.GetComponent<Image>();
-        bg.color = new Color(16f / 255f, 21f / 255f, 30f / 255f, 175f / 255f);
+        Image bg = hudStatusPanel.GetComponent<Image>();
+        if (bg == null)
+            bg = hudStatusPanel.gameObject.AddComponent<Image>();
 
-        Outline outline = panelObj.GetComponent<Outline>();
-        outline.effectColor = new Color(1f, 1f, 1f, 0.16f);
+        bg.color = new Color(14f / 255f, 20f / 255f, 28f / 255f, 185f / 255f);
+
+        Outline outline = hudStatusPanel.GetComponent<Outline>();
+        if (outline == null)
+            outline = hudStatusPanel.gameObject.AddComponent<Outline>();
+
+        outline.effectColor = new Color(1f, 1f, 1f, 0.14f);
         outline.effectDistance = new Vector2(1f, -1f);
     }
 
@@ -355,29 +375,45 @@ public class WorkReminderUI : MonoBehaviour
     private void CreateWorkHudIndicator()
     {
         Transform parent = hudStatusPanel != null ? hudStatusPanel : hudCanvas.transform;
-        hudWorkIndicator = CreateTmp("WorkHUDIndicator", parent, 14f, FontStyles.Normal, new Color32(255, 232, 160, 220));
+        hudWorkIndicator = CreateTmp("WorkHUDIndicator", parent, 15f, FontStyles.Bold, new Color32(189, 244, 194, 240));
+        ConfigureWorkIndicatorLayout();
+        hudWorkIndicator.text = "Status kerja: " + GetWorkHoursText();
+    }
+
+    private void ConfigureWorkIndicatorLayout()
+    {
+        if (hudWorkIndicator == null)
+            return;
+
         RectTransform rect = hudWorkIndicator.rectTransform;
         rect.anchorMin = new Vector2(0f, 1f);
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(10f, -8f);
-        rect.sizeDelta = new Vector2(-14f, 22f);
+        rect.anchoredPosition = new Vector2(12f, -10f);
+        rect.sizeDelta = new Vector2(-18f, 26f);
         hudWorkIndicator.alignment = TextAlignmentOptions.TopLeft;
-        hudWorkIndicator.text = "\U0001F4BC Kerja: " + GetWorkHoursText();
     }
 
     private void CreateMoneyHudIndicator()
     {
         Transform parent = hudStatusPanel != null ? hudStatusPanel : hudCanvas.transform;
-        hudMoneyIndicator = CreateTmp("MoneyHUDIndicator", parent, 14f, FontStyles.Bold, new Color32(130, 230, 130, 220));
+        hudMoneyIndicator = CreateTmp("MoneyHUDIndicator", parent, 16f, FontStyles.Bold, new Color32(255, 233, 150, 240));
+        ConfigureMoneyIndicatorLayout();
+        hudMoneyIndicator.text = "Saldo: Rp0";
+    }
+
+    private void ConfigureMoneyIndicatorLayout()
+    {
+        if (hudMoneyIndicator == null)
+            return;
+
         RectTransform rect = hudMoneyIndicator.rectTransform;
         rect.anchorMin = new Vector2(0f, 1f);
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(10f, -31f);
-        rect.sizeDelta = new Vector2(-14f, 24f);
+        rect.anchoredPosition = new Vector2(12f, -36f);
+        rect.sizeDelta = new Vector2(-18f, 26f);
         hudMoneyIndicator.alignment = TextAlignmentOptions.TopLeft;
-        hudMoneyIndicator.text = "\U0001F4B0 Uang: Rp0";
     }
 
     private void UpdateHudWorkIndicator()
@@ -389,24 +425,24 @@ public class WorkReminderUI : MonoBehaviour
         if (work == null || !work.HasWorkedToday || work.LastSession == null)
         {
             hudWorkIndicator.color = new Color32(255, 232, 160, 220);
-            hudWorkIndicator.text = "\U0001F4BC Kerja: " + GetWorkHoursText();
+            hudWorkIndicator.text = "Status kerja: " + GetWorkHoursText();
             return;
         }
 
         WorkResult result = work.LastSession.result;
         if (result == WorkResult.Full)
         {
-            hudWorkIndicator.text = "\U0001F4BC Selesai kerja";
+            hudWorkIndicator.text = "Status kerja: selesai";
             hudWorkIndicator.color = new Color(0.46f, 0.88f, 0.5f, 0.95f);
         }
         else if (result == WorkResult.Partial)
         {
-            hudWorkIndicator.text = "\U0001F4BC Kerja sebagian";
+            hudWorkIndicator.text = "Status kerja: sebagian";
             hudWorkIndicator.color = new Color(1f, 0.68f, 0.3f, 0.95f);
         }
         else
         {
-            hudWorkIndicator.text = "\U0001F4BC Kerja gagal";
+            hudWorkIndicator.text = "Status kerja: gagal";
             hudWorkIndicator.color = new Color(1f, 0.45f, 0.45f, 0.95f);
         }
     }
@@ -417,7 +453,7 @@ public class WorkReminderUI : MonoBehaviour
             return;
 
         int money = PlayerStats.Instance != null ? Mathf.Max(0, PlayerStats.Instance.Money) : 0;
-        hudMoneyIndicator.text = string.Format("\U0001F4B0 Uang: Rp{0:N0}", money);
+        hudMoneyIndicator.text = string.Format("Saldo: Rp{0:N0}", money);
     }
 
     private void RefreshReminderContent()

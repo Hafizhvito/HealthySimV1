@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Unity.Cinemachine;
+using TMPro;
 using UnityEngine;
 
 #if ENABLE_INPUT_SYSTEM
@@ -26,6 +27,12 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private float groundCheckDistance = 0.2f;
 
+    [Header("Air Feel")]
+    [SerializeField] private float fallGravityMultiplier = 2.2f;
+    [SerializeField] private float maxFallSpeed = 24f;
+    [SerializeField] private float groundedStickyVelocity = -2f;
+    [SerializeField] private float cancelSmallUpwardBounceBelow = 1.25f;
+
     [Header("Step Assist")]
     [SerializeField] private bool enableStepAssist = true;
     [SerializeField] private float stepHeight = 0.35f;
@@ -34,10 +41,28 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float maxStepSurfaceAngle = 55f;
     [SerializeField] private float stepAssistCooldown = 0.08f;
 
+    [Header("Wall Contact")]
+    [SerializeField] private bool reduceWallStick = true;
+    [SerializeField] private float steepWallNormalYThreshold = 0.18f;
+    [SerializeField] private float wallContactMemory = 0.12f;
+    [SerializeField] private float extraWallSlideGravity = 8f;
+    [SerializeField] private bool autoAssignLowFrictionMaterial = true;
+    [SerializeField] [Range(0f, 0.4f)] private float playerColliderFriction = 0f;
+
     [Header("FOV")]
     [SerializeField] private float normalFOV = 60f;
     [SerializeField] private float runFOV = 68f;
     [SerializeField] private float fovSmoothSpeed = 5f;
+
+    [Header("Fatigue Indicator")]
+    [SerializeField] private bool showFatigueIndicator = true;
+    [SerializeField] private float fatigueIndicatorHeight = 2.2f;
+    [SerializeField] private float fatigueWarningPulseSpeed = 2.4f;
+    [SerializeField] private float fatigueCriticalPulseSpeed = 4.5f;
+    [SerializeField] private float fatigueCriticalBlinkSpeed = 10.5f;
+    [SerializeField] [Range(0f, 1f)] private float fatigueCriticalMinAlpha = 0.2f;
+    [SerializeField] private Color fatigueWarningColor = new Color(1f, 0.85f, 0.2f, 1f);
+    [SerializeField] private Color fatigueCriticalColor = new Color(1f, 0.28f, 0.22f, 1f);
 
     private Rigidbody rb;
     private CapsuleCollider col;
@@ -45,6 +70,9 @@ public class PlayerController : MonoBehaviour
     private PlayerStats playerStats;
     private CameraSystem cameraSystem;
     private CinemachineBrain cachedBrain;
+    private TextMeshPro fatigueIndicatorText;
+    private Transform fatigueIndicatorTransform;
+    private PhysicsMaterial runtimeLowFrictionMaterial;
 
     private Vector3 moveDir;
     private Vector2 rawInput;       // raw input dibaca di Update
@@ -55,6 +83,9 @@ public class PlayerController : MonoBehaviour
     private Vector3 cachedCameraForward;
     private Vector3 cachedCameraRight;
     private float lastStepAssistTime;
+    private Vector3 steepWallNormal = Vector3.forward;
+    private float lastSteepWallContactTime = -999f;
+    private bool jumpedThisFixedFrame;
 
     private readonly Dictionary<string, int> inputLocks =
         new Dictionary<string, int>();
@@ -70,6 +101,8 @@ public class PlayerController : MonoBehaviour
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
         rb.linearDamping = 0f;      // pastikan tidak double-brake dengan Move()
         rb.angularDamping = 0.05f;
+
+        EnsureLowFrictionColliderMaterial();
 
         animator.applyRootMotion = false;
         animator.updateMode = AnimatorUpdateMode.Fixed;
@@ -93,6 +126,8 @@ public class PlayerController : MonoBehaviour
         cachedCameraForward.Normalize();
         cachedCameraRight = Vector3.Cross(Vector3.up, cachedCameraForward).normalized;
         lastStepAssistTime = -999f;
+
+        EnsureFatigueIndicatorBuilt();
     }
 
     // ---------------------------------------------------------------
@@ -105,6 +140,8 @@ public class PlayerController : MonoBehaviour
             inputLocks.Clear();
             Debug.LogWarning("F8: Input locks cleared.");
         }
+
+        UpdateFatigueIndicator();
 
         if (IsInputLocked)
         {
@@ -165,6 +202,7 @@ public class PlayerController : MonoBehaviour
     // ---------------------------------------------------------------
     void FixedUpdate()
     {
+        jumpedThisFixedFrame = false;
         GroundCheck();
 
         if (IsInputLocked)
@@ -180,6 +218,7 @@ public class PlayerController : MonoBehaviour
         StepAssist();
         Rotate();
         ApplyJump();
+        ApplyVerticalMotionTuning();
     }
 
     // ---------------------------------------------------------------
@@ -215,6 +254,19 @@ public class PlayerController : MonoBehaviour
         Vector3 targetHorizontal = moveDir.sqrMagnitude > 0.0001f
             ? moveDir.normalized * speed
             : Vector3.zero;
+
+        if (!isGrounded && IsRecentSteepWallContact())
+        {
+            Vector3 wallHorizontalNormal = new Vector3(steepWallNormal.x, 0f, steepWallNormal.z);
+            if (wallHorizontalNormal.sqrMagnitude > 0.0001f)
+            {
+                wallHorizontalNormal.Normalize();
+                targetHorizontal = Vector3.ProjectOnPlane(targetHorizontal, wallHorizontalNormal);
+            }
+
+            if (extraWallSlideGravity > 0f)
+                rb.AddForce(Vector3.down * extraWallSlideGravity, ForceMode.Acceleration);
+        }
 
         float accel = targetHorizontal.sqrMagnitude > currentHorizontal.sqrMagnitude
             ? acceleration
@@ -256,7 +308,35 @@ public class PlayerController : MonoBehaviour
             rb.linearVelocity.z);
 
         rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        jumpedThisFixedFrame = true;
+        isGrounded = false;
         animator.SetBool("IsJumping", true);
+    }
+
+    private void ApplyVerticalMotionTuning()
+    {
+        Vector3 velocity = rb.linearVelocity;
+
+        if (!isGrounded && velocity.y < -0.01f)
+        {
+            float extraGravityScale = Mathf.Max(1f, fallGravityMultiplier) - 1f;
+            if (extraGravityScale > 0f)
+                rb.AddForce(Physics.gravity * extraGravityScale, ForceMode.Acceleration);
+
+            float maxDownward = -Mathf.Max(5f, maxFallSpeed);
+            if (velocity.y < maxDownward)
+                velocity.y = maxDownward;
+        }
+
+        if (isGrounded && !jumpedThisFixedFrame)
+        {
+            if (velocity.y > 0f && velocity.y <= Mathf.Max(0.1f, cancelSmallUpwardBounceBelow))
+                velocity.y = 0f;
+            else if (velocity.y < 0f)
+                velocity.y = Mathf.Max(velocity.y, groundedStickyVelocity);
+        }
+
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, velocity.y, rb.linearVelocity.z);
     }
 
     void StepAssist()
@@ -265,6 +345,7 @@ public class PlayerController : MonoBehaviour
         if (moveDir.sqrMagnitude < 0.01f) return;
         if (rb.linearVelocity.y > 0.5f) return;
         if (Time.time - lastStepAssistTime < stepAssistCooldown) return;
+        if (IsRecentSteepWallContact()) return;
 
         Vector3 moveForward = moveDir.normalized;
         float probeRadius = Mathf.Max(0.05f, col.radius * 0.42f);
@@ -375,6 +456,176 @@ public class PlayerController : MonoBehaviour
         cam.Lens = lens;
     }
 
+    private void EnsureFatigueIndicatorBuilt()
+    {
+        if (fatigueIndicatorText != null && fatigueIndicatorTransform != null)
+            return;
+
+        GameObject indicatorObj = new GameObject("FatigueIndicator", typeof(TextMeshPro));
+        indicatorObj.transform.SetParent(transform, false);
+        indicatorObj.transform.localPosition = new Vector3(0f, fatigueIndicatorHeight, 0f);
+        indicatorObj.transform.localScale = Vector3.one * 0.22f;
+
+        fatigueIndicatorTransform = indicatorObj.transform;
+        fatigueIndicatorText = indicatorObj.GetComponent<TextMeshPro>();
+        fatigueIndicatorText.text = "!";
+        fatigueIndicatorText.fontSize = 14f;
+        fatigueIndicatorText.alignment = TextAlignmentOptions.Center;
+        fatigueIndicatorText.color = fatigueWarningColor;
+        fatigueIndicatorText.outlineWidth = 0.12f;
+        fatigueIndicatorText.outlineColor = new Color(0f, 0f, 0f, 0.9f);
+
+        indicatorObj.SetActive(false);
+    }
+
+    private void UpdateFatigueIndicator()
+    {
+        if (!showFatigueIndicator)
+        {
+            SetFatigueIndicatorVisible(false);
+            return;
+        }
+
+        if (playerStats == null)
+            playerStats = PlayerStats.Instance;
+
+        if (playerStats == null)
+        {
+            SetFatigueIndicatorVisible(false);
+            return;
+        }
+
+        EnsureFatigueIndicatorBuilt();
+        if (fatigueIndicatorText == null || fatigueIndicatorTransform == null)
+            return;
+
+        if (ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen)
+        {
+            SetFatigueIndicatorVisible(false);
+            return;
+        }
+
+        PlayerStats.EnergyState state = playerStats.CurrentEnergyState;
+        bool shouldShow = state == PlayerStats.EnergyState.Warning || state == PlayerStats.EnergyState.Critical;
+        if (!shouldShow)
+        {
+            SetFatigueIndicatorVisible(false);
+            return;
+        }
+
+        SetFatigueIndicatorVisible(true);
+
+        fatigueIndicatorTransform.position = transform.position + Vector3.up * fatigueIndicatorHeight;
+
+        Camera cam = Camera.main;
+        if (cam != null)
+        {
+            Vector3 lookDir = fatigueIndicatorTransform.position - cam.transform.position;
+            if (lookDir.sqrMagnitude > 0.0001f)
+                fatigueIndicatorTransform.rotation = Quaternion.LookRotation(lookDir);
+        }
+
+        bool critical = state == PlayerStats.EnergyState.Critical;
+        float pulseSpeed = critical ? fatigueCriticalPulseSpeed : fatigueWarningPulseSpeed;
+        float pulseAmp = critical ? 0.22f : 0.14f;
+        float pulse = 1f + Mathf.Sin(Time.unscaledTime * pulseSpeed) * pulseAmp;
+        float scale = 0.22f * Mathf.Max(0.62f, pulse);
+        fatigueIndicatorTransform.localScale = new Vector3(scale, scale, scale);
+
+        if (critical)
+        {
+            float blink = Mathf.Abs(Mathf.Sin(Time.unscaledTime * fatigueCriticalBlinkSpeed));
+            Color flicker = Color.Lerp(fatigueWarningColor, fatigueCriticalColor, blink);
+            flicker.a = Mathf.Lerp(fatigueCriticalMinAlpha, 1f, blink);
+            fatigueIndicatorText.color = flicker;
+        }
+        else
+        {
+            Color warn = fatigueWarningColor;
+            warn.a = 0.95f;
+            fatigueIndicatorText.color = warn;
+        }
+    }
+
+    private void SetFatigueIndicatorVisible(bool visible)
+    {
+        if (fatigueIndicatorTransform == null)
+            return;
+
+        if (fatigueIndicatorTransform.gameObject.activeSelf != visible)
+            fatigueIndicatorTransform.gameObject.SetActive(visible);
+    }
+
+    private void EnsureLowFrictionColliderMaterial()
+    {
+        if (!autoAssignLowFrictionMaterial || col == null)
+            return;
+
+        if (runtimeLowFrictionMaterial == null)
+        {
+            runtimeLowFrictionMaterial = new PhysicsMaterial("PlayerLowFrictionRuntime")
+            {
+                dynamicFriction = Mathf.Clamp01(playerColliderFriction),
+                staticFriction = Mathf.Clamp01(playerColliderFriction),
+                bounciness = 0f,
+                frictionCombine = PhysicsMaterialCombine.Minimum,
+                bounceCombine = PhysicsMaterialCombine.Minimum
+            };
+        }
+
+        col.sharedMaterial = runtimeLowFrictionMaterial;
+    }
+
+    private bool IsRecentSteepWallContact()
+    {
+        if (!reduceWallStick)
+            return false;
+
+        float memory = Mathf.Max(0.02f, wallContactMemory);
+        return Time.time - lastSteepWallContactTime <= memory;
+    }
+
+    private void RegisterSteepWallContact(Collision collision)
+    {
+        if (!reduceWallStick || collision == null || collision.contactCount == 0)
+            return;
+
+        Vector3 sum = Vector3.zero;
+        int count = 0;
+        float threshold = Mathf.Clamp(steepWallNormalYThreshold, -0.2f, 0.9f);
+
+        ContactPoint[] contacts = collision.contacts;
+        for (int i = 0; i < contacts.Length; i++)
+        {
+            Vector3 normal = contacts[i].normal;
+            if (normal.y >= threshold)
+                continue;
+
+            Vector3 horizontal = new Vector3(normal.x, 0f, normal.z);
+            if (horizontal.sqrMagnitude < 0.0001f)
+                continue;
+
+            sum += horizontal.normalized;
+            count++;
+        }
+
+        if (count <= 0)
+            return;
+
+        steepWallNormal = (sum / count).normalized;
+        lastSteepWallContactTime = Time.time;
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        RegisterSteepWallContact(collision);
+    }
+
+    void OnCollisionStay(Collision collision)
+    {
+        RegisterSteepWallContact(collision);
+    }
+
     public bool IsGrounded() => isGrounded;
     public bool IsInputLocked => inputLocks.Count > 0;
     public bool IsMovementLocked => IsInputLocked;
@@ -431,5 +682,6 @@ public class PlayerController : MonoBehaviour
     void OnDisable()
     {
         jumpRequest = false;
+        SetFatigueIndicatorVisible(false);
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -27,7 +28,16 @@ public class HUDManager : MonoBehaviour
     [SerializeField] private float energyChipDrainSpeed = 1.2f;
 
     [Header("Calories")]
+    [SerializeField] private Image caloriesBarFill;
     [SerializeField] private TextMeshProUGUI caloriesText;
+
+    [Header("Calories Bar Animation")]
+    [SerializeField] private float caloriesLerpSpeed = 5f;
+    [SerializeField] private float caloriesPulseHalfDuration = 0.1f;
+    [SerializeField] private float caloriesPulseScale = 1.05f;
+    [SerializeField] private Color caloriesLowColor = new Color(0.30f, 0.78f, 0.94f);
+    [SerializeField] private Color caloriesMidColor = new Color(0.36f, 0.86f, 0.47f);
+    [SerializeField] private Color caloriesHighColor = new Color(1f, 0.74f, 0.22f);
 
     [Header("Time")]
     [SerializeField] private TextMeshProUGUI periodText;
@@ -50,9 +60,14 @@ public class HUDManager : MonoBehaviour
     private float moodPulseTimer;
     private float previousEnergyPercent = 1f;
     private float previousMoodPercent = 1f;
+    private float caloriesVisualPercent;
+    private float previousCaloriesValue;
     private Vector3 energyBaseScale = Vector3.one;
     private Vector3 energyChipBaseScale = Vector3.one;
     private Vector3 moodBaseScale = Vector3.one;
+    private RectTransform caloriesPulseTarget;
+    private Vector3 caloriesPulseBaseScale = Vector3.one;
+    private Coroutine caloriesPulseRoutine;
     private bool energyFillPivotInitialized;
     private bool energyChipPivotInitialized;
 
@@ -85,6 +100,9 @@ public class HUDManager : MonoBehaviour
         energyVisualPercent = initialEnergy;
         previousEnergyPercent = initialEnergy;
 
+        previousCaloriesValue = playerStats != null ? Mathf.Max(0f, playerStats.TotalCalories) : 0f;
+        caloriesVisualPercent = 0f;
+
         if (energyBarFill != null)
         {
             energyBarFill.fillAmount = initialEnergy;
@@ -103,6 +121,21 @@ public class HUDManager : MonoBehaviour
             moodChipPercent = moodBarFill != null ? moodBarFill.fillAmount : 1f;
             moodBarChipFill.fillAmount = moodChipPercent;
             moodBarChipFill.color = new Color(1f, 1f, 1f, 0.35f);
+        }
+
+        if (caloriesBarFill != null)
+        {
+            caloriesBarFill.type = Image.Type.Filled;
+            caloriesBarFill.fillMethod = Image.FillMethod.Horizontal;
+            caloriesBarFill.fillOrigin = 0;
+            caloriesBarFill.fillAmount = 0f;
+            caloriesBarFill.color = GetCaloriesColor(0f);
+
+            caloriesPulseTarget = caloriesBarFill.rectTransform.parent as RectTransform;
+            if (caloriesPulseTarget == null)
+                caloriesPulseTarget = caloriesBarFill.rectTransform;
+
+            caloriesPulseBaseScale = caloriesPulseTarget.localScale;
         }
     }
 
@@ -273,12 +306,110 @@ public class HUDManager : MonoBehaviour
 
     void UpdateCalories()
     {
-        if (playerStats == null || caloriesText == null) return;
-        caloriesText.text = string.Format(
-            "Kalori: {0:0} / {1:0} kcal",
-            playerStats.TotalCalories,
-            playerStats.DailyCalorieTarget
-        );
+        if (playerStats == null)
+            return;
+
+        float maxCalories = ResolveCaloriesMax();
+        float currentCalories = Mathf.Max(0f, playerStats.TotalCalories);
+        float targetFillAmount = Mathf.Clamp01(currentCalories / maxCalories);
+
+        caloriesVisualPercent = Mathf.Lerp(
+            caloriesVisualPercent,
+            targetFillAmount,
+            Mathf.Clamp01(Time.deltaTime * Mathf.Max(0.01f, caloriesLerpSpeed)));
+
+        if (Mathf.Abs(targetFillAmount - caloriesVisualPercent) < 0.0005f)
+            caloriesVisualPercent = targetFillAmount;
+
+        if (caloriesBarFill != null)
+        {
+            caloriesBarFill.type = Image.Type.Filled;
+            caloriesBarFill.fillMethod = Image.FillMethod.Horizontal;
+            caloriesBarFill.fillOrigin = 0;
+            caloriesBarFill.fillAmount = caloriesVisualPercent;
+            caloriesBarFill.color = GetCaloriesColor(caloriesVisualPercent);
+        }
+
+        if (currentCalories > previousCaloriesValue + 0.01f)
+            TriggerCaloriesPulse();
+
+        previousCaloriesValue = currentCalories;
+
+        if (caloriesText != null)
+        {
+            caloriesText.text = string.Format(
+                "Kalori: {0:0} / {1:0} kcal",
+                playerStats.TotalCalories,
+                playerStats.DailyCalorieTarget
+            );
+        }
+    }
+
+    private float ResolveCaloriesMax()
+    {
+        if (playerStats == null)
+            return 1f;
+
+        return Mathf.Max(1f, playerStats.DailyCalorieTarget);
+    }
+
+    private void TriggerCaloriesPulse()
+    {
+        if (caloriesPulseTarget == null)
+            return;
+
+        if (caloriesPulseRoutine != null)
+            StopCoroutine(caloriesPulseRoutine);
+
+        caloriesPulseRoutine = StartCoroutine(CaloriesPulseRoutine());
+    }
+
+    private IEnumerator CaloriesPulseRoutine()
+    {
+        if (caloriesPulseTarget == null)
+            yield break;
+
+        Vector3 baseScale = caloriesPulseBaseScale;
+        float boost = Mathf.Max(1f, caloriesPulseScale);
+        Vector3 peakScale = new Vector3(baseScale.x * boost, baseScale.y * boost, baseScale.z);
+        float halfDuration = Mathf.Max(0.01f, caloriesPulseHalfDuration);
+
+        float t = 0f;
+        while (t < halfDuration)
+        {
+            t += Time.deltaTime;
+            float k = Mathf.Clamp01(t / halfDuration);
+            caloriesPulseTarget.localScale = Vector3.Lerp(baseScale, peakScale, k);
+            yield return null;
+        }
+
+        t = 0f;
+        while (t < halfDuration)
+        {
+            t += Time.deltaTime;
+            float k = Mathf.Clamp01(t / halfDuration);
+            caloriesPulseTarget.localScale = Vector3.Lerp(peakScale, baseScale, k);
+            yield return null;
+        }
+
+        caloriesPulseTarget.localScale = baseScale;
+        caloriesPulseRoutine = null;
+    }
+
+    private Color GetCaloriesColor(float percent)
+    {
+        float p = Mathf.Clamp01(percent);
+        Color c;
+
+        if (p <= 0.33f)
+            c = Color.Lerp(caloriesLowColor, caloriesMidColor, Mathf.InverseLerp(0f, 0.33f, p));
+        else if (p <= 0.66f)
+            c = Color.Lerp(caloriesMidColor, caloriesHighColor, Mathf.InverseLerp(0.33f, 0.66f, p));
+        else
+            c = caloriesHighColor;
+
+        c.a = 0.90f;
+        return c;
     }
 
     void UpdateTimeDisplay()

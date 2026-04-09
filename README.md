@@ -181,6 +181,8 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Food pickup choices, consume now, or save for session stash
   - Food economy: each food has price, UI shows price, and purchase deducts player money
   - Insufficient-money and action feedback is shown directly in Food menu panel
+  - FoodData nutrient schema now includes protein, fat, and sugar fields for gameplay balancing
+  - Food interaction detail line now shows compact nutrient summary: P/L/G values
   - Placeholder food catalog generator now seeds healthy and less-healthy variants for restaurant-ready iteration
   - Session stash consume/remove/clear flows
 - Dialogue:
@@ -207,6 +209,8 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Sleep transition uses fade plus clock time-skip animation
   - Sleep quality can be disturbed probabilistically based on recent work and food behavior
   - Wake message summarizes day change and relevant warnings
+  - Next-day movement drain now supports hidden gym-based sustainability modifier (`movementDrainModifier`, no HUD exposure)
+  - Late-wake consequence applies energy penalty + narrative warning only (no time cut, no period skip)
 
 Ringkasan (ID): Fitur inti gameplay, dialog, kerja, onboarding, tidur, ekonomi makanan berharga, dan tuning energi movement sudah aktif. Alur harian sekarang lebih utuh dan saling terhubung.
 

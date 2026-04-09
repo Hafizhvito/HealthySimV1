@@ -9,10 +9,21 @@ public class FoodChoiceMenuController : MonoBehaviour
     private string currentLocationName = "Paket Makanan";
     private bool isOpen;
     private Vector2 scrollPosition;
-    private Rect windowRect = new Rect(0f, 0f, 760f, 520f);
+    private Rect windowRect = new Rect(0f, 0f, 840f, 560f);
     private string panelStatusMessage = string.Empty;
     private float panelStatusUntil;
     private bool panelStatusIsWarning;
+    private GUIStyle headerTitleStyle;
+    private GUIStyle headerMetaStyle;
+    private GUIStyle cardStyle;
+    private GUIStyle foodNameStyle;
+    private GUIStyle foodDetailStyle;
+    private GUIStyle nutrientStyle;
+    private GUIStyle priceStyle;
+    private GUIStyle sectionButtonStyle;
+    private GUIStyle closeButtonStyle;
+    private GUIStyle statusOkStyle;
+    private GUIStyle statusWarnStyle;
 
     void Awake()
     {
@@ -86,15 +97,16 @@ public class FoodChoiceMenuController : MonoBehaviour
 
     private void DrawWindow(int id)
     {
+        EnsureStyles();
+
         GUILayout.Space(8f);
-        GUILayout.Label($"Lokasi: {currentLocationName}");
-        GUILayout.Label($"Item tersedia: {currentFoods.Count}");
         int money = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0;
-        GUILayout.Label($"Uang: Rp{money}");
+        GUILayout.Label(currentLocationName, headerTitleStyle);
+        GUILayout.Label($"{currentFoods.Count} item tersedia  •  Saldo Rp{money}", headerMetaStyle);
         DrawPanelStatus();
         GUILayout.Space(8f);
 
-        scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(360f));
+        scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(370f));
 
         if (currentFoods.Count == 0)
         {
@@ -113,18 +125,18 @@ public class FoodChoiceMenuController : MonoBehaviour
         }
 
         GUILayout.EndScrollView();
-        GUILayout.Space(8f);
+        GUILayout.Space(10f);
 
         GUILayout.BeginHorizontal();
 
-        if (GUILayout.Button("Lihat Stash", GUILayout.Height(36f)))
+        if (GUILayout.Button("Lihat Stash", sectionButtonStyle, GUILayout.Height(36f)))
         {
             CloseMenu();
             if (FoodStashMenuController.Instance != null)
                 FoodStashMenuController.Instance.OpenStash();
         }
 
-        if (GUILayout.Button("Tutup", GUILayout.Height(36f)))
+        if (GUILayout.Button("Tutup", closeButtonStyle, GUILayout.Height(36f)))
             CloseMenu();
 
         GUILayout.EndHorizontal();
@@ -135,19 +147,24 @@ public class FoodChoiceMenuController : MonoBehaviour
     private void DrawFoodRow(FoodData food)
     {
         int price = food.GetEffectivePrice();
-        GUILayout.BeginVertical("box");
-        GUILayout.Label(food.foodName);
-        GUILayout.Label($"Kategori: {food.category} | Harga: Rp{price}");
-        GUILayout.Label($"Kalori: {food.calories:0} | Energi: +{food.energyRestored:0} | Mood: +{food.moodEffect:0}");
-
+        GUILayout.BeginVertical(cardStyle);
         GUILayout.BeginHorizontal();
 
-        if (GUILayout.Button("Makan", GUILayout.Height(30f)))
+        GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
+        GUILayout.Label(food.foodName, foodNameStyle);
+        GUILayout.Label($"{food.category}  •  Kalori {food.calories:0}  •  Energi +{food.energyRestored:0}  •  Mood +{food.moodEffect:0}", foodDetailStyle);
+        GUILayout.Label($"Protein {food.Protein:0.#}g   Lemak {food.Fat:0.#}g   Gula {food.Sugar:0.#}g", nutrientStyle);
+        GUILayout.EndVertical();
+
+        GUILayout.BeginVertical(GUILayout.Width(170f));
+        GUILayout.Label($"Rp{price}", priceStyle, GUILayout.Height(30f));
+
+        if (GUILayout.Button("Makan", sectionButtonStyle, GUILayout.Height(30f)))
         {
             EatFood(food);
         }
 
-        if (GUILayout.Button("Simpan", GUILayout.Height(30f)))
+        if (GUILayout.Button("Simpan", closeButtonStyle, GUILayout.Height(30f)))
         {
             if (!TryPurchaseFood(food))
                 return;
@@ -165,6 +182,7 @@ public class FoodChoiceMenuController : MonoBehaviour
             }
         }
 
+        GUILayout.EndVertical();
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
         GUILayout.Space(6f);
@@ -221,12 +239,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(panelStatusMessage) || Time.unscaledTime > panelStatusUntil)
             return;
 
-        Color prev = GUI.color;
-        GUI.color = panelStatusIsWarning
-            ? new Color(1f, 0.76f, 0.45f, 1f)
-            : new Color(0.68f, 1f, 0.68f, 1f);
-        GUILayout.Label(panelStatusMessage);
-        GUI.color = prev;
+        GUILayout.Label(panelStatusMessage, panelStatusIsWarning ? statusWarnStyle : statusOkStyle);
     }
 
     private void ShowPanelStatus(string message, bool isWarning, float duration = 2f)
@@ -234,5 +247,94 @@ public class FoodChoiceMenuController : MonoBehaviour
         panelStatusMessage = message;
         panelStatusIsWarning = isWarning;
         panelStatusUntil = Time.unscaledTime + Mathf.Max(0.5f, duration);
+    }
+
+    private void EnsureStyles()
+    {
+        if (headerTitleStyle != null)
+            return;
+
+        headerTitleStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 22,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = new Color(0.96f, 0.95f, 0.9f, 1f) },
+            margin = new RectOffset(10, 10, 2, 2)
+        };
+
+        headerMetaStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 13,
+            normal = { textColor = new Color(0.78f, 0.86f, 0.92f, 1f) },
+            margin = new RectOffset(10, 10, 2, 8)
+        };
+
+        cardStyle = new GUIStyle(GUI.skin.box)
+        {
+            padding = new RectOffset(12, 12, 10, 10),
+            margin = new RectOffset(8, 8, 4, 6)
+        };
+
+        foodNameStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 16,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = new Color(0.96f, 0.93f, 0.86f, 1f) },
+            wordWrap = true
+        };
+
+        foodDetailStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 12,
+            normal = { textColor = new Color(0.78f, 0.85f, 0.91f, 1f) },
+            wordWrap = true
+        };
+
+        nutrientStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 13,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = new Color(0.86f, 0.96f, 0.8f, 1f) },
+            wordWrap = true,
+            margin = new RectOffset(0, 0, 4, 0)
+        };
+
+        priceStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 15,
+            fontStyle = FontStyle.Bold,
+            alignment = TextAnchor.MiddleCenter,
+            normal = { textColor = new Color(1f, 0.95f, 0.58f, 1f) }
+        };
+
+        sectionButtonStyle = new GUIStyle(GUI.skin.button)
+        {
+            fontSize = 13,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = new Color(0.12f, 0.17f, 0.2f, 1f) }
+        };
+
+        closeButtonStyle = new GUIStyle(GUI.skin.button)
+        {
+            fontSize = 13,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = new Color(0.18f, 0.12f, 0.12f, 1f) }
+        };
+
+        statusOkStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 12,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = new Color(0.7f, 1f, 0.7f, 1f) },
+            margin = new RectOffset(10, 10, 2, 4)
+        };
+
+        statusWarnStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 12,
+            fontStyle = FontStyle.Bold,
+            normal = { textColor = new Color(1f, 0.77f, 0.5f, 1f) },
+            margin = new RectOffset(10, 10, 2, 4)
+        };
     }
 }
