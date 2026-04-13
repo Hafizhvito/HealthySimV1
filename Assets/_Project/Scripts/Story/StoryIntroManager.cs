@@ -53,34 +53,45 @@ public class StoryIntroManager : MonoBehaviour
             new StoryTemplate
             {
                 title = "Pagi Sibuk di Kota",
-                recommendedAction = "Cari pilihan sarapan sehat terlebih dahulu.",
+                recommendedAction = "Tubuhmu ingat semua yang kamu abaikan.",
                 lines = new[]
                 {
-                    "Pagi ini kamu memulai hari di tengah kota yang ramai.",
-                    "Waktu hanya lima menit, setiap keputusan akan berdampak.",
-                    "Pilih interaksi dengan bijak untuk menjaga energi dan mood."
+                    "Jakarta. Pagi yang belum sepenuhnya bangun.",
+                    "Kamu bergegas, tapi tubuhmu sudah tertinggal sejak semalam.",
+                    "Hari ini bukan soal sempurna. Tapi soal memilih lebih baik dari kemarin."
                 }
             },
             new StoryTemplate
             {
                 title = "Target Gaya Hidup Sehat",
-                recommendedAction = "Fokus ke aksi positif dan makanan sehat.",
+                recommendedAction = "Kamu sudah tahu apa yang harus dilakukan. Pertanyaannya.. mulai kapan?",
                 lines = new[]
                 {
-                    "Kamu menargetkan hidup lebih sehat mulai hari ini.",
-                    "Ada banyak distraksi, tapi tubuhmu butuh keputusan yang tepat.",
-                    "Amati lingkungan, lalu lakukan aksi terbaikmu."
+                    "Ada hari-hari ketika kamu memutuskan untuk berubah.",
+                    "Bukan besok. Bukan minggu depan. Hari ini.",
+                    "Tubuhmu sudah lama menunggu keputusan itu."
                 }
             },
             new StoryTemplate
             {
                 title = "Hari Ujian Kebiasaan",
-                recommendedAction = "Jangan abaikan percakapan yang memberi motivasi.",
+                recommendedAction = "Kebiasaan buruk tidak terasa salah — sampai tubuhmu yang berbicara.",
                 lines = new[]
                 {
-                    "Hari ini jadi ujian kebiasaan harianmu.",
-                    "Pilihan kecil seperti makanan dan obrolan bisa mengubah hasil akhir.",
-                    "Bangun ritme yang sehat sebelum waktu habis."
+                    "Tidak ada yang tiba-tiba sakit. Tidak ada yang tiba-tiba sehat.",
+                    "Semuanya dibangun diam-diam dari pilihan yang kamu anggap kecil.",
+                    "Hari ini, pilihan itu ada di tanganmu."
+                }
+            },
+            new StoryTemplate
+            {
+                title = "Harga Sebuah Pilihan",
+                recommendedAction = "Kesehatan bukan hadiah. Itu hasil dari keputusan yang kamu buat setiap hari.",
+                lines = new[]
+                {
+                    "Kamu tidak bisa membeli waktu yang sudah terbuang.",
+                    "Tapi kamu masih bisa memilih apa yang kamu lakukan dengan waktu yang tersisa.",
+                    "Mulai dari sini. Mulai dari sekarang."
                 }
             }
         };

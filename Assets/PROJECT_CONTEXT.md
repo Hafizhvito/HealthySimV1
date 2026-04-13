@@ -79,6 +79,8 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - FoodChoiceMenuController and FoodPickupInteractable both enforce purchase checks and spend player money
   - Food menu shows live money, per-item price, and in-panel purchase status feedback
   - SessionFoodStash and stash UI controllers manage saved food lifecycle
+  - Runtime bootstrap enforces one restaurant food pickup and one home station interaction point in `SampleScene`
+  - Extra `FoodPickupInteractable` duplicates are removed at runtime, and legacy `Interactable_FoodCube` is removed when full restaurant + home setup already exists
 - Dialogue:
   - DialogueGraphData and DialogueCatalogProvider supply graph/content
   - NpcDialogueMenuController drives cinematic dialogue UI
@@ -176,6 +178,7 @@ Ringkasan (ID): Kontrak swap sekarang didokumentasikan sebagai checklist operasi
   - Sleep/day transition flow with wake warning logic and behavior-based disturbance chance
   - Food price system with money deduction on buy/consume/save actions
   - Placeholder healthy vs less-healthy food catalog generation for rapid restaurant iteration
+  - Food placeholder cleanup hardening: duplicate food pickup removal and legacy cube auto-cleanup when scene already has restaurant + home setup
   - Movement energy drain tuning pass (reduced immediate depletion feel during run)
   - Phase-1 swap safety hardening: warning-only contract validator + fallback telemetry in critical runtime paths
 - In progress:

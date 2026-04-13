@@ -79,6 +79,9 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
 
     public void Interact(GameObject interactor)
     {
+        if (cameraSystem == null)
+            cameraSystem = FindFirstObjectByType<CameraSystem>();
+
         DialogueGraphData selectedDialogue = SelectDialogueForCurrentPeriod();
         if (selectedDialogue == null)
         {
@@ -142,6 +145,9 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
 
     private void HandleDialogueClosed()
     {
+        if (cameraSystem == null)
+            cameraSystem = FindFirstObjectByType<CameraSystem>();
+
         if (cameraSystem != null)
             cameraSystem.DialogueZoomOut();
 

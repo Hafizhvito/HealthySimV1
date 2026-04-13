@@ -109,7 +109,49 @@ public class SampleSceneBootstrap : MonoBehaviour
 
     private void EnsurePlaceholderInteractables()
     {
-        if (GameObject.Find("Interactable_FoodCube") == null)
+        FoodPickupInteractable[] foodPoints = FindObjectsByType<FoodPickupInteractable>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        HomeFoodStationInteractable[] homeStations = FindObjectsByType<HomeFoodStationInteractable>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+
+        if (foodPoints.Length > 1)
+        {
+            FoodPickupInteractable keep = null;
+            for (int i = 0; i < foodPoints.Length; i++)
+            {
+                if (foodPoints[i] == null)
+                    continue;
+
+                if (keep == null)
+                    keep = foodPoints[i];
+
+                if (string.Equals(foodPoints[i].gameObject.name, "Interactable_Food_Restaurant", StringComparison.OrdinalIgnoreCase))
+                {
+                    keep = foodPoints[i];
+                    break;
+                }
+            }
+
+            for (int i = 0; i < foodPoints.Length; i++)
+            {
+                FoodPickupInteractable item = foodPoints[i];
+                if (item == null || item == keep)
+                    continue;
+
+                Debug.LogWarning($"{FallbackLogPrefix} Removed extra FoodPickupInteractable '{item.gameObject.name}' at runtime.");
+                Destroy(item.gameObject);
+            }
+        }
+
+        bool hasFoodSetup = FindFirstObjectByType<FoodPickupInteractable>() != null
+            && FindFirstObjectByType<HomeFoodStationInteractable>() != null;
+
+        GameObject legacyFoodCube = GameObject.Find("Interactable_FoodCube");
+        if (hasFoodSetup && legacyFoodCube != null)
+        {
+            Debug.LogWarning($"{FallbackLogPrefix} Removed legacy Interactable_FoodCube at runtime (scene already has restaurant + home station).");
+            Destroy(legacyFoodCube);
+        }
+
+        if (!hasFoodSetup && legacyFoodCube == null)
         {
             var foodObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
             foodObj.name = "Interactable_FoodCube";

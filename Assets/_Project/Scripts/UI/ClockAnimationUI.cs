@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class ClockAnimationUI : MonoBehaviour
 {
+    private static Sprite runtimeCircleSprite;
+
     [Header("Timings")]
     [SerializeField] private float fadeDuration = 0.5f;
     [SerializeField] private float animationDuration = 4f;
@@ -267,7 +269,7 @@ public class ClockAnimationUI : MonoBehaviour
         Image face = CreateCircleImage("ClockFace", clockContainer, new Vector2(280f, 280f), new Color(30f / 255f, 35f / 255f, 50f / 255f, 1f));
         _ = face;
         Image border = CreateCircleImage("ClockBorder", clockContainer, new Vector2(280f, 280f), new Color(1f, 232f / 255f, 160f / 255f, 200f / 255f));
-        border.type = Image.Type.Sliced;
+        border.type = Image.Type.Simple;
 
         Image inner = CreateCircleImage("ClockInner", clockContainer, new Vector2(262f, 262f), new Color(22f / 255f, 27f / 255f, 40f / 255f, 1f));
         _ = inner;
@@ -317,9 +319,56 @@ public class ClockAnimationUI : MonoBehaviour
         rect.sizeDelta = size;
 
         Image img = go.GetComponent<Image>();
+        img.sprite = GetOrCreateRuntimeCircleSprite();
+        img.preserveAspect = true;
         img.color = color;
         img.type = Image.Type.Simple;
         return img;
+    }
+
+    private static Sprite GetOrCreateRuntimeCircleSprite()
+    {
+        if (runtimeCircleSprite != null)
+            return runtimeCircleSprite;
+
+        const int size = 256;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        texture.name = "ClockCircleSprite_Runtime";
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.filterMode = FilterMode.Bilinear;
+        texture.hideFlags = HideFlags.HideAndDontSave;
+
+        Color32[] pixels = new Color32[size * size];
+        float radius = (size - 1) * 0.5f;
+        Vector2 center = new Vector2(radius, radius);
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                int index = (y * size) + x;
+                float distance = Vector2.Distance(new Vector2(x, y), center);
+
+                // Soft one-pixel edge to avoid hard aliasing on the circle boundary.
+                float alpha = Mathf.Clamp01(radius - distance + 0.5f);
+                byte a = (byte)Mathf.RoundToInt(alpha * 255f);
+                pixels[index] = new Color32(255, 255, 255, a);
+            }
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply(false, true);
+
+        runtimeCircleSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, size, size),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0,
+            SpriteMeshType.FullRect);
+        runtimeCircleSprite.name = "ClockCircleSprite_Runtime";
+
+        return runtimeCircleSprite;
     }
 
     private static RectTransform CreateHand(string name, RectTransform parent, Vector2 size, Color color, int siblingIndex)

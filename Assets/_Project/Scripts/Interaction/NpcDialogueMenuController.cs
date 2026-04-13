@@ -30,6 +30,8 @@ public class NpcDialogueMenuController : MonoBehaviour
     [Header("Panel Referensi")]
     [SerializeField] private RectTransform dialoguePanel;
     [SerializeField] private Image gradientOverlay;
+    [SerializeField] private Image letterboxTop;
+    [SerializeField] private Image letterboxBottom;
     [SerializeField] private RectTransform npcSpeechArea;
     [SerializeField] private RectTransform choiceContainer;
     [SerializeField] private TextMeshProUGUI npcNameText;
@@ -42,6 +44,12 @@ public class NpcDialogueMenuController : MonoBehaviour
     [SerializeField] private float closeDuration = 0.2f;
     [SerializeField] private float openSlideOffset = 20f;
     [SerializeField] [Range(0f, 1f)] private float overlayTargetAlpha = 180f / 255f;
+    [SerializeField] [Range(0f, 220f)] private float letterboxHeight = 96f;
+
+    [Header("Text Reveal")]
+    [SerializeField] private bool useTypewriterText = true;
+    [SerializeField] [Range(20f, 120f)] private float typewriterCharsPerSecond = 54f;
+    [SerializeField] [Range(0f, 0.12f)] private float typewriterPunctuationPause = 0.03f;
 
     [Header("Choice Cards")]
     [SerializeField] private float choiceCardHeight = 56f;
@@ -69,6 +77,7 @@ public class NpcDialogueMenuController : MonoBehaviour
     private bool pendingCloseAfterFollowUp;
 
     private Coroutine panelAnimationRoutine;
+    private Coroutine dialogueTextRoutine;
     private Vector2 speechBasePos;
     private Vector2 choicesBasePos;
 
@@ -97,6 +106,8 @@ public class NpcDialogueMenuController : MonoBehaviour
 
         if (panelAnimationRoutine != null)
             StopCoroutine(panelAnimationRoutine);
+
+        StopDialogueTextRoutine();
 
         if (closeButton != null)
             closeButton.onClick.RemoveAllListeners();
@@ -179,8 +190,7 @@ public class NpcDialogueMenuController : MonoBehaviour
             ? SessionSeedManager.Instance.NextInt(0, int.MaxValue)
             : UnityEngine.Random.Range(0, int.MaxValue);
 
-        if (dialogueText != null)
-            dialogueText.text = CompactText(activeNode.PickLine(seed), maxDialogueChars);
+        SetDialogueLine(activeNode.PickLine(seed));
 
         List<DialogueChoiceData> choices = activeNpc.GetAvailableChoices(activeNode);
         if (choices == null || choices.Count == 0)
@@ -276,8 +286,7 @@ public class NpcDialogueMenuController : MonoBehaviour
 
         PruneDestroyedChoiceCards();
 
-        if (dialogueText != null)
-            dialogueText.text = CompactText(followUpText, maxDialogueChars);
+        SetDialogueLine(followUpText);
 
         EnsureChoicePool(1);
         for (int i = 0; i < pooledChoices.Count; i++)
@@ -503,6 +512,20 @@ public class NpcDialogueMenuController : MonoBehaviour
         if (gradient != null)
             gradientOverlay = gradient.GetComponent<Image>();
 
+        Transform letterboxTopObj = panel.Find("LetterboxTop");
+        if (letterboxTopObj != null)
+            letterboxTop = letterboxTopObj.GetComponent<Image>();
+
+        Transform letterboxBottomObj = panel.Find("LetterboxBottom");
+        if (letterboxBottomObj != null)
+            letterboxBottom = letterboxBottomObj.GetComponent<Image>();
+
+        if (letterboxTop == null)
+            letterboxTop = CreateLetterboxBar(panel, "LetterboxTop", true);
+
+        if (letterboxBottom == null)
+            letterboxBottom = CreateLetterboxBar(panel, "LetterboxBottom", false);
+
         Transform speech = panel.Find("NpcSpeechArea");
         if (speech != null)
             npcSpeechArea = speech.GetComponent<RectTransform>();
@@ -531,6 +554,7 @@ public class NpcDialogueMenuController : MonoBehaviour
         ConfigureSpeechArea();
         ConfigureChoicesArea();
         ConfigureGradientOverlay();
+        ConfigureLetterboxBars();
 
         if (npcSpeechArea != null)
             speechBasePos = npcSpeechArea.anchoredPosition;
@@ -592,9 +616,14 @@ public class NpcDialogueMenuController : MonoBehaviour
 
     private void ResetDialogueRuntimeState()
     {
+        StopDialogueTextRoutine();
+
         isAwaitingFollowUpContinue = false;
         pendingNextNodeId = string.Empty;
         pendingCloseAfterFollowUp = false;
+
+        if (dialogueText != null)
+            dialogueText.text = string.Empty;
 
         activeNpc = null;
         activeGraph = null;
@@ -619,6 +648,9 @@ public class NpcDialogueMenuController : MonoBehaviour
 
         Image gradientImage = gradientObj.GetComponent<Image>();
         gradientImage.color = new Color(0f, 0f, 0f, 180f / 255f);
+
+        CreateLetterboxBar(panelRect, "LetterboxTop", true);
+        CreateLetterboxBar(panelRect, "LetterboxBottom", false);
 
         GameObject speechObj = new GameObject("NpcSpeechArea", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
         RectTransform speechRect = speechObj.GetComponent<RectTransform>();
@@ -775,6 +807,57 @@ public class NpcDialogueMenuController : MonoBehaviour
         rect.sizeDelta = new Vector2(0f, 400f);
 
         gradientOverlay.color = new Color(0f, 0f, 0f, 180f / 255f);
+    }
+
+    private void ConfigureLetterboxBars()
+    {
+        ConfigureLetterboxBar(letterboxTop, true);
+        ConfigureLetterboxBar(letterboxBottom, false);
+        SetLetterboxHeight(0f);
+    }
+
+    private void ConfigureLetterboxBar(Image bar, bool top)
+    {
+        if (bar == null)
+            return;
+
+        RectTransform rect = bar.rectTransform;
+        rect.anchorMin = top ? new Vector2(0f, 1f) : new Vector2(0f, 0f);
+        rect.anchorMax = top ? new Vector2(1f, 1f) : new Vector2(1f, 0f);
+        rect.pivot = top ? new Vector2(0.5f, 1f) : new Vector2(0.5f, 0f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(0f, 0f);
+
+        bar.color = new Color(0f, 0f, 0f, 0.95f);
+        bar.raycastTarget = false;
+    }
+
+    private static Image CreateLetterboxBar(RectTransform parent, string name, bool top)
+    {
+        GameObject barObj = new GameObject(name, typeof(RectTransform), typeof(Image));
+        RectTransform rect = barObj.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = top ? new Vector2(0f, 1f) : new Vector2(0f, 0f);
+        rect.anchorMax = top ? new Vector2(1f, 1f) : new Vector2(1f, 0f);
+        rect.pivot = top ? new Vector2(0.5f, 1f) : new Vector2(0.5f, 0f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.zero;
+
+        Image image = barObj.GetComponent<Image>();
+        image.color = new Color(0f, 0f, 0f, 0.95f);
+        image.raycastTarget = false;
+        return image;
+    }
+
+    private void SetLetterboxHeight(float height)
+    {
+        float h = Mathf.Max(0f, height);
+
+        if (letterboxTop != null)
+            letterboxTop.rectTransform.sizeDelta = new Vector2(0f, h);
+
+        if (letterboxBottom != null)
+            letterboxBottom.rectTransform.sizeDelta = new Vector2(0f, h);
     }
 
     private void ConfigureChoicesArea()
@@ -977,6 +1060,8 @@ public class NpcDialogueMenuController : MonoBehaviour
         Color grad = gradientOverlay != null ? gradientOverlay.color : new Color(0f, 0f, 0f, 0f);
         float fromAlpha = open ? 0f : overlayTargetAlpha;
         float toAlpha = open ? overlayTargetAlpha : 0f;
+        float fromLetterbox = open ? 0f : letterboxHeight;
+        float toLetterbox = open ? letterboxHeight : 0f;
 
         Vector2 speechFrom = speechBasePos + new Vector2(0f, open ? -openSlideOffset : 0f);
         Vector2 speechTo = speechBasePos + new Vector2(0f, open ? 0f : -openSlideOffset);
@@ -996,6 +1081,8 @@ public class NpcDialogueMenuController : MonoBehaviour
         if (choiceContainer != null)
             choiceContainer.anchoredPosition = choicesFrom;
 
+        SetLetterboxHeight(fromLetterbox);
+
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
@@ -1014,6 +1101,8 @@ public class NpcDialogueMenuController : MonoBehaviour
             if (choiceContainer != null)
                 choiceContainer.anchoredPosition = Vector2.Lerp(choicesFrom, choicesTo, eased);
 
+            SetLetterboxHeight(Mathf.Lerp(fromLetterbox, toLetterbox, eased));
+
             yield return null;
         }
 
@@ -1028,6 +1117,8 @@ public class NpcDialogueMenuController : MonoBehaviour
 
         if (choiceContainer != null)
             choiceContainer.anchoredPosition = choicesTo;
+
+        SetLetterboxHeight(toLetterbox);
     }
 
     private void SetMenuVisible(bool visible)
@@ -1097,6 +1188,83 @@ public class NpcDialogueMenuController : MonoBehaviour
             return "Pilihan";
 
         return CompactText(source.Trim(), maxChoiceChars);
+    }
+
+    private void SetDialogueLine(string source)
+    {
+        if (dialogueText == null)
+            return;
+
+        string line = CompactText(source, maxDialogueChars);
+        StopDialogueTextRoutine();
+
+        if (!useTypewriterText || string.IsNullOrEmpty(line))
+        {
+            dialogueText.text = line;
+            dialogueText.maxVisibleCharacters = int.MaxValue;
+            return;
+        }
+
+        dialogueTextRoutine = StartCoroutine(TypeDialogueRoutine(line));
+    }
+
+    private IEnumerator TypeDialogueRoutine(string line)
+    {
+        dialogueText.text = line;
+        dialogueText.maxVisibleCharacters = 0;
+        dialogueText.ForceMeshUpdate();
+
+        int totalChars = dialogueText.textInfo.characterCount;
+        if (totalChars <= 0)
+        {
+            dialogueText.maxVisibleCharacters = int.MaxValue;
+            dialogueTextRoutine = null;
+            yield break;
+        }
+
+        float charInterval = 1f / Mathf.Max(1f, typewriterCharsPerSecond);
+        float timer = 0f;
+        int visible = 0;
+
+        while (visible < totalChars)
+        {
+            timer += Time.unscaledDeltaTime;
+            if (timer < charInterval)
+            {
+                yield return null;
+                continue;
+            }
+
+            timer -= charInterval;
+            visible++;
+            dialogueText.maxVisibleCharacters = visible;
+
+            int sourceIndex = Mathf.Clamp(visible - 1, 0, line.Length - 1);
+            if (sourceIndex < line.Length && IsPunctuationForPause(line[sourceIndex]))
+                timer -= Mathf.Max(0f, typewriterPunctuationPause);
+
+            yield return null;
+        }
+
+        dialogueText.maxVisibleCharacters = int.MaxValue;
+        dialogueTextRoutine = null;
+    }
+
+    private void StopDialogueTextRoutine()
+    {
+        if (dialogueTextRoutine != null)
+        {
+            StopCoroutine(dialogueTextRoutine);
+            dialogueTextRoutine = null;
+        }
+
+        if (dialogueText != null)
+            dialogueText.maxVisibleCharacters = int.MaxValue;
+    }
+
+    private static bool IsPunctuationForPause(char c)
+    {
+        return c == ',' || c == '.' || c == '!' || c == '?' || c == ';' || c == ':';
     }
 
     private string CompactText(string source, int maxChars)

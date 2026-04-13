@@ -188,6 +188,8 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Home food station uses discounted home pricing (default multiplier `0.65`) while stash consumption remains free after prep
   - Restaurant placeholder station now uses pricier outlet multiplier (default `1.25`) to create clear economy gap vs home station
   - Runtime placeholder bootstrap now auto-creates `HomeFoodStation_Placeholder` in `SampleScene` when no home station exists yet
+  - Runtime bootstrap now enforces a clean food interaction set by keeping one restaurant pickup (prefers `Interactable_Food_Restaurant`) and removing extra `FoodPickupInteractable` duplicates
+  - Legacy `Interactable_FoodCube` is now fallback-only and is auto-removed when both restaurant pickup and home station already exist
   - Editor setup menu `HealthSim/Setup/Ensure Home Food Station Placeholder` now creates a persistent placeholder in `SampleScene` so it is visible before Play and can be moved freely
   - Food menu now includes a top-right `X` close button for faster dismiss
   - Stash systems now auto-bootstrap if missing (SessionFoodStash + FoodStashMenuController) so meal prep and stash open flow stay available
@@ -245,6 +247,8 @@ Ringkasan (ID): Fitur inti gameplay, dialog, kerja, onboarding, tidur, ekonomi m
   - meal prep stores food to stash and can be consumed later without extra cost
   - home menu pricing is cheaper than normal food station pricing
   - top-right `X` button closes food menu immediately
+  - only 2 food interaction points should remain in `SampleScene`: one restaurant pickup and one home station
+  - if both points already exist, `Interactable_FoodCube` should not persist
   - if no home station object exists in `SampleScene`, a placeholder cube station appears automatically near player
   - for permanent edit-mode placement, run `HealthSim/Setup/Ensure Home Food Station Placeholder`, then move the object as needed in Scene view
 
