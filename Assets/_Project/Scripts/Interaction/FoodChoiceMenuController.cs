@@ -25,6 +25,16 @@ public class FoodChoiceMenuController : MonoBehaviour
     private GUIStyle statusOkStyle;
     private GUIStyle statusWarnStyle;
 
+    // Home-food mode state (activated by HomeFoodStationInteractable).
+    private bool isHomeFoodMode;
+    private float homePriceMultiplier = 1f;
+    private bool homeQuickDrinkEnabled;
+    private string homeQuickDrinkName = "Air Dingin";
+    private float homeQuickDrinkEnergy = 6f;
+    private float homeQuickDrinkCalories;
+    private float homeQuickDrinkMood = 1.5f;
+    private int homeQuickDrinkPrice = 4;
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -38,6 +48,9 @@ public class FoodChoiceMenuController : MonoBehaviour
 
     public void OpenMenu(string locationName, List<FoodData> foods)
     {
+        ResetHomeMode();
+        EnsureStashSystemsAvailable();
+
         currentLocationName = string.IsNullOrWhiteSpace(locationName)
             ? "Paket Makanan"
             : locationName;
@@ -60,6 +73,29 @@ public class FoodChoiceMenuController : MonoBehaviour
         Debug.Log($"[FoodMenu] Dibuka: {currentLocationName} ({currentFoods.Count} item)");
     }
 
+    public void OpenHomeMenu(
+        string locationName,
+        List<FoodData> foods,
+        float priceMultiplier = 0.65f,
+        bool enableQuickDrink = true,
+        string quickDrinkName = "Air Dingin",
+        float quickDrinkEnergy = 6f,
+        float quickDrinkCalories = 0f,
+        float quickDrinkMood = 1.5f,
+        int quickDrinkPrice = 4)
+    {
+        OpenMenu(locationName, foods);
+
+        isHomeFoodMode = true;
+        homePriceMultiplier = Mathf.Clamp(priceMultiplier, 0.25f, 1f);
+        homeQuickDrinkEnabled = enableQuickDrink;
+        homeQuickDrinkName = string.IsNullOrWhiteSpace(quickDrinkName) ? "Air Dingin" : quickDrinkName.Trim();
+        homeQuickDrinkEnergy = quickDrinkEnergy;
+        homeQuickDrinkCalories = quickDrinkCalories;
+        homeQuickDrinkMood = quickDrinkMood;
+        homeQuickDrinkPrice = Mathf.Max(0, quickDrinkPrice);
+    }
+
     public void CloseMenu()
     {
         if (!isOpen)
@@ -72,6 +108,8 @@ public class FoodChoiceMenuController : MonoBehaviour
 
         if (ModalStateManager.Instance != null)
             ModalStateManager.Instance.CloseModal("FoodMenu");
+
+        ResetHomeMode();
 
         Debug.Log("[FoodMenu] Ditutup.");
     }
@@ -99,11 +137,21 @@ public class FoodChoiceMenuController : MonoBehaviour
     {
         EnsureStyles();
 
+        if (GUI.Button(new Rect(windowRect.width - 34f, 6f, 24f, 22f), "X", closeButtonStyle))
+        {
+            CloseMenu();
+            GUIUtility.ExitGUI();
+        }
+
         GUILayout.Space(8f);
         int money = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0;
         GUILayout.Label(currentLocationName, headerTitleStyle);
         GUILayout.Label($"{currentFoods.Count} item tersedia  •  Saldo Rp{money}", headerMetaStyle);
         DrawPanelStatus();
+
+        if (isHomeFoodMode)
+            DrawHomeQuickActions();
+
         GUILayout.Space(8f);
 
         scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(370f));
@@ -131,6 +179,7 @@ public class FoodChoiceMenuController : MonoBehaviour
 
         if (GUILayout.Button("Lihat Stash", sectionButtonStyle, GUILayout.Height(36f)))
         {
+            EnsureStashSystemsAvailable();
             CloseMenu();
             if (FoodStashMenuController.Instance != null)
                 FoodStashMenuController.Instance.OpenStash();
@@ -146,7 +195,10 @@ public class FoodChoiceMenuController : MonoBehaviour
 
     private void DrawFoodRow(FoodData food)
     {
-        int price = food.GetEffectivePrice();
+        int price = GetDisplayPrice(food);
+        string eatLabel = isHomeFoodMode ? "Makan Cepat" : "Makan";
+        string stashLabel = isHomeFoodMode ? "Meal Prep" : "Simpan";
+
         GUILayout.BeginVertical(cardStyle);
         GUILayout.BeginHorizontal();
 
@@ -159,21 +211,26 @@ public class FoodChoiceMenuController : MonoBehaviour
         GUILayout.BeginVertical(GUILayout.Width(170f));
         GUILayout.Label($"Rp{price}", priceStyle, GUILayout.Height(30f));
 
-        if (GUILayout.Button("Makan", sectionButtonStyle, GUILayout.Height(30f)))
+        if (GUILayout.Button(eatLabel, sectionButtonStyle, GUILayout.Height(30f)))
         {
             EatFood(food);
         }
 
-        if (GUILayout.Button("Simpan", closeButtonStyle, GUILayout.Height(30f)))
+        if (GUILayout.Button(stashLabel, closeButtonStyle, GUILayout.Height(30f)))
         {
             if (!TryPurchaseFood(food))
                 return;
 
+            EnsureStashSystemsAvailable();
+
             if (SessionFoodStash.Instance != null)
             {
                 SessionFoodStash.Instance.AddToStash(food);
-                Debug.Log($"[FoodMenu] Dibeli dan disimpan: {food.foodName} (Rp{food.GetEffectivePrice()})");
-                ShowPanelStatus($"{food.foodName} disimpan ke stash.", false);
+                Debug.Log($"[FoodMenu] Dibeli dan disimpan: {food.foodName} (Rp{GetDisplayPrice(food)})");
+                string stashMessage = isHomeFoodMode
+                    ? $"Meal prep tersimpan: {food.foodName}."
+                    : $"{food.foodName} disimpan ke stash.";
+                ShowPanelStatus(stashMessage, false);
             }
             else
             {
@@ -202,7 +259,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         if (StoryManager.Instance != null)
             StoryManager.Instance.OnFoodEaten(food);
 
-        Debug.Log($"[FoodMenu] Dibeli dan dimakan: {food.foodName} (Rp{food.GetEffectivePrice()})");
+        Debug.Log($"[FoodMenu] Dibeli dan dimakan: {food.foodName} (Rp{GetDisplayPrice(food)})");
         ShowPanelStatus($"Kamu makan {food.foodName}.", false, 1.2f);
         CloseMenu();
     }
@@ -219,7 +276,7 @@ public class FoodChoiceMenuController : MonoBehaviour
             return false;
         }
 
-        int price = food.GetEffectivePrice();
+        int price = GetDisplayPrice(food);
         if (price <= 0)
             return true;
 
@@ -232,6 +289,105 @@ public class FoodChoiceMenuController : MonoBehaviour
 
         PlayerStats.Instance.SpendMoney(price);
         return true;
+    }
+
+    private void DrawHomeQuickActions()
+    {
+        GUILayout.BeginVertical(cardStyle);
+        GUILayout.Label("Aksi Cepat Rumah", foodNameStyle);
+        GUILayout.Label("Rumah lebih hemat. Meal prep otomatis masuk stash dan bisa dimakan nanti tanpa bayar lagi.", foodDetailStyle);
+
+        if (GUILayout.Button("Buka Stash Rumah", closeButtonStyle, GUILayout.Height(30f)))
+        {
+            EnsureStashSystemsAvailable();
+            CloseMenu();
+            if (FoodStashMenuController.Instance != null)
+                FoodStashMenuController.Instance.OpenStash();
+            return;
+        }
+
+        if (homeQuickDrinkEnabled)
+        {
+            int drinkPrice = Mathf.Max(0, homeQuickDrinkPrice);
+            GUILayout.Label($"Minuman cepat: {homeQuickDrinkName}  •  Energi +{homeQuickDrinkEnergy:0.#}  •  Mood +{homeQuickDrinkMood:0.#}  •  Rp{drinkPrice}", nutrientStyle);
+            if (GUILayout.Button($"Minum Cepat (Rp{drinkPrice})", sectionButtonStyle, GUILayout.Height(30f)))
+                ConsumeHomeQuickDrink();
+        }
+
+        GUILayout.EndVertical();
+    }
+
+    private void ConsumeHomeQuickDrink()
+    {
+        if (PlayerStats.Instance == null)
+        {
+            ShowPanelStatus("Data player belum siap.", true);
+            return;
+        }
+
+        int price = Mathf.Max(0, homeQuickDrinkPrice);
+        if (price > 0 && PlayerStats.Instance.Money < price)
+        {
+            ShowPanelStatus($"Uang tidak cukup. Butuh Rp{price}.", true);
+            return;
+        }
+
+        if (price > 0)
+            PlayerStats.Instance.SpendMoney(price);
+
+        PlayerStats.Instance.AddFood(homeQuickDrinkEnergy, homeQuickDrinkCalories, homeQuickDrinkMood);
+
+        if (PlayerActionTracker.Instance != null)
+            PlayerActionTracker.Instance.Track(PlayerActionTracker.ActionType.HealthyFoodTaken, "HomeQuickDrink");
+
+        ShowPanelStatus($"Kamu minum {homeQuickDrinkName}.", false, 1.2f);
+    }
+
+    private int GetDisplayPrice(FoodData food)
+    {
+        if (food == null)
+            return 0;
+
+        int basePrice = Mathf.Max(0, food.GetEffectivePrice());
+        if (!isHomeFoodMode)
+            return basePrice;
+
+        return Mathf.Max(1, Mathf.RoundToInt(basePrice * homePriceMultiplier));
+    }
+
+    private void EnsureStashSystemsAvailable()
+    {
+        GameObject manager = GameObject.Find("GameManager");
+
+        if (SessionFoodStash.Instance == null)
+        {
+            GameObject stashObj = new GameObject("SessionFoodStash");
+            if (manager != null)
+                stashObj.transform.SetParent(manager.transform, false);
+
+            stashObj.AddComponent<SessionFoodStash>();
+        }
+
+        if (FoodStashMenuController.Instance == null)
+        {
+            GameObject stashMenuObj = new GameObject("FoodStashMenuController");
+            if (manager != null)
+                stashMenuObj.transform.SetParent(manager.transform, false);
+
+            stashMenuObj.AddComponent<FoodStashMenuController>();
+        }
+    }
+
+    private void ResetHomeMode()
+    {
+        isHomeFoodMode = false;
+        homePriceMultiplier = 1f;
+        homeQuickDrinkEnabled = false;
+        homeQuickDrinkName = "Air Dingin";
+        homeQuickDrinkEnergy = 6f;
+        homeQuickDrinkCalories = 0f;
+        homeQuickDrinkMood = 1.5f;
+        homeQuickDrinkPrice = 4;
     }
 
     private void DrawPanelStatus()

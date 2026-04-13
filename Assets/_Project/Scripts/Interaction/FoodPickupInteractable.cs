@@ -8,6 +8,9 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
     [SerializeField] private bool useGlobalFoodCatalogWhenEmpty = true;
     [SerializeField] private bool filterByTime = false;
 
+    [Header("Economy")]
+    [SerializeField] [Range(0.5f, 2f)] private float outletPriceMultiplier = 1f;
+
     [Header("Fallback (used only if no FoodData is assigned)")]
     [SerializeField] private string fallbackFoodName = "Paket Makanan Sehat";
     [SerializeField] private float fallbackEnergyGain = 18f;
@@ -54,6 +57,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
         cachedCollider = GetComponent<Collider>();
         foodCatalogProvider = foodCatalogProviderOverride;
         foodStash = foodStashOverride;
+        outletPriceMultiplier = Mathf.Clamp(outletPriceMultiplier, 0.5f, 2f);
 
         if (foodCatalogProvider != null && foodStash != null)
             return;
@@ -151,7 +155,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
 
         FoodData food = selectedFood != null ? selectedFood : GetFallbackFood();
 
-        if (!TrySpendForFood(food))
+        if (!TrySpendForFood(food, out int chargedPrice))
             return;
 
         PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect);
@@ -164,7 +168,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
             );
         }
 
-        Debug.Log($"[Interaction] {food.foodName} dibeli Rp{food.GetEffectivePrice()}. Energi +{food.energyRestored}, Kalori +{food.calories}, Mood {food.moodEffect:+0.##;-0.##;0}");
+        Debug.Log($"[Interaction] {food.foodName} dibeli Rp{chargedPrice}. Energi +{food.energyRestored}, Kalori +{food.calories}, Mood {food.moodEffect:+0.##;-0.##;0}");
 
         if (consumeOnInteract)
             gameObject.SetActive(false);
@@ -174,7 +178,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
     {
         FoodData food = selectedFood != null ? selectedFood : GetFallbackFood();
 
-        if (!TrySpendForFood(food))
+        if (!TrySpendForFood(food, out int chargedPrice))
             return false;
 
         if (foodStash == null)
@@ -197,7 +201,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
 
         int stashCount = foodStash != null ? foodStash.Count : 0;
         Debug.Log(saved
-            ? $"[Interaction] {food.foodName} dibeli Rp{food.GetEffectivePrice()} dan disimpan ke stash sesi. Total stash: {stashCount}."
+            ? $"[Interaction] {food.foodName} dibeli Rp{chargedPrice} dan disimpan ke stash sesi. Total stash: {stashCount}."
             : $"[Interaction] Gagal simpan {food.foodName} (stash tidak tersedia).");
 
         return saved;
@@ -223,15 +227,18 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
         return fallbackFood;
     }
 
-    private bool TrySpendForFood(FoodData food)
+    private bool TrySpendForFood(FoodData food, out int chargedPrice)
     {
+        chargedPrice = 0;
+
         if (food == null)
             return false;
 
         if (PlayerStats.Instance == null)
             return false;
 
-        int price = food.GetEffectivePrice();
+        int price = GetOutletPrice(food);
+        chargedPrice = price;
         if (price <= 0)
             return true;
 
@@ -243,5 +250,18 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
 
         PlayerStats.Instance.SpendMoney(price);
         return true;
+    }
+
+    private int GetOutletPrice(FoodData food)
+    {
+        if (food == null)
+            return 0;
+
+        int basePrice = Mathf.Max(0, food.GetEffectivePrice());
+        if (basePrice <= 0)
+            return 0;
+
+        float multiplier = Mathf.Clamp(outletPriceMultiplier, 0.5f, 2f);
+        return Mathf.Max(1, Mathf.RoundToInt(basePrice * multiplier));
     }
 }

@@ -184,6 +184,13 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - FoodData nutrient schema now includes protein, fat, and sugar fields for gameplay balancing
   - Food interaction detail line now shows compact nutrient summary: P/L/G values
   - Placeholder food catalog generator now seeds healthy and less-healthy variants for restaurant-ready iteration
+  - Home food station mode now supports quick eat, quick drink, and simple meal prep to stash
+  - Home food station uses discounted home pricing (default multiplier `0.65`) while stash consumption remains free after prep
+  - Restaurant placeholder station now uses pricier outlet multiplier (default `1.25`) to create clear economy gap vs home station
+  - Runtime placeholder bootstrap now auto-creates `HomeFoodStation_Placeholder` in `SampleScene` when no home station exists yet
+  - Editor setup menu `HealthSim/Setup/Ensure Home Food Station Placeholder` now creates a persistent placeholder in `SampleScene` so it is visible before Play and can be moved freely
+  - Food menu now includes a top-right `X` close button for faster dismiss
+  - Stash systems now auto-bootstrap if missing (SessionFoodStash + FoodStashMenuController) so meal prep and stash open flow stay available
   - Session stash consume/remove/clear flows
 - Dialogue:
   - Graph-based dialogue with choices and consequences
@@ -231,6 +238,14 @@ Ringkasan (ID): Fitur inti gameplay, dialog, kerja, onboarding, tidur, ekonomi m
   4. Open NPC dialogue and complete one dialogue branch
   5. Enter office flow and return to main scene
   6. Enter gym flow and confirm trainer pre/post dialogue plus daily lock behavior
+  8. Interact with home food station and verify:
+
+  - quick drink action works
+  - meal prep stores food to stash and can be consumed later without extra cost
+  - home menu pricing is cheaper than normal food station pricing
+  - top-right `X` button closes food menu immediately
+  - if no home station object exists in `SampleScene`, a placeholder cube station appears automatically near player
+  - for permanent edit-mode placement, run `HealthSim/Setup/Ensure Home Food Station Placeholder`, then move the object as needed in Scene view
 
 Ringkasan (ID): Untuk cek cepat, jalankan SampleScene lalu uji movement, interaksi makanan, dialog NPC, dan sesi kerja sekali.
 
