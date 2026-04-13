@@ -232,13 +232,14 @@ Ringkasan (ID): Fitur inti gameplay, dialog, kerja, onboarding, tidur, ekonomi m
   - Cursor cancel: Escape
   - Debug lock reset: F8
 - Recommended quick test:
+
   1. Enter Play Mode in SampleScene
   2. Verify move/run/jump/step behavior
   3. Interact with food and test stash actions
   4. Open NPC dialogue and complete one dialogue branch
   5. Enter office flow and return to main scene
   6. Enter gym flow and confirm trainer pre/post dialogue plus daily lock behavior
-  8. Interact with home food station and verify:
+  7. Interact with home food station and verify:
 
   - quick drink action works
   - meal prep stores food to stash and can be consumed later without extra cost
