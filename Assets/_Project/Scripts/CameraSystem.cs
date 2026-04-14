@@ -104,6 +104,24 @@ public class CameraSystem : MonoBehaviour
             UnlockCursor();
     }
 
+    public void TogglePerspectiveFromMobile()
+    {
+        ToggleCamera();
+    }
+
+    public void SetPerspectiveFromMobile(bool firstPerson)
+    {
+        if (firstPerson)
+        {
+            if (!isFirstPerson)
+                SetFPP();
+            return;
+        }
+
+        if (isFirstPerson)
+            SetTPP();
+    }
+
     void ToggleCamera()
     {
         isFirstPerson = !isFirstPerson;

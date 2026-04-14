@@ -403,4 +403,9 @@ public class UniversalInteractionController : MonoBehaviour
         return legacy;
 #endif
     }
+
+    public void TriggerInteractFromMobile()
+    {
+        pendingInteract = true;
+    }
 }

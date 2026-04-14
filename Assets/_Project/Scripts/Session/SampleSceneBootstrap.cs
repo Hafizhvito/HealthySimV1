@@ -68,6 +68,7 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsureComponent<WorkReminderUI>(manager);
         EnsureComponent<WorkSessionManager>(manager);
         EnsureComponent<FadeManager>(manager);
+        EnsureComponent<MobileInputController>(manager);
     }
 
     private void EnsureEventSystemSetup()

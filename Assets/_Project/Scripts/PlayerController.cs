@@ -684,4 +684,25 @@ public class PlayerController : MonoBehaviour
         jumpRequest = false;
         SetFatigueIndicatorVisible(false);
     }
+
+    public void InjectMobileInput(Vector2 moveInput)
+    {
+        if (!IsInputLocked)
+        {
+            rawInput = moveInput;
+
+            bool holdForwardNearMax = moveInput.y >= 0.9f
+                && moveInput.magnitude >= 0.95f
+                && Mathf.Abs(moveInput.x) <= 0.45f;
+
+            // Keep keyboard sprint behavior while allowing mobile forward-hold auto-run.
+            isRunningRaw = isRunningRaw || holdForwardNearMax;
+        }
+    }
+
+    public void InjectMobileJump()
+    {
+        if (!IsInputLocked)
+            jumpRequest = true;
+    }
 }

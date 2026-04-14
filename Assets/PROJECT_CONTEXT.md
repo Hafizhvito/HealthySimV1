@@ -69,6 +69,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - PlayerStats movement energy drain now includes global scale and sprint ramp timing controls
   - TimeManager runs day periods (morning to night)
   - EnergySystem handles faint/recover flow
+  - MobileInputController builds touch controls entirely via code and injects movement input to PlayerController for Android and Editor force-test mode
 - Interaction and prompts:
   - UniversalInteractionController resolves nearest valid target with line-of-sight filtering
   - InteractableRegistry and IInteractable standardize registration and interaction calls
@@ -97,6 +98,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
 - UI and onboarding:
   - HUDAutoSetup builds runtime HUD and enforces 1920x1080 landscape scaler in its generated canvas
   - HUDManager updates stat bars and energy visuals
+  - MobileInputController creates a runtime overlay touch canvas (sort order 10) with dual joysticks and interact button, and auto-hides during modals/cutscenes
   - TutorialSequentialUI handles step-by-step onboarding panel
   - TutorialContextualUI handles queued one-time contextual hints
   - TutorialSequentialUI and TutorialContextualUI are gated by intro cutscene active state
@@ -179,6 +181,7 @@ Ringkasan (ID): Kontrak swap sekarang didokumentasikan sebagai checklist operasi
   - Food price system with money deduction on buy/consume/save actions
   - Placeholder healthy vs less-healthy food catalog generation for rapid restaurant iteration
   - Food placeholder cleanup hardening: duplicate food pickup removal and legacy cube auto-cleanup when scene already has restaurant + home setup
+  - Mobile touch control baseline added (movement joystick, look joystick, interact button, modal/cutscene-aware visibility)
   - Movement energy drain tuning pass (reduced immediate depletion feel during run)
   - Phase-1 swap safety hardening: warning-only contract validator + fallback telemetry in critical runtime paths
 - In progress:

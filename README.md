@@ -169,6 +169,7 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Movement energy drain rebalanced for 5-minute loop pacing
   - Sprint drain now ramps up over time (no instant full-drain spike)
   - Camera toggle and dialogue zoom behavior
+  - Mobile touch controls are available via runtime-built UI (left move joystick, right look joystick, top-right interact button) for Android and Editor force-test mode
 - Input and modal safety:
   - Source-counted input locks in PlayerController
   - Central modal authority via ModalStateManager
@@ -233,6 +234,7 @@ Ringkasan (ID): Fitur inti gameplay, dialog, kerja, onboarding, tidur, ekonomi m
   - Camera mode: F or V
   - Cursor cancel: Escape
   - Debug lock reset: F8
+  - Mobile test mode: `MobileInputController.forceMobileUI = true` (default) to show touch controls in Editor
 - Recommended quick test:
 
   1. Enter Play Mode in SampleScene
