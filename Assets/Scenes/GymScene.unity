@@ -1459,6 +1459,10 @@ MonoBehaviour:
   closeDuration: 0.2
   openSlideOffset: 20
   overlayTargetAlpha: 0.7058824
+  letterboxHeight: 96
+  useTypewriterText: 1
+  typewriterCharsPerSecond: 54
+  typewriterPunctuationPause: 0.03
   choiceCardHeight: 56
   choiceSpacing: 8
   maxDialogueChars: 260

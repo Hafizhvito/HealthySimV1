@@ -1139,6 +1139,10 @@ public class NpcDialogueMenuController : MonoBehaviour
     private void EnsureEventSystem()
     {
         EventSystem eventSystem = FindFirstObjectByType<EventSystem>();
+
+        if (eventSystem == null)
+            eventSystem = FindFirstObjectByType<EventSystem>(FindObjectsInactive.Include);
+
         if (eventSystem == null)
         {
             GameObject eventObj = new GameObject("EventSystem");
@@ -1146,16 +1150,30 @@ public class NpcDialogueMenuController : MonoBehaviour
         }
 
         StandaloneInputModule inputModule = eventSystem.GetComponent<StandaloneInputModule>();
+
+    #if ENABLE_LEGACY_INPUT_MANAGER
         if (inputModule == null)
             inputModule = eventSystem.gameObject.AddComponent<StandaloneInputModule>();
 
         inputModule.enabled = true;
+    #else
+        if (inputModule != null)
+            inputModule.enabled = false;
+    #endif
 
-#if ENABLE_INPUT_SYSTEM
+    #if ENABLE_INPUT_SYSTEM
         InputSystemUIInputModule inputSystemModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+
+    #if ENABLE_LEGACY_INPUT_MANAGER
         if (inputSystemModule != null)
             inputSystemModule.enabled = false;
-#endif
+    #else
+        if (inputSystemModule == null)
+            inputSystemModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+
+        inputSystemModule.enabled = true;
+    #endif
+    #endif
 
         eventSystem.sendNavigationEvents = true;
         eventSystem.enabled = true;

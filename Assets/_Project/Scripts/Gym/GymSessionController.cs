@@ -92,6 +92,9 @@ public class GymSessionController : MonoBehaviour
             dialogueUI = NpcDialogueMenuController.Instance;
 
         if (dialogueUI == null)
+            dialogueUI = FindFirstObjectByType<NpcDialogueMenuController>(FindObjectsInactive.Include);
+
+        if (dialogueUI == null)
         {
             GameObject dialogueObj = new GameObject("NpcDialogueMenuController_Runtime");
             dialogueUI = dialogueObj.AddComponent<NpcDialogueMenuController>();
@@ -102,6 +105,9 @@ public class GymSessionController : MonoBehaviour
             clockUI = FindFirstObjectByType<ClockAnimationUI>();
 
         if (clockUI == null)
+            clockUI = FindFirstObjectByType<ClockAnimationUI>(FindObjectsInactive.Include);
+
+        if (clockUI == null)
         {
             GameObject clockObj = new GameObject("ClockAnimationUI");
             clockUI = clockObj.AddComponent<ClockAnimationUI>();
@@ -110,6 +116,9 @@ public class GymSessionController : MonoBehaviour
 
         if (trainerDialogueController == null)
             trainerDialogueController = FindFirstObjectByType<GymTrainerDialogueController>();
+
+        if (trainerDialogueController == null)
+            trainerDialogueController = FindFirstObjectByType<GymTrainerDialogueController>(FindObjectsInactive.Include);
 
         if (trainerDialogueController == null)
         {

@@ -75,25 +75,51 @@ public class SampleSceneBootstrap : MonoBehaviour
     {
         EventSystem eventSystem = FindFirstObjectByType<EventSystem>();
         if (eventSystem == null)
+            eventSystem = FindFirstObjectByType<EventSystem>(FindObjectsInactive.Include);
+
+        if (eventSystem == null)
         {
             GameObject eventObj = new GameObject("EventSystem");
             eventSystem = eventObj.AddComponent<EventSystem>();
             Debug.LogWarning($"{FallbackLogPrefix} Created EventSystem at runtime.");
         }
 
-        if (eventSystem.GetComponent<StandaloneInputModule>() == null)
+        StandaloneInputModule standaloneModule = eventSystem.GetComponent<StandaloneInputModule>();
+#if ENABLE_INPUT_SYSTEM
+        InputSystemUIInputModule inputSystemModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+#endif
+
+#if ENABLE_LEGACY_INPUT_MANAGER
+        if (standaloneModule == null)
         {
-            eventSystem.gameObject.AddComponent<StandaloneInputModule>();
+            standaloneModule = eventSystem.gameObject.AddComponent<StandaloneInputModule>();
             Debug.LogWarning($"{FallbackLogPrefix} Added StandaloneInputModule to EventSystem at runtime.");
         }
 
+        standaloneModule.enabled = true;
+
 #if ENABLE_INPUT_SYSTEM
-        if (eventSystem.GetComponent<InputSystemUIInputModule>() == null)
+        if (inputSystemModule != null)
+            inputSystemModule.enabled = false;
+#endif
+#else
+        if (standaloneModule != null)
+            standaloneModule.enabled = false;
+
+#if ENABLE_INPUT_SYSTEM
+        if (inputSystemModule == null)
         {
-            eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+            inputSystemModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
             Debug.LogWarning($"{FallbackLogPrefix} Added InputSystemUIInputModule to EventSystem at runtime.");
         }
+
+        inputSystemModule.enabled = true;
 #endif
+#endif
+
+        eventSystem.sendNavigationEvents = true;
+        eventSystem.enabled = true;
+        eventSystem.gameObject.SetActive(true);
     }
 
     private void EnsurePlayerInteraction()

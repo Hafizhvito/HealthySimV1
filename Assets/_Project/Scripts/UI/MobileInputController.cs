@@ -5,6 +5,10 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem.UI;
+#endif
+
 [DefaultExecutionOrder(500)]
 public class MobileInputController : MonoBehaviour
 {
@@ -72,6 +76,7 @@ public class MobileInputController : MonoBehaviour
         }
 
         Instance = this;
+        EnsureEventSystemSetup();
         isTouchUiEnabled = ShouldEnableTouchUi();
 
         ResolveSceneReferences();
@@ -86,6 +91,50 @@ public class MobileInputController : MonoBehaviour
     {
         if (Instance == this)
             Instance = null;
+    }
+
+    private static void EnsureEventSystemSetup()
+    {
+        EventSystem eventSystem = FindFirstObjectByType<EventSystem>();
+        if (eventSystem == null)
+            eventSystem = FindFirstObjectByType<EventSystem>(FindObjectsInactive.Include);
+
+        if (eventSystem == null)
+        {
+            GameObject eventObj = new GameObject("EventSystem");
+            eventSystem = eventObj.AddComponent<EventSystem>();
+        }
+
+        StandaloneInputModule standaloneModule = eventSystem.GetComponent<StandaloneInputModule>();
+#if ENABLE_INPUT_SYSTEM
+        InputSystemUIInputModule inputSystemModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+#endif
+
+#if ENABLE_LEGACY_INPUT_MANAGER
+        if (standaloneModule == null)
+            standaloneModule = eventSystem.gameObject.AddComponent<StandaloneInputModule>();
+
+        standaloneModule.enabled = true;
+
+#if ENABLE_INPUT_SYSTEM
+        if (inputSystemModule != null)
+            inputSystemModule.enabled = false;
+#endif
+#else
+        if (standaloneModule != null)
+            standaloneModule.enabled = false;
+
+#if ENABLE_INPUT_SYSTEM
+        if (inputSystemModule == null)
+            inputSystemModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+
+        inputSystemModule.enabled = true;
+#endif
+#endif
+
+        eventSystem.sendNavigationEvents = true;
+        eventSystem.enabled = true;
+        eventSystem.gameObject.SetActive(true);
     }
 
     void Update()

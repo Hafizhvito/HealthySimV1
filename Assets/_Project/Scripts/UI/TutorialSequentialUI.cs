@@ -617,18 +617,44 @@ public class TutorialSequentialUI : MonoBehaviour
     {
         EventSystem eventSystem = Object.FindFirstObjectByType<EventSystem>();
         if (eventSystem == null)
+            eventSystem = Object.FindFirstObjectByType<EventSystem>(FindObjectsInactive.Include);
+
+        if (eventSystem == null)
         {
             GameObject eventObj = new GameObject("EventSystem");
             eventSystem = eventObj.AddComponent<EventSystem>();
         }
 
-        if (eventSystem.GetComponent<StandaloneInputModule>() == null)
-            eventSystem.gameObject.AddComponent<StandaloneInputModule>();
+        StandaloneInputModule standaloneModule = eventSystem.GetComponent<StandaloneInputModule>();
+#if ENABLE_INPUT_SYSTEM
+        InputSystemUIInputModule inputSystemModule = eventSystem.GetComponent<InputSystemUIInputModule>();
+#endif
+
+#if ENABLE_LEGACY_INPUT_MANAGER
+        if (standaloneModule == null)
+            standaloneModule = eventSystem.gameObject.AddComponent<StandaloneInputModule>();
+
+        standaloneModule.enabled = true;
 
 #if ENABLE_INPUT_SYSTEM
-        if (eventSystem.GetComponent<InputSystemUIInputModule>() == null)
-            eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+        if (inputSystemModule != null)
+            inputSystemModule.enabled = false;
 #endif
+#else
+        if (standaloneModule != null)
+            standaloneModule.enabled = false;
+
+#if ENABLE_INPUT_SYSTEM
+        if (inputSystemModule == null)
+            inputSystemModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
+
+        inputSystemModule.enabled = true;
+#endif
+#endif
+
+        eventSystem.sendNavigationEvents = true;
+        eventSystem.enabled = true;
+        eventSystem.gameObject.SetActive(true);
     }
 
     private static Canvas FindHudCanvas()

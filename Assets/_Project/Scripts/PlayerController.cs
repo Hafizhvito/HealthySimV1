@@ -76,6 +76,11 @@ public class PlayerController : MonoBehaviour
 
     private Vector3 moveDir;
     private Vector2 rawInput;       // raw input dibaca di Update
+    private Vector2 keyboardInput;  // keyboard input sampled in Update
+    private bool hasKeyboardInput;
+    private Vector2 mobileInput;    // injected from MobileInputController
+    private bool hasMobileInput;    // true when mobile joystick is actively pushed
+    private bool mobileRunRequest;
     private bool isRunning;
     private bool isRunningRaw;      // raw running flag dari Update
     private bool isGrounded;
@@ -145,6 +150,11 @@ public class PlayerController : MonoBehaviour
 
         if (IsInputLocked)
         {
+            keyboardInput = Vector2.zero;
+            hasKeyboardInput = false;
+            mobileInput = Vector2.zero;
+            hasMobileInput = false;
+            mobileRunRequest = false;
             rawInput = Vector2.zero;
             isRunningRaw = false;
             jumpRequest = false;
@@ -153,15 +163,23 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // Baca raw axis
+        // Baca keyboard axis
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
-        if (Mathf.Abs(h) < inputDeadZone) h = 0f;
+        if (Mathf.Abs(h) < inputDeadZone) h = 0f; 
         if (Mathf.Abs(v) < inputDeadZone) v = 0f;
-        rawInput = new Vector2(h, v);
+        keyboardInput = new Vector2(h, v);
+        hasKeyboardInput = keyboardInput.sqrMagnitude > 0.001f;
+
+        // Merge keyboard and mobile; keyboard takes priority when both are active.
+        if (hasMobileInput && mobileInput.sqrMagnitude > 0.001f)
+            rawInput = hasKeyboardInput ? keyboardInput : mobileInput;
+        else
+            rawInput = keyboardInput;
 
         // Running flag (raw, difinalisasi di ProcessMoveDir)
-        isRunningRaw = Input.GetKey(KeyCode.LeftShift);
+        isRunningRaw = Input.GetKey(KeyCode.LeftShift)
+            || (hasMobileInput && mobileRunRequest);
 
         // Cache camera basis di Update agar sinkron dengan update kamera.
         Transform cam = Camera.main != null
@@ -687,17 +705,22 @@ public class PlayerController : MonoBehaviour
 
     public void InjectMobileInput(Vector2 moveInput)
     {
-        if (!IsInputLocked)
-        {
-            rawInput = moveInput;
+        if (IsInputLocked)
+            return;
 
-            bool holdForwardNearMax = moveInput.y >= 0.9f
-                && moveInput.magnitude >= 0.95f
-                && Mathf.Abs(moveInput.x) <= 0.45f;
+        mobileInput = moveInput;
+        hasMobileInput = moveInput.sqrMagnitude > 0.001f;
 
-            // Keep keyboard sprint behavior while allowing mobile forward-hold auto-run.
-            isRunningRaw = isRunningRaw || holdForwardNearMax;
-        }
+        mobileRunRequest = moveInput.y >= 0.9f
+            && moveInput.magnitude >= 0.95f
+            && Mathf.Abs(moveInput.x) <= 0.45f;
+
+        // Apply immediately when keyboard is idle so mobile input never waits for next Update.
+        if (!hasKeyboardInput)
+            rawInput = hasMobileInput ? mobileInput : Vector2.zero;
+
+        if (hasMobileInput && mobileRunRequest)
+            isRunningRaw = true;
     }
 
     public void InjectMobileJump()

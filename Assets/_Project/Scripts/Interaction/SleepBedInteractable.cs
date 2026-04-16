@@ -366,6 +366,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (existing != null)
             return existing;
 
+        existing = FindFirstObjectByType<ClockAnimationUI>(FindObjectsInactive.Include);
+        if (existing != null)
+            return existing;
+
         GameObject clockObj = new GameObject("ClockAnimationUI");
         return clockObj.AddComponent<ClockAnimationUI>();
     }

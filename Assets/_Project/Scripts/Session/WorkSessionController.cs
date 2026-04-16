@@ -82,6 +82,9 @@ public class WorkSessionController : MonoBehaviour
             _dialogueUI = NpcDialogueMenuController.Instance;
 
         if (_dialogueUI == null)
+            _dialogueUI = FindFirstObjectByType<NpcDialogueMenuController>(FindObjectsInactive.Include);
+
+        if (_dialogueUI == null)
         {
             GameObject dialogueObj = new GameObject("NpcDialogueMenuController_Runtime");
             _dialogueUI = dialogueObj.AddComponent<NpcDialogueMenuController>();
@@ -93,6 +96,9 @@ public class WorkSessionController : MonoBehaviour
 
         if (_clockUI == null)
             _clockUI = FindFirstObjectByType<ClockAnimationUI>();
+
+        if (_clockUI == null)
+            _clockUI = FindFirstObjectByType<ClockAnimationUI>(FindObjectsInactive.Include);
 
         if (_clockUI == null)
         {
