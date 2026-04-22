@@ -36,11 +36,16 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] [HideInInspector] private float trainingAdaptation = 0f;
     [SerializeField] [HideInInspector] private float fatigueDebt = 0f;
 
+    [Header("Age Progression (Hidden)")]
+    [SerializeField] [HideInInspector] private int progressionDayCount = 1;
+    [SerializeField] [HideInInspector] private AgeStage currentAgeStage = AgeStage.Youth;
+
     [Header("Energy State Thresholds")]
     [SerializeField] private float warningThreshold = 40f;
     [SerializeField] private float criticalThreshold = 15f;
 
     public enum EnergyState { Normal, Warning, Critical, Fainted }
+    public enum AgeStage { Youth, Adult, Senior }
     private EnergyState currentEnergyState = EnergyState.Normal;
     private float faintTimer = 0f;
     private float faintDuration = 3f;
@@ -62,6 +67,8 @@ public class PlayerStats : MonoBehaviour
     public float TrainingAdaptation => trainingAdaptation;
     public float FatigueDebt => fatigueDebt;
     public float MovementDrainModifier => movementDrainModifier;
+    public int ProgressionDayCount => progressionDayCount;
+    public AgeStage CurrentAgeStage => currentAgeStage;
 
     // Events
     public System.Action<EnergyState> OnEnergyStateChanged;
@@ -69,6 +76,7 @@ public class PlayerStats : MonoBehaviour
     public System.Action<float> OnEnergyChanged;
     public System.Action<float> OnMoodChanged;
     public System.Action<float> OnCaloriesChanged;
+    public System.Action<AgeStage, AgeStage, int> OnAgeStageChanged;
 
     void Awake()
     {
@@ -84,6 +92,7 @@ public class PlayerStats : MonoBehaviour
     void Start()
     {
         CalculateBMI();
+        SyncAgeProgressionFromDay(progressionDayCount);
     }
 
     void Update()
@@ -160,6 +169,31 @@ public class PlayerStats : MonoBehaviour
         movementDrainModifier = Mathf.Clamp(value, 0.75f, 1.25f);
     }
 
+    public bool SyncDayAndTryAdvanceAgeStage(int dayNumber, out AgeStage previousStage, out AgeStage newStage)
+    {
+        progressionDayCount = Mathf.Max(1, dayNumber);
+        previousStage = currentAgeStage;
+        newStage = ResolveAgeStageForDay(progressionDayCount);
+
+        if (newStage == previousStage)
+            return false;
+
+        currentAgeStage = newStage;
+        OnAgeStageChanged?.Invoke(previousStage, newStage, progressionDayCount);
+        return true;
+    }
+
+    public static string GetAgeStageLabelIndonesia(AgeStage stage)
+    {
+        return stage switch
+        {
+            AgeStage.Youth => "Muda",
+            AgeStage.Adult => "Dewasa",
+            AgeStage.Senior => "Lansia",
+            _ => "Muda"
+        };
+    }
+
     void ModifyEnergy(float amount)
     {
         currentEnergy = Mathf.Clamp(currentEnergy + amount, 0f, maxEnergy);
@@ -217,6 +251,24 @@ public class PlayerStats : MonoBehaviour
             float heightInMeters = playerHeight / 100f;
             playerBMI = playerWeight / (heightInMeters * heightInMeters);
         }
+    }
+
+    private void SyncAgeProgressionFromDay(int dayNumber)
+    {
+        progressionDayCount = Mathf.Max(1, dayNumber);
+        currentAgeStage = ResolveAgeStageForDay(progressionDayCount);
+    }
+
+    private static AgeStage ResolveAgeStageForDay(int dayNumber)
+    {
+        int safeDay = Mathf.Max(1, dayNumber);
+        if (safeDay >= 10)
+            return AgeStage.Senior;
+
+        if (safeDay >= 5)
+            return AgeStage.Adult;
+
+        return AgeStage.Youth;
     }
 
     // Called from home screen to set player data before gameplay

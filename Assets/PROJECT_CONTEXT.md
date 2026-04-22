@@ -53,9 +53,11 @@ Ringkasan (ID): Onboarding tim disederhanakan ke alur clone -> open -> compile -
   - Work reminder can only appear after cutscene and sequential tutorial release
   - Sequential tutorial first-show uses a single pending-request gate plus short startup visual lock to avoid startup flicker
 - Sleep flow is period-gated and behavior-aware:
+  - TimeManager day duration is fixed at 230 seconds (3m50s) with proportional quarter splits across morning/afternoon/evening/night
   - Sleep interaction is night-only by default
   - Sleep uses confirm-before-transition UX
   - Recovery can be reduced by disturbed sleep chance based on recent behavior
+  - Aging progression updates on wake after day increment, with stage transitions at day 5 and day 10
   - Next-day movement energy sustainability is applied as hidden `movementDrainModifier` on PlayerStats (clamped 0.75-1.25)
   - Late-wake rule applies energy penalty + narrative warning only, without changing TimeManager schedule
 
@@ -94,6 +96,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - GymDoorInteractable mirrors work-door entry contract with period/energy gating and pending gym session setup
   - GymSessionController runs trainer pre/post dialogue and clock-based session animation before applying progression
   - StoryIntroManager and IntroCutsceneController expose completion events
+  - BackstoryDialogueController shows a one-time character backstory dialogue box immediately after intro cutscene
   - SessionFlowController and StoryManager coordinate progression transitions
 - UI and onboarding:
   - HUDAutoSetup builds runtime HUD and enforces 1920x1080 landscape scaler in its generated canvas
@@ -107,10 +110,17 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - SleepBedInteractable now handles sleep transition UX (confirm, fade, clock skip, wake reminder)
   - SleepBedInteractable now triggers both work and gym day-reset hooks after sleep transition
   - SleepBedInteractable now computes lateWakeChance from behavior signals and applies wake energy penalty without time cut
+  - SleepBedInteractable now triggers aging stage transition checks on wake and uses modal-keyed aging notifications (`aging_notification`)
 
 Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial/reminder yang sadar state cutscene, serta alur tidur dan ekonomi makanan berharga.
 
 ## GYM + WAKE MICRO-STEP NOTES
+
+- Day timeline rescale:
+
+  - Total day duration: 230 seconds (3m50s)
+  - Proportional period thresholds: 57.5s / 115s / 172.5s / 230s
+  - Balancing note: shorter timeline increases decision pressure, so stamina/economy tuning should be validated against this faster cadence
 
 - Nutrient schema:
   - FoodData now exposes protein, fat, and sugar for downstream logic and UI text usage.
@@ -129,6 +139,11 @@ Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial/reminde
   - Final clamp: 0.00 to 0.75
   - Penalty: configurable wake energy deduction (default 15), plus narrative warning line.
   - Explicitly no time cut, no period skip, no morning clock offset.
+- Aging progression thresholds:
+  - Day 1-4: `Youth`
+  - Day 5-9: `Adult`
+  - Day 10+: `Senior`
+  - Trigger point: evaluated on wake immediately after `AdvanceToNextDayFromSleep()`
 - Step skip audit:
   - No implementation step skipped in this pass (all mandatory files were found).
 

@@ -166,7 +166,7 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Rigidbody-based movement in FixedUpdate
   - Strict single jump (grounded-only consume)
   - Step assist for curbs/stairs
-  - Movement energy drain rebalanced for 5-minute loop pacing
+  - Movement energy drain rebalanced for 3m50s loop pacing
   - Sprint drain now ramps up over time (no instant full-drain spike)
   - Camera toggle and dialogue zoom behavior
   - Mobile touch controls are available via runtime-built UI (left move joystick, right look joystick, top-right interact button) for Android and Editor force-test mode
@@ -209,16 +209,19 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Sleep day-reset now clears gym daily lock and applies overnight fatigue recovery
 - Intro and tutorial onboarding:
   - Intro cutscene sequence and completion events
+  - One-time character backstory dialogue box appears right after intro cutscene completion
   - Sequential tutorial panel after intro
   - Contextual tutorial toast queue (NPC/energy/food/work conditions)
   - Sequential/contextual tutorial and work reminder are suppressed while cutscene is active
   - Work reminder now appears only after cutscene and sequential tutorial have both finished
   - Sequential tutorial first-show flow now uses a single pending request path with short startup visual lock to prevent initial flicker
 - Sleep loop and day transition:
+  - In-game day duration is fixed to 230 seconds (3 minutes 50 seconds) and split proportionally across morning/afternoon/evening/night
   - Sleep is night-gated and uses a confirmation step before transition
   - Sleep transition uses fade plus clock time-skip animation
   - Sleep quality can be disturbed probabilistically based on recent work and food behavior
   - Wake message summarizes day change and relevant warnings
+  - Aging progression triggers on wake at day 5 (Adult) and day 10 (Senior), with modal narrative notification
   - Next-day movement drain now supports hidden gym-based sustainability modifier (`movementDrainModifier`, no HUD exposure)
   - Late-wake consequence applies energy penalty + narrative warning only (no time cut, no period skip)
 

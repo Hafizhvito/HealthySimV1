@@ -9,7 +9,7 @@ public class TimeManager : MonoBehaviour
     };
 
     [Header("Time Settings")]
-    [SerializeField] private float totalGameDuration = 300f; // 5 minutes
+    [SerializeField] private float totalGameDuration = 230f; // 3 minutes 50 seconds
     private float currentGameTime = 0f;
     private bool isRunning = false;
     [SerializeField] private int currentDayNumber = 1;
@@ -19,9 +19,9 @@ public class TimeManager : MonoBehaviour
     private TimePeriod currentPeriod = TimePeriod.Morning;
 
     // Time period thresholds (in seconds)
-    private float morningEnd = 75f;
-    private float afternoonEnd = 150f;
-    private float eveningEnd = 225f;
+    private float morningEnd;
+    private float afternoonEnd;
+    private float eveningEnd;
 
     // Public getters
     public float CurrentTime => currentGameTime;
@@ -46,6 +46,13 @@ public class TimeManager : MonoBehaviour
             return;
         }
         Instance = this;
+        SyncPeriodThresholdsFromTotalDuration();
+    }
+
+    void OnValidate()
+    {
+        totalGameDuration = Mathf.Max(1f, totalGameDuration);
+        SyncPeriodThresholdsFromTotalDuration();
     }
 
     void Start()
@@ -70,6 +77,7 @@ public class TimeManager : MonoBehaviour
 
     public void StartGame()
     {
+        SyncPeriodThresholdsFromTotalDuration();
         currentGameTime = 0f;
         isRunning = true;
         currentPeriod = TimePeriod.Morning;
@@ -110,6 +118,15 @@ public class TimeManager : MonoBehaviour
             currentPeriod = newPeriod;
             OnPeriodChanged?.Invoke(currentPeriod);
         }
+    }
+
+    private void SyncPeriodThresholdsFromTotalDuration()
+    {
+        // Keep 4 periods proportionally equal against total day duration.
+        float quarter = totalGameDuration * 0.25f;
+        morningEnd = quarter;
+        afternoonEnd = quarter * 2f;
+        eveningEnd = quarter * 3f;
     }
 
     // Returns time period name in Indonesian

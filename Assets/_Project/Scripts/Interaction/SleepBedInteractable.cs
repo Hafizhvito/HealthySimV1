@@ -79,6 +79,11 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] private string wakeWarningLowEnergy = "Peringatan: Kemarin kamu tidur saat energi sangat rendah.";
     [SerializeField] private string wakeWarningDisturbedSleep = "Peringatan: Tidurmu kurang nyenyak, jadi energimu belum pulih penuh.";
 
+    [Header("Aging Transition")]
+    [SerializeField] private float agingNotificationDuration = 3.2f;
+    [SerializeField] private string agingNotificationTemplate = "Tubuhmu memasuki fase {0} pada Hari {1}.";
+    [SerializeField] private string agingNotificationDetailTemplate = "Transisi dari fase {0} ke {1}.";
+
     [Header("Late Wake Penalty (Energy + Narrative Only)")]
     [SerializeField] private bool enableLateWakePenalty = true;
     [SerializeField] [Range(0f, 1f)] private float sugarSignalWeight = 0.15f;
@@ -114,6 +119,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private float blockedWindowStartTime = -999f;
     private int blockedClickCount;
     private float confirmExpiresAt = -999f;
+    private const string AgingNotificationModalKey = "aging_notification";
 
     private void Awake()
     {
@@ -233,6 +239,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         timeManager.AdvanceToNextDayFromSleep();
         string wakeDayName = timeManager.GetDayNameIndonesia();
+        bool ageStageChanged = playerStats.SyncDayAndTryAdvanceAgeStage(
+            timeManager.CurrentDayNumber,
+            out PlayerStats.AgeStage previousAgeStage,
+            out PlayerStats.AgeStage newAgeStage);
 
         if (workSessionManager != null)
             workSessionManager.NotifyDayResetFromSleep();
@@ -263,6 +273,12 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         if (playerController != null)
             playerController.UnlockInput(sleepLockSource);
+
+        if (ageStageChanged)
+        {
+            string agingMessage = BuildAgingTransitionMessage(previousAgeStage, newAgeStage, timeManager.CurrentDayNumber);
+            yield return StartCoroutine(ShowAgingNotificationRoutine(agingMessage, agingNotificationDuration));
+        }
 
         ShowWakeMessage(BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep, disturbedSleep, lateWakePenaltyTriggered), wakeMessageDuration);
 
@@ -625,6 +641,34 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             return intro + "\n" + string.Join("\n", warnings);
 
         return intro + "\nIstirahatmu cukup. Lanjutkan harimu dengan pilihan sehat.";
+    }
+
+    private string BuildAgingTransitionMessage(PlayerStats.AgeStage previousStage, PlayerStats.AgeStage newStage, int dayNumber)
+    {
+        string fromLabel = PlayerStats.GetAgeStageLabelIndonesia(previousStage);
+        string toLabel = PlayerStats.GetAgeStageLabelIndonesia(newStage);
+
+        string headline = string.Format(
+            agingNotificationTemplate,
+            toLabel,
+            Mathf.Max(1, dayNumber));
+
+        string detail = string.Format(agingNotificationDetailTemplate, fromLabel, toLabel);
+        return headline + "\n" + detail;
+    }
+
+    private IEnumerator ShowAgingNotificationRoutine(string message, float duration)
+    {
+        float safeDuration = Mathf.Max(0.5f, duration);
+
+        if (ModalStateManager.Instance != null)
+            ModalStateManager.Instance.OpenModal(AgingNotificationModalKey);
+
+        ShowWakeMessage(message, safeDuration);
+        yield return new WaitForSecondsRealtime(safeDuration);
+
+        if (ModalStateManager.Instance != null)
+            ModalStateManager.Instance.CloseModal(AgingNotificationModalKey);
     }
 
     private void ShowWakeMessage(string message, float duration)
