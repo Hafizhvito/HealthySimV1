@@ -19,7 +19,7 @@ public class WorkReminderUI : MonoBehaviour
     private Button dismissButton;
     private TextMeshProUGUI hudWorkIndicator;
     private TextMeshProUGUI hudMoneyIndicator;
-
+    private bool reminderHasShownOnce;
     private Coroutine dismissRoutine;
     private Coroutine resumeRoutine;
     private bool reminderSuppressedByTutorial;
@@ -80,6 +80,10 @@ public class WorkReminderUI : MonoBehaviour
         if (reminderDismissed)
             yield break;
 
+        // Reset flag ini supaya HandleTutorialSuppression tidak re-show lagi
+        reminderSuppressedByTutorial = false;
+        reminderHasShownOnce = true;
+
         RefreshReminderContent();
         yield return StartCoroutine(FadePanel(1f, fadeDuration));
 
@@ -128,6 +132,9 @@ public class WorkReminderUI : MonoBehaviour
         reminderSuppressedByTutorial = false;
 
         if (reminderDismissed)
+            return;
+
+        if (reminderHasShownOnce)
             return;
 
         if (WorkSessionManager.Instance != null && WorkSessionManager.Instance.HasWorkedToday)

@@ -6439,7 +6439,7 @@ MonoBehaviour:
   chanceIfPoorDiet: 0.15
   disturbedRecoveryNormalized: 0.65
   poorDietThresholdDelta: 2
-  requireNightToSleep: 1
+  requireNightToSleep: 0
   clockSkipDuration: 2.7
   fadeDuration: 0.33
   sleepLockSource: SleepTransition
@@ -10683,9 +10683,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Lanjut
+  m_text: "Lanjut \u2192"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: a499339ef4813fd40b008dca5bfefda3, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 77c15df293f14d3448e02a34caee03c4, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: a499339ef4813fd40b008dca5bfefda3, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -19268,6 +19268,8 @@ MonoBehaviour:
   _money: 500
   trainingAdaptation: 0
   fatigueDebt: 0
+  healthScoreThisPhase: 50
+  phaseCarryOverModifier: 1
   progressionDayCount: 1
   currentAgeStage: 0
   warningThreshold: 40

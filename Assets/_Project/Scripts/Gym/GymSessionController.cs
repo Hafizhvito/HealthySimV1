@@ -79,6 +79,7 @@ public class GymSessionController : MonoBehaviour
             yield return null;
 
         progression.ApplyResult(activeSession);
+        PlayerStats.Instance?.RegisterHealthScore(10f);
 
         DialogueGraphData postDialogue = trainerDialogueController.BuildPostTrainingDialogue(activeSession);
         yield return StartCoroutine(PlayDialogueAndWait(postDialogue));

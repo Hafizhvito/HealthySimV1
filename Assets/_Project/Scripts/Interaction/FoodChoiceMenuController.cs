@@ -254,7 +254,11 @@ public class FoodChoiceMenuController : MonoBehaviour
             return;
 
         if (PlayerStats.Instance != null)
+        {
+            FoodData currentFood = food;
             PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect);
+            PlayerStats.Instance?.RegisterHealthScore(currentFood.isHealthy ? 5f : -5f);
+        }
 
         if (StoryManager.Instance != null)
             StoryManager.Instance.OnFoodEaten(food);
@@ -336,6 +340,7 @@ public class FoodChoiceMenuController : MonoBehaviour
             PlayerStats.Instance.SpendMoney(price);
 
         PlayerStats.Instance.AddFood(homeQuickDrinkEnergy, homeQuickDrinkCalories, homeQuickDrinkMood);
+        PlayerStats.Instance?.RegisterHealthScore(5f);
 
         if (PlayerActionTracker.Instance != null)
             PlayerActionTracker.Instance.Track(PlayerActionTracker.ActionType.HealthyFoodTaken, "HomeQuickDrink");

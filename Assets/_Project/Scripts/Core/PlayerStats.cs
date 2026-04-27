@@ -35,6 +35,8 @@ public class PlayerStats : MonoBehaviour
     [Header("Gym Progression (Hidden)")]
     [SerializeField] [HideInInspector] private float trainingAdaptation = 0f;
     [SerializeField] [HideInInspector] private float fatigueDebt = 0f;
+    [SerializeField] [HideInInspector] private float healthScoreThisPhase = 50f;
+    [SerializeField] [HideInInspector] private float phaseCarryOverModifier = 1.0f;
 
     [Header("Age Progression (Hidden)")]
     [SerializeField] [HideInInspector] private int progressionDayCount = 1;
@@ -66,6 +68,7 @@ public class PlayerStats : MonoBehaviour
     public int Money => _money;
     public float TrainingAdaptation => trainingAdaptation;
     public float FatigueDebt => fatigueDebt;
+    public float HealthScoreThisPhase => healthScoreThisPhase;
     public float MovementDrainModifier => movementDrainModifier;
     public int ProgressionDayCount => progressionDayCount;
     public AgeStage CurrentAgeStage => currentAgeStage;
@@ -138,6 +141,12 @@ public class PlayerStats : MonoBehaviour
         OnCaloriesChanged?.Invoke(totalCaloriesConsumed);
     }
 
+    public void ResetDailyCalories()
+    {
+        totalCaloriesConsumed = 0f;
+        OnCaloriesChanged?.Invoke(totalCaloriesConsumed);
+    }
+
     // Reduces current energy by normalized amount [0..1] of max energy.
     public void DrainEnergy(float normalizedAmount)
     {
@@ -164,6 +173,11 @@ public class PlayerStats : MonoBehaviour
         fatigueDebt = Mathf.Clamp(fatigueDebt + fatigueDelta, 0f, 100f);
     }
 
+    public void RegisterHealthScore(float delta)
+    {
+        healthScoreThisPhase = Mathf.Clamp(healthScoreThisPhase + delta, 0f, 100f);
+    }
+
     public void SetMovementDrainModifier(float value)
     {
         movementDrainModifier = Mathf.Clamp(value, 0.75f, 1.25f);
@@ -179,6 +193,18 @@ public class PlayerStats : MonoBehaviour
             return false;
 
         currentAgeStage = newStage;
+
+        if (healthScoreThisPhase > 70f)
+            phaseCarryOverModifier = 1.1f;
+        else if (healthScoreThisPhase < 40f)
+            phaseCarryOverModifier = 0.9f;
+        else
+            phaseCarryOverModifier = 1.0f;
+
+        maxEnergy = Mathf.Clamp(maxEnergy * phaseCarryOverModifier, 60f, 150f);
+        healthScoreThisPhase = 50f;
+
+        Debug.Log($"[PlayerStats] Phase transition {previousStage}→{newStage}, score={healthScoreThisPhase}, modifier={phaseCarryOverModifier}, newMaxEnergy={maxEnergy}");
         OnAgeStageChanged?.Invoke(previousStage, newStage, progressionDayCount);
         return true;
     }

@@ -115,17 +115,24 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private Canvas sleepCinematicCanvas;
     private CanvasGroup sleepCinematicCanvasGroup;
     private TextMeshProUGUI sleepCinematicText;
+    private RectTransform agingPanelRoot;
+    private CanvasGroup agingPanelGroup;
+    private TextMeshProUGUI agingPanelTitleText;
+    private TextMeshProUGUI agingPanelBodyText;
+    private Button agingPanelContinueButton;
     private float lastBlockedWarningTime = -999f;
     private float blockedWindowStartTime = -999f;
     private int blockedClickCount;
     private float confirmExpiresAt = -999f;
-    private const string AgingNotificationModalKey = "aging_notification";
+    private const string AgingNotificationModalKey = "aging_panel";
 
     private void Awake()
     {
         cachedCollider = GetComponent<Collider>();
         if (cachedCollider == null)
             cachedCollider = GetComponentInChildren<Collider>();
+
+        ResolveAgingPanelFromScene();
     }
 
     private void OnEnable()
@@ -207,6 +214,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         bool trainedYesterday = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
         float adaptationBeforeSleep = playerStats.TrainingAdaptation;
         float fatigueBeforeSleep = playerStats.FatigueDebt;
+        float scoreBeforeTransition = playerStats.HealthScoreThisPhase;
         bool overworkedYesterday = workedYesterday && DidOverworkYesterday(workSessionManager);
         bool poorDietYesterday = HasPoorDietPattern();
         bool disturbedSleep = RollSleepDisturbance(workedYesterday, overworkedYesterday, poorDietYesterday);
@@ -276,8 +284,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         if (ageStageChanged)
         {
-            string agingMessage = BuildAgingTransitionMessage(previousAgeStage, newAgeStage, timeManager.CurrentDayNumber);
-            yield return StartCoroutine(ShowAgingNotificationRoutine(agingMessage, agingNotificationDuration));
+            yield return StartCoroutine(ShowAgingNotificationRoutine(newAgeStage, scoreBeforeTransition));
         }
 
         ShowWakeMessage(BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep, disturbedSleep, lateWakePenaltyTriggered), wakeMessageDuration);
@@ -296,6 +303,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         if (recovery > 0.01f)
             stats.AddFood(recovery, 0f, 0f);
+
+        PlayerStats.Instance?.RegisterHealthScore(disturbedSleep ? -3f : +3f);
+
+        stats.ResetDailyCalories(); 
     }
 
     private void ApplyNextDayMovementDrainModifier(PlayerStats stats, bool trainedYesterday, float adaptationBeforeSleep, float fatigueBeforeSleep)
@@ -643,7 +654,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         return intro + "\nIstirahatmu cukup. Lanjutkan harimu dengan pilihan sehat.";
     }
 
-    private string BuildAgingTransitionMessage(PlayerStats.AgeStage previousStage, PlayerStats.AgeStage newStage, int dayNumber)
+    private string BuildAgingTransitionMessage(PlayerStats.AgeStage previousStage, PlayerStats.AgeStage newStage, int dayNumber, float phaseScore)
     {
         string fromLabel = PlayerStats.GetAgeStageLabelIndonesia(previousStage);
         string toLabel = PlayerStats.GetAgeStageLabelIndonesia(newStage);
@@ -654,21 +665,280 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             Mathf.Max(1, dayNumber));
 
         string detail = string.Format(agingNotificationDetailTemplate, fromLabel, toLabel);
-        return headline + "\n" + detail;
+        string narrative;
+        if (phaseScore > 70f)
+            narrative = "Kebiasaan sehatmu di fase ini terbayar. Tubuhmu memasuki fase baru dengan lebih kuat.";
+        else if (phaseScore >= 40f)
+            narrative = "Ada beberapa kebiasaan yang perlu diperbaiki. Fase berikutnya memberi kesempatan baru.";
+        else
+            narrative = "Pola hidupmu di fase ini berdampak. Fase berikutnya akan terasa lebih berat.";
+
+        return headline + "\n" + detail + "\n\n" + narrative;
     }
 
-    private IEnumerator ShowAgingNotificationRoutine(string message, float duration)
+    private IEnumerator ShowAgingNotificationRoutine(PlayerStats.AgeStage newStage, float phaseScore)
     {
-        float safeDuration = Mathf.Max(0.5f, duration);
+        EnsureAgingNotificationPanel();
+        if (agingPanelRoot == null || agingPanelGroup == null || agingPanelTitleText == null || agingPanelBodyText == null || agingPanelContinueButton == null)
+            yield break;
 
         if (ModalStateManager.Instance != null)
             ModalStateManager.Instance.OpenModal(AgingNotificationModalKey);
 
-        ShowWakeMessage(message, safeDuration);
-        yield return new WaitForSecondsRealtime(safeDuration);
+        bool continueClicked = false;
 
-        if (ModalStateManager.Instance != null)
-            ModalStateManager.Instance.CloseModal(AgingNotificationModalKey);
+        try
+        {
+            agingPanelRoot.SetAsLastSibling();
+            agingPanelRoot.gameObject.SetActive(true);
+            agingPanelGroup.alpha = 1f;
+            agingPanelGroup.blocksRaycasts = true;
+            agingPanelGroup.interactable = true;
+
+            agingPanelTitleText.text = $"Memasuki Usia {PlayerStats.GetAgeStageLabelIndonesia(newStage)}";
+            agingPanelBodyText.text = string.Empty;
+            agingPanelContinueButton.onClick.RemoveAllListeners();
+            agingPanelContinueButton.onClick.AddListener(() => continueClicked = true);
+            agingPanelContinueButton.interactable = false;
+
+            string narrative = BuildAgingPanelNarrative(phaseScore);
+            float visibleCharacters = 0f;
+            const float charsPerSecond = 40f;
+
+            while (visibleCharacters < narrative.Length)
+            {
+                visibleCharacters += charsPerSecond * Time.unscaledDeltaTime;
+                int shownCount = Mathf.Clamp(Mathf.FloorToInt(visibleCharacters), 0, narrative.Length);
+                agingPanelBodyText.text = narrative.Substring(0, shownCount);
+                yield return null;
+            }
+
+            agingPanelBodyText.text = narrative;
+            agingPanelContinueButton.interactable = true;
+
+            while (!continueClicked)
+                yield return null;
+        }
+        finally
+        {
+            if (agingPanelContinueButton != null)
+                agingPanelContinueButton.onClick.RemoveAllListeners();
+
+            if (agingPanelGroup != null)
+            {
+                agingPanelGroup.alpha = 0f;
+                agingPanelGroup.blocksRaycasts = false;
+                agingPanelGroup.interactable = false;
+            }
+
+            if (agingPanelRoot != null)
+                agingPanelRoot.gameObject.SetActive(false);
+
+            if (ModalStateManager.Instance != null)
+                ModalStateManager.Instance.CloseModal(AgingNotificationModalKey);
+        }
+    }
+
+    private string BuildAgingPanelNarrative(float phaseScore)
+    {
+        bool worked = WorkSessionManager.Instance != null && WorkSessionManager.Instance.HasWorkedToday;
+        bool exercised = GymProgressionSystem.Instance != null && GymProgressionSystem.Instance.HasTrainedToday;
+
+        if (phaseScore > 70f && worked && exercised)
+            return "Hidupmu di fase ini seimbang — kerja, gerak, dan makan terjaga. Tubuhmu memasuki fase berikutnya dalam kondisi terbaik.";
+
+        if (phaseScore > 70f && worked && !exercised)
+            return "Pekerja keras, tapi kurang bergerak. Nutrisimu baik, namun tubuhmu butuh aktivitas fisik lebih konsisten.";
+
+        if (phaseScore > 70f && !worked && exercised)
+            return "Tubuhmu aktif dan terawat, tapi stabilitas finansialmu perlu perhatian. Keseimbangan hidup bukan hanya soal fisik.";
+
+        if (phaseScore < 40f && !worked && !exercised)
+            return "Fase ini banyak dilewatkan tanpa aktivitas berarti. Dampaknya mulai terasa — tubuhmu meminta perhatian lebih serius.";
+
+        if (phaseScore < 40f && worked)
+            return "Kamu bekerja keras, tapi pola makanmu belum mendukung. Energimu terkuras lebih dari yang seharusnya.";
+
+        return "Ada kemajuan, tapi masih banyak ruang untuk berkembang. Fase berikutnya adalah kesempatan untuk lebih konsisten.";
+    }
+
+    private static TMP_FontAsset LoadAgingPanelFont(string resourcePath)
+    {
+        TMP_FontAsset fontAsset = Resources.Load<TMP_FontAsset>(resourcePath);
+        if (fontAsset != null)
+            return fontAsset;
+
+        return TMP_Settings.defaultFontAsset;
+    }
+
+    private void EnsureAgingNotificationPanel()
+    {
+        if (agingPanelRoot != null && agingPanelGroup != null && agingPanelTitleText != null && agingPanelBodyText != null && agingPanelContinueButton != null)
+            return;
+
+        ResolveAgingPanelFromScene();
+    }
+
+    private void ResolveAgingPanelFromScene()
+    {
+        GameObject canvasObj = new GameObject("AgingNotificationCanvas",
+            typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
+
+        Canvas canvas = canvasObj.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 200;
+
+        CanvasScaler scaler = canvasObj.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f;
+
+        agingPanelGroup = canvasObj.GetComponent<CanvasGroup>();
+        agingPanelGroup.alpha = 0f;
+        agingPanelGroup.blocksRaycasts = false;
+        agingPanelGroup.interactable = false;
+
+        agingPanelRoot = canvasObj.GetComponent<RectTransform>();
+
+        BuildAgingPanelChildren(agingPanelRoot);
+
+        canvasObj.SetActive(false);
+    }
+
+    private void BuildAgingPanelChildren(RectTransform root)
+    {
+        // Hapus semua child lama kalau ada
+        for (int i = root.childCount - 1; i >= 0; i--)
+            Destroy(root.GetChild(i).gameObject);
+
+        // Fullscreen overlay gelap
+        GameObject overlay = new GameObject("Overlay", typeof(RectTransform), typeof(Image));
+        overlay.transform.SetParent(root, false);
+        RectTransform overlayRect = overlay.GetComponent<RectTransform>();
+        overlayRect.anchorMin = Vector2.zero;
+        overlayRect.anchorMax = Vector2.one;
+        overlayRect.offsetMin = Vector2.zero;
+        overlayRect.offsetMax = Vector2.zero;
+        overlay.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.75f);
+        overlay.GetComponent<Image>().raycastTarget = true;
+
+        // Shadow card
+        GameObject shadow = new GameObject("Shadow", typeof(RectTransform), typeof(Image));
+        shadow.transform.SetParent(root, false);
+        RectTransform shadowRect = shadow.GetComponent<RectTransform>();
+        shadowRect.anchorMin = new Vector2(0.5f, 0.5f);
+        shadowRect.anchorMax = new Vector2(0.5f, 0.5f);
+        shadowRect.pivot = new Vector2(0.5f, 0.5f);
+        shadowRect.anchoredPosition = new Vector2(6f, -6f);
+        shadowRect.sizeDelta = new Vector2(764f, 424f);
+        shadow.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.3f);
+        shadow.GetComponent<Image>().raycastTarget = false;
+
+        // Card utama
+        GameObject card = new GameObject("Card", typeof(RectTransform), typeof(Image));
+        card.transform.SetParent(root, false);
+        RectTransform cardRect = card.GetComponent<RectTransform>();
+        cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+        cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+        cardRect.pivot = new Vector2(0.5f, 0.5f);
+        cardRect.anchoredPosition = Vector2.zero;
+        cardRect.sizeDelta = new Vector2(760f, 420f);
+        card.GetComponent<Image>().color = Color.white;
+        card.GetComponent<Image>().raycastTarget = true;
+
+        // Accent bar kiri
+        GameObject accent = new GameObject("AccentBar", typeof(RectTransform), typeof(Image));
+        accent.transform.SetParent(card.transform, false);
+        RectTransform accentRect = accent.GetComponent<RectTransform>();
+        accentRect.anchorMin = new Vector2(0f, 0f);
+        accentRect.anchorMax = new Vector2(0f, 1f);
+        accentRect.pivot = new Vector2(0f, 0.5f);
+        accentRect.offsetMin = Vector2.zero;
+        accentRect.offsetMax = new Vector2(6f, 0f);
+        accentRect.sizeDelta = new Vector2(6f, 0f);
+        accent.GetComponent<Image>().color = new Color32(0x21, 0x96, 0xF3, 0xFF);
+        accent.GetComponent<Image>().raycastTarget = false;
+
+        // Title text
+        GameObject titleGo = new GameObject("AgingTitleText", typeof(RectTransform), typeof(TextMeshProUGUI));
+        titleGo.transform.SetParent(card.transform, false);
+        RectTransform titleRect = titleGo.GetComponent<RectTransform>();
+        titleRect.anchorMin = new Vector2(0.5f, 1f);
+        titleRect.anchorMax = new Vector2(0.5f, 1f);
+        titleRect.pivot = new Vector2(0.5f, 1f);
+        titleRect.anchoredPosition = new Vector2(0f, -36f);
+        titleRect.sizeDelta = new Vector2(680f, 56f);
+        agingPanelTitleText = titleGo.GetComponent<TextMeshProUGUI>();
+        agingPanelTitleText.fontSize = 34f;
+        agingPanelTitleText.fontStyle = FontStyles.Bold;
+        agingPanelTitleText.color = new Color32(0x1A, 0x1A, 0x2E, 0xFF);
+        agingPanelTitleText.alignment = TextAlignmentOptions.Center;
+        agingPanelTitleText.textWrappingMode = TextWrappingModes.Normal;
+        agingPanelTitleText.overflowMode = TextOverflowModes.Overflow;
+        agingPanelTitleText.text = string.Empty;
+
+        // Divider
+        GameObject divider = new GameObject("Divider", typeof(RectTransform), typeof(Image));
+        divider.transform.SetParent(card.transform, false);
+        RectTransform dividerRect = divider.GetComponent<RectTransform>();
+        dividerRect.anchorMin = new Vector2(0.5f, 1f);
+        dividerRect.anchorMax = new Vector2(0.5f, 1f);
+        dividerRect.pivot = new Vector2(0.5f, 1f);
+        dividerRect.anchoredPosition = new Vector2(0f, -100f);
+        dividerRect.sizeDelta = new Vector2(640f, 2f);
+        divider.GetComponent<Image>().color = new Color32(0xE0, 0xE0, 0xE0, 0xFF);
+        divider.GetComponent<Image>().raycastTarget = false;
+
+        // Body text
+        GameObject bodyGo = new GameObject("AgingBodyText", typeof(RectTransform), typeof(TextMeshProUGUI));
+        bodyGo.transform.SetParent(card.transform, false);
+        RectTransform bodyRect = bodyGo.GetComponent<RectTransform>();
+        bodyRect.anchorMin = new Vector2(0.5f, 1f);
+        bodyRect.anchorMax = new Vector2(0.5f, 1f);
+        bodyRect.pivot = new Vector2(0.5f, 1f);
+        bodyRect.anchoredPosition = new Vector2(0f, -118f);
+        bodyRect.sizeDelta = new Vector2(680f, 230f);
+        agingPanelBodyText = bodyGo.GetComponent<TextMeshProUGUI>();
+        agingPanelBodyText.fontSize = 20f;
+        agingPanelBodyText.fontStyle = FontStyles.Normal;
+        agingPanelBodyText.color = new Color32(0x33, 0x33, 0x33, 0xFF);
+        agingPanelBodyText.alignment = TextAlignmentOptions.Center;
+        agingPanelBodyText.textWrappingMode = TextWrappingModes.Normal;
+        agingPanelBodyText.overflowMode = TextOverflowModes.Overflow;
+        agingPanelBodyText.lineSpacing = 4f;
+        agingPanelBodyText.text = string.Empty;
+
+        // Lanjut button
+        GameObject btnGo = new GameObject("AgingLanjutButton",
+            typeof(RectTransform), typeof(Image), typeof(Button));
+        btnGo.transform.SetParent(card.transform, false);
+        RectTransform btnRect = btnGo.GetComponent<RectTransform>();
+        btnRect.anchorMin = new Vector2(1f, 0f);
+        btnRect.anchorMax = new Vector2(1f, 0f);
+        btnRect.pivot = new Vector2(1f, 0f);
+        btnRect.anchoredPosition = new Vector2(-30f, 28f);
+        btnRect.sizeDelta = new Vector2(180f, 52f);
+        btnGo.GetComponent<Image>().color = new Color32(0x21, 0x96, 0xF3, 0xFF);
+        agingPanelContinueButton = btnGo.GetComponent<Button>();
+        agingPanelContinueButton.targetGraphic = btnGo.GetComponent<Image>();
+
+        // Button text
+        GameObject btnText = new GameObject("ButtonText", typeof(RectTransform), typeof(TextMeshProUGUI));
+        btnText.transform.SetParent(btnGo.transform, false);
+        RectTransform btnTextRect = btnText.GetComponent<RectTransform>();
+        btnTextRect.anchorMin = Vector2.zero;
+        btnTextRect.anchorMax = Vector2.one;
+        btnTextRect.offsetMin = Vector2.zero;
+        btnTextRect.offsetMax = Vector2.zero;
+        TextMeshProUGUI btnTmp = btnText.GetComponent<TextMeshProUGUI>();
+        btnTmp.text = "Lanjut →";
+        btnTmp.fontSize = 20f;
+        btnTmp.fontStyle = FontStyles.Bold;
+        btnTmp.color = Color.white;
+        btnTmp.alignment = TextAlignmentOptions.Center;
+        btnTmp.textWrappingMode = TextWrappingModes.Normal;
+        btnTmp.overflowMode = TextOverflowModes.Overflow;
     }
 
     private void ShowWakeMessage(string message, float duration)

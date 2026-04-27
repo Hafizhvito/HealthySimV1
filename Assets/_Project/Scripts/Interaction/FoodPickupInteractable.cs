@@ -158,7 +158,9 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
         if (!TrySpendForFood(food, out int chargedPrice))
             return;
 
+        FoodData foodData = food;
         PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect);
+        PlayerStats.Instance?.RegisterHealthScore(foodData.isHealthy ? 5f : -5f);
 
         if (PlayerActionTracker.Instance != null)
         {

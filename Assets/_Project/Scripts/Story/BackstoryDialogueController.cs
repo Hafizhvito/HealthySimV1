@@ -507,7 +507,7 @@ public class BackstoryDialogueController : MonoBehaviour
         Image buttonImage = cardContinueButton.GetComponent<Image>();
         buttonImage.color = new Color32(0x21, 0x96, 0xF3, 0xFF);
 
-        TextMeshProUGUI continueText = EnsureTmpText(cardContinueButton.transform, "ContinueButtonText");
+        TextMeshProUGUI continueText = EnsureTmpText(cardContinueButton.transform, "ButtonText");
         RectTransform continueRect = continueText.rectTransform;
         continueRect.anchorMin = Vector2.zero;
         continueRect.anchorMax = Vector2.one;

@@ -66,6 +66,7 @@ public class TutorialSequentialUI : MonoBehaviour
 
     private IntroCutsceneController introCutsceneController;
     private StoryIntroManager storyIntroManager;
+    private BackstoryDialogueController backstoryDialogueController;
     private PlayerController playerController;
 
     private Coroutine flowRoutine;
@@ -79,6 +80,7 @@ public class TutorialSequentialUI : MonoBehaviour
     private bool pendingShowRequest;
     private bool showScheduled;
     private bool startupReady;
+    private bool backstoryDone = false;
 
     private void Awake()
     {
@@ -112,6 +114,7 @@ public class TutorialSequentialUI : MonoBehaviour
         showScheduled = false;
 
         playerController = FindFirstObjectByType<PlayerController>();
+        HookBackstoryCompletionEvents();
 
         if (!IsInSampleScene())
             return;
@@ -127,6 +130,7 @@ public class TutorialSequentialUI : MonoBehaviour
     private void OnDisable()
     {
         UnhookIntroCompletionEvents();
+        UnhookBackstoryCompletionEvents();
         ReleaseGameplayLockAndCursor();
 
         if (flowRoutine != null)
@@ -161,7 +165,7 @@ public class TutorialSequentialUI : MonoBehaviour
             return;
         }
 
-        if (pendingShowRequest && !_hasShown && !IsSequentialVisible && flowRoutine == null)
+        if (pendingShowRequest && backstoryDone && !_hasShown && !IsSequentialVisible && flowRoutine == null)
             Show();
     }
 
@@ -172,6 +176,12 @@ public class TutorialSequentialUI : MonoBehaviour
 
         if (_hasShown || IsSequentialVisible)
             return;
+
+        if (!backstoryDone)
+        {
+            pendingShowRequest = true;
+            return;
+        }
 
         if (!startupReady)
         {
@@ -208,6 +218,9 @@ public class TutorialSequentialUI : MonoBehaviour
     private IEnumerator FallbackShowRoutine()
     {
         yield return new WaitForSecondsRealtime(fallbackDelayWhenNoIntroEvent);
+
+        if (!backstoryDone)
+            yield break;
 
         if (_hasShown)
             yield break;
@@ -276,7 +289,7 @@ public class TutorialSequentialUI : MonoBehaviour
 
     private void HandleIntroOrCutsceneCompleted()
     {
-        if (_hasShown || IsSequentialVisible || !IsInSampleScene())
+        if (!backstoryDone || _hasShown || IsSequentialVisible || !IsInSampleScene())
             return;
 
         if (showScheduled)
@@ -288,6 +301,36 @@ public class TutorialSequentialUI : MonoBehaviour
             StopCoroutine(flowRoutine);
 
         flowRoutine = StartCoroutine(ShowAfterIntroCompleteDelayRoutine());
+    }
+
+    private void HookBackstoryCompletionEvents()
+    {
+        backstoryDialogueController = FindFirstObjectByType<BackstoryDialogueController>(FindObjectsInactive.Include);
+        if (backstoryDialogueController != null)
+        {
+            backstoryDone = false;
+            backstoryDialogueController.OnDialogueComplete += HandleBackstoryCompleted;
+            return;
+        }
+
+        backstoryDone = true;
+    }
+
+    private void UnhookBackstoryCompletionEvents()
+    {
+        if (backstoryDialogueController != null)
+            backstoryDialogueController.OnDialogueComplete -= HandleBackstoryCompleted;
+
+        backstoryDialogueController = null;
+    }
+
+    private void HandleBackstoryCompleted()
+    {
+        backstoryDone = true;
+        
+
+        if (!_hasShown && !IsSequentialVisible && IsInSampleScene())
+            HandleIntroOrCutsceneCompleted();
     }
 
     private IEnumerator ShowAfterIntroCompleteDelayRoutine()
