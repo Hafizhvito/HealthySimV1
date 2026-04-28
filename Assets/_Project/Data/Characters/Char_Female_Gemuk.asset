@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d8b0a0566614df9b81b90da44e3f8e4, type: 3}
+  m_Name: Char_Female_Gemuk
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  characterName: Dina
+  startingAge: 18
+  backstoryText: "Sejak kuliah, Dina terbiasa makan seadanya dan sesukanya \u2014
+    mi instan, junk food delivery, dan kopi manis jadi sahabat skripsi.\n\nKebiasaan
+    itu tidak berhenti setelah lulus. Di dunia kerja, makanan jadi cara ia bertahan
+    dari tekanan: cepat, enak, dan tidak perlu dipikir.\n\nKini berat badannya naik
+    perlahan tapi pasti, energinya sering anjlok di sore hari, dan tidurnya tidak
+    pernah terasa cukup.\n\nDina tidak butuh diet ekstrem \u2014 ia butuh pola hidup
+    yang bisa ia pertahankan, bukan yang menyiksanya."
+  backstorySummary: Pola makan tidak teratur sejak kuliah, kini dampaknya mulai terasa.
+  additionalBackstoryLines: []

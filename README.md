@@ -210,6 +210,7 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
 - Intro and tutorial onboarding:
   - Intro cutscene sequence and completion events
   - One-time character backstory dialogue box appears right after intro cutscene completion
+  - Backstory content now driven by CharacterData ScriptableObject variants
   - Sequential tutorial panel after intro
   - Contextual tutorial toast queue (NPC/energy/food/work conditions)
   - Sequential/contextual tutorial and work reminder are suppressed while cutscene is active
@@ -222,8 +223,25 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Sleep quality can be disturbed probabilistically based on recent work and food behavior
   - Wake message summarizes day change and relevant warnings
   - Aging progression triggers on wake at day 5 (Adult) and day 10 (Senior), with modal narrative notification
+  - Aging narrative now includes senior-female menopause variants and phase score context
+  - Phase modifiers now apply by age and gender (daily calories, movement drain, mood drain)
   - Next-day movement drain now supports hidden gym-based sustainability modifier (`movementDrainModifier`, no HUD exposure)
   - Late-wake consequence applies energy penalty + narrative warning only (no time cut, no period skip)
+
+## Character Variants
+
+Six CharacterData assets are available under `Assets/_Project/Data/Characters/`:
+
+| Asset file         | Name  | Gender    | BMI Type    |
+| ------------------ | ----- | --------- | ----------- |
+| Char_Male_Kurus    | Rafi  | Laki-laki | Underweight |
+| Char_Male_Normal   | Dimas | Laki-laki | Normal      |
+| Char_Male_Gemuk    | Bagas | Laki-laki | Overweight  |
+| Char_Female_Kurus  | Nisa  | Perempuan | Underweight |
+| Char_Female_Normal | Ayu   | Perempuan | Normal      |
+| Char_Female_Gemuk  | Dina  | Perempuan | Overweight  |
+
+Backstory is read from `backstoryText` (AppendBackstory prioritizes it). Active variant is expected to be chosen by a main menu selector (not implemented yet). For quick testing, change `preferredCharacterDataAssetName` in BackstoryDialogueController.
 
 Ringkasan (ID): Fitur inti gameplay, dialog, kerja, onboarding, tidur, ekonomi makanan berharga, dan tuning energi movement sudah aktif. Alur harian sekarang lebih utuh dan saling terhubung.
 

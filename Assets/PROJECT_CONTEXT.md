@@ -199,6 +199,9 @@ Ringkasan (ID): Kontrak swap sekarang didokumentasikan sebagai checklist operasi
   - Mobile touch control baseline added (movement joystick, look joystick, interact button, modal/cutscene-aware visibility)
   - Movement energy drain tuning pass (reduced immediate depletion feel during run)
   - Phase-1 swap safety hardening: warning-only contract validator + fallback telemetry in critical runtime paths
+  - Gameplay modifier per fase & gender (PlayerStats: Gender enum, ApplyPhaseModifiers(), PhaseModifierData struct, 6-variant switch expression)
+  - AgingNotificationPanel added to HUD_Canvas Hierarchy via Editor script
+  - 6 CharacterData assets created (Char_Male/Female_Kurus/Normal/Gemuk)
 - In progress:
   - UI consistency unification between IMGUI-era menus and modern runtime canvas screens
   - Readability/layout polish standardization across generated UI
@@ -227,6 +230,25 @@ Ringkasan (ID): Debt teknis terbesar ada di konsistensi UI dan belum adanya test
   - Assets/Scenes/SampleScene.unity
   - Assets/Scenes/OfficeScene.unity
   - Assets/Scenes/CinematicIntro.unity
+
+## Character Variants
+
+6 CharacterData ScriptableObject assets in Assets/\_Project/Data/Characters/
+
+| Asset file         | Name  | Gender    | BMI Type    |
+| ------------------ | ----- | --------- | ----------- |
+| Char_Male_Kurus    | Rafi  | Laki-laki | Underweight |
+| Char_Male_Normal   | Dimas | Laki-laki | Normal      |
+| Char_Male_Gemuk    | Bagas | Laki-laki | Overweight  |
+| Char_Female_Kurus  | Nisa  | Perempuan | Underweight |
+| Char_Female_Normal | Ayu   | Perempuan | Normal      |
+| Char_Female_Gemuk  | Dina  | Perempuan | Overweight  |
+
+Backstory diisi via backstoryText field (AppendBackstory() prioritizes this field).
+Active variant determined by CharacterSelectionData at runtime (main menu — not yet built).
+Temporary: BackstoryDialogueController resolves CharacterData by name
+"PlayerCharacter" fallback — change preferredCharacterDataAssetName in Inspector
+to test specific variant.
 
 Ringkasan (ID): Data konten dasar sudah tersedia dan cukup untuk menjalankan loop gameplay inti saat ini.
 

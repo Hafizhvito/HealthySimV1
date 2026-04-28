@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d8b0a0566614df9b81b90da44e3f8e4, type: 3}
+  m_Name: Char_Male_Gemuk
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  characterName: Bagas
+  startingAge: 18
+  backstoryText: "Bagas orangnya santai \u2014 terlalu santai, kata teman-temannya.\n\nStres
+    di kantor ia lampiaskan ke makanan: mie instan tengah malam, minuman manis setiap
+    rapat, camilan di laci meja. Gerak? Minimal. Lift lebih cepat dari tangga.\n\nBelakangan
+    celananya minta ganti ukuran, napas terasa berat naik dua anak tangga. Tubuhnya
+    mulai berbicara dengan cara yang tidak bisa diabaikan lagi.\n\nBagas belum siap
+    sepenuhnya \u2014 tapi ia tahu harus mulai."
+  backstorySummary: Stres kerja bikin makan jadi pelarian. Tubuhnya mulai memberi
+    sinyal.
+  additionalBackstoryLines: []

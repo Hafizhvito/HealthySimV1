@@ -11,7 +11,7 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] private float energyDrainWalk = 0.45f;
     [SerializeField] private float energyDrainRun = 0.95f;
     [SerializeField] [Range(0.05f, 1f)] private float movementDrainScale = 0.40f;
-    [SerializeField] [Range(0.75f, 1.25f)] private float movementDrainModifier = 1f;
+    [SerializeField] [Range(0.5f, 1.5f)] private float movementDrainModifier = 1f;
     [SerializeField] private float runDrainRampSeconds = 1.2f;
 
     [Header("Calories")]
@@ -41,6 +41,7 @@ public class PlayerStats : MonoBehaviour
     [Header("Age Progression (Hidden)")]
     [SerializeField] [HideInInspector] private int progressionDayCount = 1;
     [SerializeField] [HideInInspector] private AgeStage currentAgeStage = AgeStage.Youth;
+    [SerializeField] private Gender playerGender = Gender.Male;
 
     [Header("Energy State Thresholds")]
     [SerializeField] private float warningThreshold = 40f;
@@ -48,6 +49,7 @@ public class PlayerStats : MonoBehaviour
 
     public enum EnergyState { Normal, Warning, Critical, Fainted }
     public enum AgeStage { Youth, Adult, Senior }
+    public enum Gender { Male, Female }
     private EnergyState currentEnergyState = EnergyState.Normal;
     private float faintTimer = 0f;
     private float faintDuration = 3f;
@@ -65,6 +67,7 @@ public class PlayerStats : MonoBehaviour
     public EnergyState CurrentEnergyState => currentEnergyState;
     public string PlayerName => playerName;
     public float PlayerBMI => playerBMI;
+    public Gender PlayerGender => playerGender;
     public int Money => _money;
     public float TrainingAdaptation => trainingAdaptation;
     public float FatigueDebt => fatigueDebt;
@@ -81,6 +84,14 @@ public class PlayerStats : MonoBehaviour
     public System.Action<float> OnCaloriesChanged;
     public System.Action<AgeStage, AgeStage, int> OnAgeStageChanged;
 
+    [System.Serializable]
+    private struct PhaseModifierData
+    {
+        public float dailyCalorieTarget;
+        public float movementDrainMultiplier;
+        public float moodDrainMultiplier;
+    }
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -96,6 +107,7 @@ public class PlayerStats : MonoBehaviour
     {
         CalculateBMI();
         SyncAgeProgressionFromDay(progressionDayCount);
+        ApplyPhaseModifiers();
     }
 
     void Update()
@@ -178,9 +190,38 @@ public class PlayerStats : MonoBehaviour
         healthScoreThisPhase = Mathf.Clamp(healthScoreThisPhase + delta, 0f, 100f);
     }
 
+    public void SetGender(Gender g)
+    {
+        playerGender = g;
+        ApplyPhaseModifiers();
+    }
+
     public void SetMovementDrainModifier(float value)
     {
-        movementDrainModifier = Mathf.Clamp(value, 0.75f, 1.25f);
+        movementDrainModifier = Mathf.Clamp(value, 0.5f, 1.5f);
+    }
+
+    public void ApplyPhaseModifiers()
+    {
+        PhaseModifierData data = GetPhaseModifier(currentAgeStage, playerGender);
+        dailyCalorieTarget = data.dailyCalorieTarget;
+        movementDrainModifier = Mathf.Clamp(data.movementDrainMultiplier, 0.5f, 1.5f);
+        moodDrainRate = data.moodDrainMultiplier * 0.2f;
+        Debug.Log($"[PlayerStats] PhaseModifiers applied: stage={currentAgeStage} gender={playerGender} cal={dailyCalorieTarget} drain={movementDrainModifier} mood={moodDrainRate}");
+    }
+
+    private PhaseModifierData GetPhaseModifier(AgeStage stage, Gender gender)
+    {
+        return (stage, gender) switch
+        {
+            (AgeStage.Youth,  Gender.Male)   => new PhaseModifierData { dailyCalorieTarget = 2500f, movementDrainMultiplier = 1.00f, moodDrainMultiplier = 1.00f },
+            (AgeStage.Youth,  Gender.Female) => new PhaseModifierData { dailyCalorieTarget = 2000f, movementDrainMultiplier = 1.00f, moodDrainMultiplier = 1.00f },
+            (AgeStage.Adult,  Gender.Male)   => new PhaseModifierData { dailyCalorieTarget = 2300f, movementDrainMultiplier = 1.05f, moodDrainMultiplier = 1.05f },
+            (AgeStage.Adult,  Gender.Female) => new PhaseModifierData { dailyCalorieTarget = 1900f, movementDrainMultiplier = 1.05f, moodDrainMultiplier = 1.10f },
+            (AgeStage.Senior, Gender.Male)   => new PhaseModifierData { dailyCalorieTarget = 2000f, movementDrainMultiplier = 1.20f, moodDrainMultiplier = 1.15f },
+            (AgeStage.Senior, Gender.Female) => new PhaseModifierData { dailyCalorieTarget = 1700f, movementDrainMultiplier = 1.20f, moodDrainMultiplier = 1.30f },
+            _                                => new PhaseModifierData { dailyCalorieTarget = 2000f, movementDrainMultiplier = 1.00f, moodDrainMultiplier = 1.00f },
+        };
     }
 
     public bool SyncDayAndTryAdvanceAgeStage(int dayNumber, out AgeStage previousStage, out AgeStage newStage)
@@ -203,6 +244,7 @@ public class PlayerStats : MonoBehaviour
 
         maxEnergy = Mathf.Clamp(maxEnergy * phaseCarryOverModifier, 60f, 150f);
         healthScoreThisPhase = 50f;
+        ApplyPhaseModifiers();
 
         Debug.Log($"[PlayerStats] Phase transition {previousStage}→{newStage}, score={healthScoreThisPhase}, modifier={phaseCarryOverModifier}, newMaxEnergy={maxEnergy}");
         OnAgeStageChanged?.Invoke(previousStage, newStage, progressionDayCount);

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d8b0a0566614df9b81b90da44e3f8e4, type: 3}
+  m_Name: Char_Male_Normal
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  characterName: Dimas
+  startingAge: 18
+  backstoryText: "Dimas punya fondasi yang cukup baik \u2014 keluarganya terbiasa
+    makan teratur dan ia aktif berolahraga semasa sekolah.\n\nTapi sejak pindah kerja
+    ke kota baru, ritme itu perlahan goyah. Jam kerja tidak menentu, kantin kantor
+    penuh gorengan, dan gym membership-nya berdebu.\n\nDimas tahu ia masih di titik
+    yang aman \u2014 tapi juga tahu, kalau dibiarkan, 'aman' bisa cepat berubah.
+    Sekarang saatnya menjaga, sebelum harus memperbaiki."
+  backstorySummary: Hidup teratur tapi mulai goyah sejak pindah kerja.
+  additionalBackstoryLines: []
