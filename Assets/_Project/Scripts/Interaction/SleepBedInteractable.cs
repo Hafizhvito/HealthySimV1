@@ -285,6 +285,21 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (ageStageChanged)
         {
             yield return StartCoroutine(ShowAgingNotificationRoutine(newAgeStage, scoreBeforeTransition));
+
+            if (newAgeStage == PlayerStats.AgeStage.Senior)
+            {
+                int triggerDay = EndingManager.Instance != null
+                    ? EndingManager.Instance.EndingTriggerDay
+                    : 10;
+
+                if (timeManager.CurrentDayNumber >= triggerDay)
+                {
+                    if (EndingManager.Instance != null)
+                        EndingManager.Instance.TriggerEnding();
+                    else
+                        Debug.LogWarning("[SleepBedInteractable] EndingManager.Instance null — ending not triggered.");
+                }
+            }
         }
 
         ShowWakeMessage(BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep, disturbedSleep, lateWakePenaltyTriggered), wakeMessageDuration);

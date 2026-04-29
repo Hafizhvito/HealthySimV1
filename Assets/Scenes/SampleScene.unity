@@ -5476,7 +5476,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a02bd2cba9f4e9baf0d5b92b982f9a1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BackstoryDialogueController
-  characterData: {fileID: 11400000, guid: 2ae27327417f71b4c8d1a97a49874dc8, type: 2}
+  characterData: {fileID: 11400000, guid: f2fbb94a7f8049be8657cc3c8d281f61, type: 2}
   preferredCharacterDataAssetName: PlayerCharacter
   showOnlyOnce: 1
   shownPrefsKey: healthsim.backstory.shown
@@ -6852,7 +6852,7 @@ MonoBehaviour:
   chanceIfPoorDiet: 0.15
   disturbedRecoveryNormalized: 0.65
   poorDietThresholdDelta: 2
-  requireNightToSleep: 0
+  requireNightToSleep: 1
   clockSkipDuration: 2.7
   fadeDuration: 0.33
   sleepLockSource: SleepTransition
@@ -8462,31 +8462,31 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -50.57584
+      value: -50.573032
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.00000046440573
+      value: 0.00000047683716
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 28.467258
+      value: 28.46733
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.9997355
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0.023002489
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -8494,7 +8494,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: -2.636
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -20177,6 +20177,7 @@ GameObject:
   - component: {fileID: 2130000014}
   - component: {fileID: 2130000018}
   - component: {fileID: 2130000017}
+  - component: {fileID: 2130000019}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -20232,6 +20233,10 @@ MonoBehaviour:
   trainingAdaptation: 0
   fatigueDebt: 0
   healthScoreThisPhase: 50
+  committedPhaseScores:
+  - 50
+  - 50
+  - 50
   phaseCarryOverModifier: 1
   progressionDayCount: 1
   currentAgeStage: 0
@@ -20467,6 +20472,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StoryManager
   npcReference: {fileID: 0}
+--- !u!114 &2130000019
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a7933f432e7d944fbff6b60de7c4100, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EndingManager
+  endingTriggerDay: 10
 --- !u!1 &2130000021
 GameObject:
   m_ObjectHideFlags: 0

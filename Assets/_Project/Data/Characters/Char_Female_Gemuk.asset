@@ -14,12 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
   characterName: Dina
   startingAge: 18
-  backstoryText: "Sejak kuliah, Dina terbiasa makan seadanya dan sesukanya \u2014
-    mi instan, junk food delivery, dan kopi manis jadi sahabat skripsi.\n\nKebiasaan
-    itu tidak berhenti setelah lulus. Di dunia kerja, makanan jadi cara ia bertahan
-    dari tekanan: cepat, enak, dan tidak perlu dipikir.\n\nKini berat badannya naik
-    perlahan tapi pasti, energinya sering anjlok di sore hari, dan tidurnya tidak
-    pernah terasa cukup.\n\nDina tidak butuh diet ekstrem \u2014 ia butuh pola hidup
-    yang bisa ia pertahankan, bukan yang menyiksanya."
+  backstoryText: "Sejak kuliah, mi instan dan junk food jadi makanan sehari-hari
+    Dina. Kebiasaan itu tidak berhenti setelah lulus \u2014 makanan jadi cara bertahan
+    dari tekanan kerja.\n\nDina tidak butuh diet ekstrem. Ia butuh pola hidup yang
+    bisa dipertahankan."
   backstorySummary: Pola makan tidak teratur sejak kuliah, kini dampaknya mulai terasa.
   additionalBackstoryLines: []

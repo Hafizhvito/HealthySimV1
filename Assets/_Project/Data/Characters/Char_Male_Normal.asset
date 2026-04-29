@@ -14,11 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
   characterName: Dimas
   startingAge: 18
-  backstoryText: "Dimas punya fondasi yang cukup baik \u2014 keluarganya terbiasa
-    makan teratur dan ia aktif berolahraga semasa sekolah.\n\nTapi sejak pindah kerja
-    ke kota baru, ritme itu perlahan goyah. Jam kerja tidak menentu, kantin kantor
-    penuh gorengan, dan gym membership-nya berdebu.\n\nDimas tahu ia masih di titik
-    yang aman \u2014 tapi juga tahu, kalau dibiarkan, 'aman' bisa cepat berubah.
-    Sekarang saatnya menjaga, sebelum harus memperbaiki."
+  backstoryText: "Dimas punya fondasi yang cukup baik \u2014 makan teratur dan aktif
+    olahraga semasa sekolah. Tapi sejak pindah kerja ke kota baru, ritme itu perlahan
+    goyah.\n\nIa tahu masih di titik aman \u2014 tapi juga tahu, kalau dibiarkan,
+    aman bisa cepat berubah."
   backstorySummary: Hidup teratur tapi mulai goyah sejak pindah kerja.
   additionalBackstoryLines: []

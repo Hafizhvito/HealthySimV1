@@ -14,10 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
   characterName: Ayu
   startingAge: 18
-  backstoryText: "Ayu termasuk yang beruntung \u2014 ia sadar gizi, suka sayur, dan
-    tidak punya kebiasaan makan yang ekstrem.\n\nMasalahnya bukan pengetahuan, tapi
-    waktu. Jadwal padat bikin sarapan sering dilewat, makan siang tergesa-gesa, dan
-    makan malam terlambat.\n\nAyu tahu apa yang benar \u2014 ia hanya perlu membuktikan
-    bahwa ia bisa konsisten melakukannya, bahkan di tengah hari yang tidak sempurna."
+  backstoryText: "Ayu sadar gizi, suka sayur, dan tidak punya kebiasaan makan yang
+    ekstrem. Masalahnya bukan pengetahuan, tapi waktu \u2014 jadwal padat bikin sarapan
+    sering dilewat.\n\nAyu tahu apa yang benar. Ia hanya perlu membuktikan bisa konsisten."
   backstorySummary: Sadar gizi tapi jadwal padat bikin pola makan tidak selalu ideal.
   additionalBackstoryLines: []

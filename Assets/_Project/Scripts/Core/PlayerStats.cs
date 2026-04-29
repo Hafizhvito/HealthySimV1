@@ -36,6 +36,7 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] [HideInInspector] private float trainingAdaptation = 0f;
     [SerializeField] [HideInInspector] private float fatigueDebt = 0f;
     [SerializeField] [HideInInspector] private float healthScoreThisPhase = 50f;
+    [SerializeField] [HideInInspector] private float[] committedPhaseScores = new float[3] { 50f, 50f, 50f };
     [SerializeField] [HideInInspector] private float phaseCarryOverModifier = 1.0f;
 
     [Header("Age Progression (Hidden)")]
@@ -72,6 +73,7 @@ public class PlayerStats : MonoBehaviour
     public float TrainingAdaptation => trainingAdaptation;
     public float FatigueDebt => fatigueDebt;
     public float HealthScoreThisPhase => healthScoreThisPhase;
+    public float[] CommittedPhaseScores => committedPhaseScores;
     public float MovementDrainModifier => movementDrainModifier;
     public int ProgressionDayCount => progressionDayCount;
     public AgeStage CurrentAgeStage => currentAgeStage;
@@ -190,6 +192,19 @@ public class PlayerStats : MonoBehaviour
         healthScoreThisPhase = Mathf.Clamp(healthScoreThisPhase + delta, 0f, 100f);
     }
 
+    public float GetAveragePhaseScore()
+    {
+        int currentIndex = (int)currentAgeStage;
+        if (currentIndex >= 0 && currentIndex < committedPhaseScores.Length)
+            committedPhaseScores[currentIndex] = healthScoreThisPhase;
+
+        float total = 0f;
+        for (int i = 0; i < 3; i++)
+            total += committedPhaseScores[i];
+
+        return total / 3f;
+    }
+
     public void SetGender(Gender g)
     {
         playerGender = g;
@@ -243,6 +258,10 @@ public class PlayerStats : MonoBehaviour
             phaseCarryOverModifier = 1.0f;
 
         maxEnergy = Mathf.Clamp(maxEnergy * phaseCarryOverModifier, 60f, 150f);
+        int prevIndex = (int)previousStage;
+        if (prevIndex >= 0 && prevIndex < committedPhaseScores.Length)
+            committedPhaseScores[prevIndex] = healthScoreThisPhase;
+        Debug.Log($"[PlayerStats] Committed phase score: {previousStage}={healthScoreThisPhase}");
         healthScoreThisPhase = 50f;
         ApplyPhaseModifiers();
 

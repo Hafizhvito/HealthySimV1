@@ -14,12 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
   characterName: Bagas
   startingAge: 18
-  backstoryText: "Bagas orangnya santai \u2014 terlalu santai, kata teman-temannya.\n\nStres
-    di kantor ia lampiaskan ke makanan: mie instan tengah malam, minuman manis setiap
-    rapat, camilan di laci meja. Gerak? Minimal. Lift lebih cepat dari tangga.\n\nBelakangan
-    celananya minta ganti ukuran, napas terasa berat naik dua anak tangga. Tubuhnya
-    mulai berbicara dengan cara yang tidak bisa diabaikan lagi.\n\nBagas belum siap
-    sepenuhnya \u2014 tapi ia tahu harus mulai."
+  backstoryText: 'Stres di kantor selalu Bagas lampiaskan ke makanan: mie instan
+    tengah malam, minuman manis, camilan di laci meja. Gerak? Minimal.
+
+
+    Belakangan
+    napas terasa berat naik dua anak tangga. Tubuhnya mulai berbicara dengan cara
+    yang tidak bisa diabaikan.'
   backstorySummary: Stres kerja bikin makan jadi pelarian. Tubuhnya mulai memberi
     sinyal.
   additionalBackstoryLines: []

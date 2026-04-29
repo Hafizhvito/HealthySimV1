@@ -14,11 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
   characterName: Rafi
   startingAge: 18
-  backstoryText: "Rafi tumbuh di keluarga sederhana yang terbiasa bekerja keras.\n\nSejak
-    SMA ia sudah kerja sambilan \u2014 akibatnya makan sering tertunda, bahkan dilupakan
-    sama sekali. Bukan karena ingin kurus, tapi karena waktu terasa tidak pernah
-    cukup.\n\nKini di usia dewasa, tubuhnya yang kurus mulai terasa seperti beban
-    \u2014 mudah lelah, sulit konsentrasi. Hari ini Rafi memutuskan: sudah waktunya
-    makan bukan sekadar kenyang, tapi benar-benar memberi energi."
+  backstoryText: "Rafi tumbuh terbiasa kerja keras sejak SMA \u2014 makan sering
+    tertunda, bahkan dilupakan. Bukan karena ingin kurus, tapi karena waktu tidak
+    pernah cukup.\n\nKini tubuhnya yang kurus mulai terasa seperti beban. Sudah waktunya
+    makan bukan sekadar kenyang."
   backstorySummary: Kerja keras sejak muda, sering skip makan karena sibuk.
   additionalBackstoryLines: []

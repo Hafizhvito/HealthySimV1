@@ -14,13 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CharacterData
   characterName: Nisa
   startingAge: 18
-  backstoryText: "Nisa selalu tampil rapi dan terkontrol \u2014 termasuk soal makan.\n\nTapi
-    'terkontrol' lama-lama berubah jadi terlalu ketat. Ia menghindari nasi, takut
-    minyak, dan merasa bersalah setiap makan lebih dari yang ia rencanakan.\n\nHasilnya:
-    tubuhnya kekurangan banyak hal yang sebenarnya dibutuhkan. Energinya habis di
-    tengah hari, kulitnya kusam, dan konsentrasinya susah terjaga.\n\nNisa bukan
-    tidak peduli kesehatan \u2014 ia justru terlalu peduli ke hal yang salah. Sudah
-    waktunya belajar makan dengan benar, bukan sekadar sedikit."
+  backstoryText: "Nisa selalu terkontrol soal makan \u2014 tapi lama-lama berubah
+    terlalu ketat. Hindari nasi, takut minyak, merasa bersalah kalau makan lebih
+    dari rencana.\n\nHasilnya tubuhnya kekurangan banyak hal. Sudah waktunya belajar
+    makan dengan benar, bukan sekadar sedikit."
   backstorySummary: Terlalu ketat soal makan, tanpa sadar tubuhnya kekurangan nutrisi
     penting.
   additionalBackstoryLines: []
