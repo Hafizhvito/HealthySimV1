@@ -136,11 +136,33 @@ public class PlayerActionTracker : MonoBehaviour
         return counts.TryGetValue(actionType, out int value) ? value : 0;
     }
 
+    // ── TAMBAHAN: Reset food counts harian ──────────────────────────
+    /// <summary>
+    /// Reset hanya food counts (HealthyFoodTaken + UnhealthyFoodTaken).
+    /// Dipanggil oleh SleepBedInteractable setelah DailyHealthEvaluator.Evaluate().
+    /// warningEvents, criticalEvents, faintEvents TIDAK direset — itu data lifetime
+    /// yang dipakai EvaluateBranchOutcome() untuk story branching.
+    /// </summary>
+    public void ResetDailyFoodCounts()
+    {
+        counts[ActionType.HealthyFoodTaken]   = 0;
+        counts[ActionType.UnhealthyFoodTaken] = 0;
+
+        // Reset juga period buckets supaya evaluasi diet besok tidak terkontaminasi
+        foreach (TimeManager.TimePeriod period in Enum.GetValues(typeof(TimeManager.TimePeriod)))
+        {
+            positiveByPeriod[period] = 0;
+            negativeByPeriod[period] = 0;
+        }
+
+        Debug.Log("[PlayerActionTracker] Daily food counts direset untuk hari baru.");
+    }
+
     public BranchOutcome EvaluateBranchOutcome()
     {
         int positive = GetCount(ActionType.HealthyFoodTaken) + GetCount(ActionType.PositiveNpcTalk);
         int negative = GetCount(ActionType.UnhealthyFoodTaken) + GetCount(ActionType.NegativeNpcTalk);
-        int generic = GetCount(ActionType.GenericInteraction);
+        int generic  = GetCount(ActionType.GenericInteraction);
 
         int score = 0;
         score += positive * 3;
@@ -150,24 +172,22 @@ public class PlayerActionTracker : MonoBehaviour
         score -= criticalEvents * 2;
         score -= faintEvents * 4;
 
-        // Period-window behavior markers.
-        score += positiveByPeriod[TimeManager.TimePeriod.Morning] > 0 ? 1 : 0;
-        score += positiveByPeriod[TimeManager.TimePeriod.Afternoon] > 0 ? 1 : 0;
-        score -= negativeByPeriod[TimeManager.TimePeriod.Night] > 0 ? 1 : 0;
+        score += positiveByPeriod[TimeManager.TimePeriod.Morning]   > 0 ? 1 : 0;
+        score += positiveByPeriod[TimeManager.TimePeriod.Afternoon]  > 0 ? 1 : 0;
+        score -= negativeByPeriod[TimeManager.TimePeriod.Night]      > 0 ? 1 : 0;
 
-        Debug.Log($"[Tracker] score={score} pos={positive} neg={negative} generic={generic} warning={warningEvents} critical={criticalEvents} faint={faintEvents}");
+        Debug.Log($"[Tracker] score={score} pos={positive} neg={negative} generic={generic} " +
+                  $"warning={warningEvents} critical={criticalEvents} faint={faintEvents}");
 
-        if (score >= 4)
-            return BranchOutcome.HealthyPath;
-
-        if (score <= -4)
-            return BranchOutcome.RiskyPath;
-
+        if (score >= 4)  return BranchOutcome.HealthyPath;
+        if (score <= -4) return BranchOutcome.RiskyPath;
         return BranchOutcome.MixedPath;
     }
 
     public string GetDebugSummary()
     {
-        return $"pos={GetCount(ActionType.HealthyFoodTaken) + GetCount(ActionType.PositiveNpcTalk)}, neg={GetCount(ActionType.UnhealthyFoodTaken) + GetCount(ActionType.NegativeNpcTalk)}, warn={warningEvents}, critical={criticalEvents}, faint={faintEvents}";
+        return $"pos={GetCount(ActionType.HealthyFoodTaken) + GetCount(ActionType.PositiveNpcTalk)}, " +
+               $"neg={GetCount(ActionType.UnhealthyFoodTaken) + GetCount(ActionType.NegativeNpcTalk)}, " +
+               $"warn={warningEvents}, critical={criticalEvents}, faint={faintEvents}";
     }
 }

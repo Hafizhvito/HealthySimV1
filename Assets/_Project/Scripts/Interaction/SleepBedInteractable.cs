@@ -180,19 +180,18 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         }
 
         ResetSleepConfirm();
-
         sleepRoutine = StartCoroutine(SleepRoutine(interactor));
     }
 
     private IEnumerator SleepRoutine(GameObject interactor)
     {
-        TimeManager timeManager = ResolveTimeManager();
-        PlayerStats playerStats = ResolvePlayerStats();
-        FadeManager fadeManager = ResolveFadeManager();
-        WorkSessionManager workSessionManager = ResolveWorkSessionManager();
+        TimeManager         timeManager         = ResolveTimeManager();
+        PlayerStats         playerStats         = ResolvePlayerStats();
+        FadeManager         fadeManager         = ResolveFadeManager();
+        WorkSessionManager  workSessionManager  = ResolveWorkSessionManager();
         GymProgressionSystem gymProgressionSystem = ResolveGymProgressionSystem();
-        ClockAnimationUI clockUi = ResolveClockAnimationUi();
-        PlayerController playerController = interactor != null ? interactor.GetComponent<PlayerController>() : null;
+        ClockAnimationUI    clockUi             = ResolveClockAnimationUi();
+        PlayerController    playerController    = interactor != null ? interactor.GetComponent<PlayerController>() : null;
 
         if (timeManager == null || playerStats == null)
         {
@@ -209,17 +208,23 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             yield break;
         }
 
-        bool workedYesterday = workSessionManager != null && workSessionManager.HasWorkedToday;
-        float energyBeforeSleep = playerStats.EnergyPercent;
-        bool trainedYesterday = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
+        // ── Snapshot data sebelum tidur ──────────────────────
+        bool workedYesterday   = workSessionManager != null && workSessionManager.HasWorkedToday;
+        bool trainedYesterday  = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
+        WorkSessionData  lastWorkSession = workSessionManager?.LastSession;
+        bool             lastWorkHadBonus = workSessionManager?.LastSessionHadBonus ?? false;
+        GymSessionData   lastGymSession  = gymProgressionSystem?.LastSession;
+        float energyBeforeSleep     = playerStats.EnergyPercent;
+        // bool  trainedYesterday      = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
         float adaptationBeforeSleep = playerStats.TrainingAdaptation;
-        float fatigueBeforeSleep = playerStats.FatigueDebt;
+        float fatigueBeforeSleep    = playerStats.FatigueDebt;
         float scoreBeforeTransition = playerStats.HealthScoreThisPhase;
-        bool overworkedYesterday = workedYesterday && DidOverworkYesterday(workSessionManager);
-        bool poorDietYesterday = HasPoorDietPattern();
-        bool disturbedSleep = RollSleepDisturbance(workedYesterday, overworkedYesterday, poorDietYesterday);
-        float lateWakeChance = CalculateLateWakeChance(workSessionManager, gymProgressionSystem, playerStats, energyBeforeSleep);
-        bool lateWakePenaltyTriggered = enableLateWakePenalty && UnityEngine.Random.value < lateWakeChance;
+
+        bool  overworkedYesterday   = workedYesterday && DidOverworkYesterday(workSessionManager);
+        bool  poorDietYesterday     = HasPoorDietPattern();
+        bool  disturbedSleep        = RollSleepDisturbance(workedYesterday, overworkedYesterday, poorDietYesterday);
+        float lateWakeChance        = CalculateLateWakeChance(workSessionManager, gymProgressionSystem, playerStats, energyBeforeSleep);
+        bool  lateWakePenaltyTriggered = enableLateWakePenalty && UnityEngine.Random.value < lateWakeChance;
 
         if (playerController != null)
             playerController.LockInput(sleepLockSource);
@@ -243,10 +248,15 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             yield return new WaitUntil(() => clockDone);
         }
 
-        ApplyRecovery(playerStats, disturbedSleep);
+        // ── Apply recovery + evaluate health score ───────────
+        DailyHealthResult dailyEvalResult = null;
+        ApplyRecovery(playerStats, disturbedSleep, energyBeforeSleep,
+                    workedYesterday, lastWorkSession, lastWorkHadBonus,
+                    trainedYesterday, lastGymSession, out dailyEvalResult);
 
+        // ── Advance day ──────────────────────────────────────
         timeManager.AdvanceToNextDayFromSleep();
-        string wakeDayName = timeManager.GetDayNameIndonesia();
+        string     wakeDayName    = timeManager.GetDayNameIndonesia();
         bool ageStageChanged = playerStats.SyncDayAndTryAdvanceAgeStage(
             timeManager.CurrentDayNumber,
             out PlayerStats.AgeStage previousAgeStage,
@@ -302,26 +312,60 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             }
         }
 
-        ShowWakeMessage(BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep, disturbedSleep, lateWakePenaltyTriggered), wakeMessageDuration);
+        // ── Wake message dengan hasil evaluator ──────────────
+        ShowWakeMessage(
+            BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep,
+                             disturbedSleep, lateWakePenaltyTriggered, dailyEvalResult),
+            wakeMessageDuration);
 
         sleepRoutine = null;
     }
 
-    private void ApplyRecovery(PlayerStats stats, bool disturbedSleep)
+    // ── ApplyRecovery — INTI PERUBAHAN ───────────────────────
+    private void ApplyRecovery(
+        PlayerStats stats,
+        bool disturbedSleep,
+        float energyBeforeSleep,
+        bool workedYesterday,
+        WorkSessionData lastWorkSession,
+        bool lastWorkHadBonus,
+        bool trainedYesterday,
+        GymSessionData lastGymSession,
+        out DailyHealthResult evalResult)
     {
+        // 1. Energy recovery
         float targetNormalized = Mathf.Clamp01(fullRecoveryNormalized);
         if (disturbedSleep)
             targetNormalized = Mathf.Min(targetNormalized, Mathf.Clamp01(disturbedRecoveryNormalized));
 
         float targetEnergy = stats.MaxEnergy * targetNormalized;
-        float recovery = Mathf.Max(0f, targetEnergy - stats.CurrentEnergy);
-
+        float recovery     = Mathf.Max(0f, targetEnergy - stats.CurrentEnergy);
         if (recovery > 0.01f)
             stats.AddFood(recovery, 0f, 0f);
 
-        PlayerStats.Instance?.RegisterHealthScore(disturbedSleep ? -3f : +3f);
+        // 2. Evaluasi harian dengan snapshot — bukan baca langsung dari manager
+        evalResult = DailyHealthEvaluator.Evaluate(
+            disturbedSleep,
+            energyBeforeSleep,
+            workedYesterday,
+            lastWorkSession,
+            lastWorkHadBonus,
+            trainedYesterday,
+            lastGymSession,
+            PlayerActionTracker.Instance,
+            stats
+        );
 
-        stats.ResetDailyCalories(); 
+        stats.RegisterHealthScore(evalResult.totalDelta);
+
+        Debug.Log($"[SleepBed] {evalResult}");
+        Debug.Log($"[SleepBed] diet='{evalResult.dietNote}' gym='{evalResult.gymNote}' work='{evalResult.workNote}'");
+
+        // 3. Reset food tracker dan kalori harian
+        if (PlayerActionTracker.Instance != null)
+            PlayerActionTracker.Instance.ResetDailyFoodCounts();
+
+        stats.ResetDailyCalories();
     }
 
     private void ApplyNextDayMovementDrainModifier(PlayerStats stats, bool trainedYesterday, float adaptationBeforeSleep, float fatigueBeforeSleep)
@@ -333,11 +377,11 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (trainedYesterday)
         {
             float adaptationNorm = Mathf.Clamp01(adaptationBeforeSleep / 100f);
-            float fatigueNorm = Mathf.Clamp01(fatigueBeforeSleep / 100f);
-            float balance = Mathf.Clamp(adaptationNorm - fatigueNorm, -1f, 1f);
-            float blend = Mathf.Clamp01((balance + 1f) * 0.5f);
+            float fatigueNorm    = Mathf.Clamp01(fatigueBeforeSleep / 100f);
+            float balance        = Mathf.Clamp(adaptationNorm - fatigueNorm, -1f, 1f);
+            float blend          = Mathf.Clamp01((balance + 1f) * 0.5f);
 
-            float best = Mathf.Min(1f, bestTrainingDrainModifier);
+            float best  = Mathf.Min(1f, bestTrainingDrainModifier);
             float worst = Mathf.Max(1f, worstTrainingDrainModifier);
             nextModifier = Mathf.Lerp(worst, best, blend);
         }
@@ -371,88 +415,62 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         return transform;
     }
 
+    // ── Resolvers ────────────────────────────────────────────
     private TimeManager ResolveTimeManager()
     {
-        if (timeManagerOverride != null)
-            return timeManagerOverride;
-
+        if (timeManagerOverride != null) return timeManagerOverride;
         return TimeManager.Instance;
     }
 
     private PlayerStats ResolvePlayerStats()
     {
-        if (playerStatsOverride != null)
-            return playerStatsOverride;
-
+        if (playerStatsOverride != null) return playerStatsOverride;
         return PlayerStats.Instance;
     }
 
     private FadeManager ResolveFadeManager()
     {
-        if (fadeManagerOverride != null)
-            return fadeManagerOverride;
-
-        if (FadeManager.Instance != null)
-            return FadeManager.Instance;
-
+        if (fadeManagerOverride != null) return fadeManagerOverride;
+        if (FadeManager.Instance != null) return FadeManager.Instance;
         GameObject managerObj = GameObject.Find("GameManager");
         return managerObj != null ? managerObj.GetComponent<FadeManager>() : null;
     }
 
     private ClockAnimationUI ResolveClockAnimationUi()
     {
-        if (clockAnimationUiOverride != null)
-            return clockAnimationUiOverride;
-
+        if (clockAnimationUiOverride != null) return clockAnimationUiOverride;
         ClockAnimationUI existing = FindFirstObjectByType<ClockAnimationUI>();
-        if (existing != null)
-            return existing;
-
+        if (existing != null) return existing;
         existing = FindFirstObjectByType<ClockAnimationUI>(FindObjectsInactive.Include);
-        if (existing != null)
-            return existing;
-
+        if (existing != null) return existing;
         GameObject clockObj = new GameObject("ClockAnimationUI");
         return clockObj.AddComponent<ClockAnimationUI>();
     }
 
     private WorkSessionManager ResolveWorkSessionManager()
     {
-        if (workSessionManagerOverride != null)
-            return workSessionManagerOverride;
-
-        if (WorkSessionManager.Instance != null)
-            return WorkSessionManager.Instance;
-
+        if (workSessionManagerOverride != null) return workSessionManagerOverride;
+        if (WorkSessionManager.Instance != null) return WorkSessionManager.Instance;
         GameObject managerObj = GameObject.Find("GameManager");
         return managerObj != null ? managerObj.GetComponent<WorkSessionManager>() : null;
     }
 
     private GymProgressionSystem ResolveGymProgressionSystem()
     {
-        if (gymProgressionSystemOverride != null)
-            return gymProgressionSystemOverride;
-
-        if (GymProgressionSystem.Instance != null)
-            return GymProgressionSystem.Instance;
-
+        if (gymProgressionSystemOverride != null) return gymProgressionSystemOverride;
+        if (GymProgressionSystem.Instance != null) return GymProgressionSystem.Instance;
         GameObject managerObj = GameObject.Find("GameManager");
-        if (managerObj == null)
-            return null;
-
+        if (managerObj == null) return null;
         GymProgressionSystem existing = managerObj.GetComponent<GymProgressionSystem>();
         return existing != null ? existing : managerObj.AddComponent<GymProgressionSystem>();
     }
 
+    // ── Sleep logic helpers ──────────────────────────────────
     private bool CanSleepNow()
     {
         TimeManager timeManager = ResolveTimeManager();
-        if (timeManager == null)
-            return false;
-
-        if (!requireNightToSleep)
-            return true;
-
+        if (timeManager == null) return false;
+        if (!requireNightToSleep) return true;
         return timeManager.CurrentPeriod == TimeManager.TimePeriod.Night;
     }
 
@@ -471,10 +489,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             return;
 
         lastBlockedWarningTime = now;
-
         bool repeated = blockedClickCount >= Mathf.Max(2, blockedBurstThreshold);
-        string message = repeated ? blockedRepeatedText : blockedBeforeNightText;
-        float duration = repeated ? 2.4f : 1.8f;
+        string message  = repeated ? blockedRepeatedText : blockedBeforeNightText;
+        float  duration = repeated ? 2.4f : 1.8f;
         ShowWakeMessage(message, duration);
     }
 
@@ -484,30 +501,25 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             return false;
 
         WorkSessionData session = workSessionManager.LastSession;
-        bool lowStartEnergy = session.energyAtStart <= 0.25f;
-        bool heavyDrainAtLowReserve = session.energyConsumed >= 0.32f && session.energyAtStart <= 0.50f;
+        bool lowStartEnergy          = session.energyAtStart <= 0.25f;
+        bool heavyDrainAtLowReserve  = session.energyConsumed >= 0.32f && session.energyAtStart <= 0.50f;
         return session.result != WorkResult.Full || session.performanceDropped || lowStartEnergy || heavyDrainAtLowReserve;
     }
 
     private bool ShouldRequestSleepConfirm()
     {
-        if (!requireConfirmBeforeSleep)
-            return false;
-
+        if (!requireConfirmBeforeSleep) return false;
         return !HasActiveSleepConfirm();
     }
 
-    private bool HasActiveSleepConfirm()
-    {
-        return Time.unscaledTime <= confirmExpiresAt;
-    }
+    private bool HasActiveSleepConfirm() => Time.unscaledTime <= confirmExpiresAt;
 
     private void RequestSleepConfirm()
     {
         confirmExpiresAt = Time.unscaledTime + Mathf.Max(0.5f, confirmWindowDuration);
 
-        string prompt = confirmPromptText;
-        float chance = BuildCurrentDisturbanceChancePreview();
+        string prompt  = confirmPromptText;
+        float  chance  = BuildCurrentDisturbanceChancePreview();
         if (enableSleepDisturbance)
         {
             int percentage = Mathf.RoundToInt(chance * 100f);
@@ -517,26 +529,19 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         ShowWakeMessage(prompt, Mathf.Max(0.5f, confirmPromptDuration));
     }
 
-    private void ResetSleepConfirm()
-    {
-        confirmExpiresAt = -999f;
-    }
+    private void ResetSleepConfirm() => confirmExpiresAt = -999f;
 
     private bool HasPoorDietPattern()
     {
-        if (PlayerActionTracker.Instance == null)
-            return false;
-
-        int healthy = PlayerActionTracker.Instance.GetCount(PlayerActionTracker.ActionType.HealthyFoodTaken);
+        if (PlayerActionTracker.Instance == null) return false;
+        int healthy   = PlayerActionTracker.Instance.GetCount(PlayerActionTracker.ActionType.HealthyFoodTaken);
         int unhealthy = PlayerActionTracker.Instance.GetCount(PlayerActionTracker.ActionType.UnhealthyFoodTaken);
         return unhealthy - healthy >= Mathf.Max(1, poorDietThresholdDelta);
     }
 
     private bool RollSleepDisturbance(bool workedYesterday, bool overworkedYesterday, bool poorDietYesterday)
     {
-        if (!enableSleepDisturbance)
-            return false;
-
+        if (!enableSleepDisturbance) return false;
         float chance = CalculateSleepDisturbanceChance(workedYesterday, overworkedYesterday, poorDietYesterday);
         return chance > 0f && UnityEngine.Random.value < chance;
     }
@@ -544,62 +549,44 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private float BuildCurrentDisturbanceChancePreview()
     {
         WorkSessionManager workSessionManager = ResolveWorkSessionManager();
-        bool workedYesterday = workSessionManager != null && workSessionManager.HasWorkedToday;
+        bool workedYesterday    = workSessionManager != null && workSessionManager.HasWorkedToday;
         bool overworkedYesterday = workedYesterday && DidOverworkYesterday(workSessionManager);
-        bool poorDietYesterday = HasPoorDietPattern();
+        bool poorDietYesterday  = HasPoorDietPattern();
         return CalculateSleepDisturbanceChance(workedYesterday, overworkedYesterday, poorDietYesterday);
     }
 
     private float CalculateSleepDisturbanceChance(bool workedYesterday, bool overworkedYesterday, bool poorDietYesterday)
     {
         float chance = Mathf.Clamp01(baseDisturbChance);
-        if (!workedYesterday)
-            chance += chanceIfNoWork;
-
-        if (overworkedYesterday)
-            chance += chanceIfOverwork;
-
-        if (poorDietYesterday)
-            chance += chanceIfPoorDiet;
-
+        if (!workedYesterday)    chance += chanceIfNoWork;
+        if (overworkedYesterday) chance += chanceIfOverwork;
+        if (poorDietYesterday)   chance += chanceIfPoorDiet;
         return Mathf.Clamp01(chance);
     }
 
     private float CalculateLateWakeChance(WorkSessionManager workSessionManager, GymProgressionSystem gymProgressionSystem, PlayerStats playerStats, float energyBeforeSleep)
     {
-        if (!enableLateWakePenalty)
-            return 0f;
+        if (!enableLateWakePenalty) return 0f;
 
         bool highSugarPattern = HasHighRecentSugarIntake();
-        bool overworkPattern = workSessionManager != null && workSessionManager.HasWorkedToday && DidOverworkYesterday(workSessionManager);
-        bool highFatigueDebt = gymProgressionSystem != null && playerStats != null && playerStats.FatigueDebt >= highFatigueDebtThreshold;
+        bool overworkPattern  = workSessionManager != null && workSessionManager.HasWorkedToday && DidOverworkYesterday(workSessionManager);
+        bool highFatigueDebt  = gymProgressionSystem != null && playerStats != null && playerStats.FatigueDebt >= highFatigueDebtThreshold;
         bool lowEnergyAtSleep = energyBeforeSleep <= lowEnergySleepPenaltyThreshold;
 
         float chance = 0f;
-        if (highSugarPattern)
-            chance += sugarSignalWeight;
-
-        if (overworkPattern)
-            chance += overworkSignalWeight;
-
-        if (highFatigueDebt)
-            chance += fatigueSignalWeight;
-
-        if (lowEnergyAtSleep)
-            chance += lowEnergySignalWeight;
+        if (highSugarPattern) chance += sugarSignalWeight;
+        if (overworkPattern)  chance += overworkSignalWeight;
+        if (highFatigueDebt)  chance += fatigueSignalWeight;
+        if (lowEnergyAtSleep) chance += lowEnergySignalWeight;
 
         return Mathf.Clamp(chance, 0f, lateWakeChanceCap);
     }
 
     private bool HasHighRecentSugarIntake()
     {
-        if (PlayerActionTracker.Instance == null)
-            return false;
-
+        if (PlayerActionTracker.Instance == null) return false;
         int unhealthyCount = PlayerActionTracker.Instance.GetCount(PlayerActionTracker.ActionType.UnhealthyFoodTaken);
-        if (unhealthyCount <= 0)
-            return false;
-
+        if (unhealthyCount <= 0) return false;
         float estimatedSugar = unhealthyCount * GetAverageUnhealthySugarEstimate();
         return estimatedSugar >= highSugarEstimateThreshold;
     }
@@ -607,61 +594,53 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private static float GetAverageUnhealthySugarEstimate()
     {
         FoodData[] foods = Resources.LoadAll<FoodData>("FoodData");
-        if (foods == null || foods.Length == 0)
-            return 12f;
+        if (foods == null || foods.Length == 0) return 12f;
 
         float totalSugar = 0f;
-        int count = 0;
+        int   count      = 0;
         for (int i = 0; i < foods.Length; i++)
         {
             FoodData food = foods[i];
-            if (food == null || food.isHealthy)
-                continue;
-
+            if (food == null || food.isHealthy) continue;
             float sugar = Mathf.Max(0f, food.Sugar);
-            if (sugar <= 0f)
-                sugar = Mathf.Max(0f, food.carbohydrate * 0.35f);
-
+            if (sugar <= 0f) sugar = Mathf.Max(0f, food.carbohydrate * 0.35f);
             totalSugar += sugar;
             count++;
         }
 
-        if (count == 0)
-            return 12f;
-
-        return totalSugar / count;
+        return count == 0 ? 12f : totalSugar / count;
     }
 
     private void ApplyLateWakePenalty(PlayerStats stats)
     {
-        if (stats == null)
-            return;
-
+        if (stats == null) return;
         float penalty = Mathf.Max(0f, lateWakePenaltyAmount);
-        if (penalty <= 0f)
-            return;
-
+        if (penalty <= 0f) return;
         stats.AddFood(-penalty, 0f, 0f);
     }
 
-    private string BuildWakeMessage(string dayName, bool workedYesterday, float energyBeforeSleep, bool disturbedSleep, bool lateWakePenaltyTriggered)
+    // ── Wake message ─────────────────────────────────────────
+    private string BuildWakeMessage(
+        string dayName,
+        bool workedYesterday,
+        float energyBeforeSleep,
+        bool disturbedSleep,
+        bool lateWakePenaltyTriggered,
+        DailyHealthResult evalResult = null)
     {
-        string intro = string.Format(wakeIntroTemplate, dayName);
-        bool lowEnergySleep = energyBeforeSleep <= lowEnergyWarningThreshold;
+        string intro         = string.Format(wakeIntroTemplate, dayName);
+        bool   lowEnergySleep = energyBeforeSleep <= lowEnergyWarningThreshold;
 
-        System.Collections.Generic.List<string> warnings = new System.Collections.Generic.List<string>();
+        var warnings = new System.Collections.Generic.List<string>();
 
-        if (!workedYesterday)
-            warnings.Add(wakeWarningNoWork);
+        if (!workedYesterday)        warnings.Add(wakeWarningNoWork);
+        if (lowEnergySleep)          warnings.Add(wakeWarningLowEnergy);
+        if (disturbedSleep)          warnings.Add(wakeWarningDisturbedSleep);
+        if (lateWakePenaltyTriggered) warnings.Add(wakeWarningLateWakePenalty);
 
-        if (lowEnergySleep)
-            warnings.Add(wakeWarningLowEnergy);
-
-        if (disturbedSleep)
-            warnings.Add(wakeWarningDisturbedSleep);
-
-        if (lateWakePenaltyTriggered)
-            warnings.Add(wakeWarningLateWakePenalty);
+        // Overall note dari evaluator (misal "Hari yang baik. Terus konsisten.")
+        if (evalResult != null && !string.IsNullOrEmpty(evalResult.overallNote))
+            warnings.Add(evalResult.overallNote);
 
         if (warnings.Count > 0)
             return intro + "\n" + string.Join("\n", warnings);
@@ -669,17 +648,13 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         return intro + "\nIstirahatmu cukup. Lanjutkan harimu dengan pilihan sehat.";
     }
 
+    // ── Aging notification ───────────────────────────────────
     private string BuildAgingTransitionMessage(PlayerStats.AgeStage previousStage, PlayerStats.AgeStage newStage, int dayNumber, float phaseScore)
     {
         string fromLabel = PlayerStats.GetAgeStageLabelIndonesia(previousStage);
-        string toLabel = PlayerStats.GetAgeStageLabelIndonesia(newStage);
-
-        string headline = string.Format(
-            agingNotificationTemplate,
-            toLabel,
-            Mathf.Max(1, dayNumber));
-
-        string detail = string.Format(agingNotificationDetailTemplate, fromLabel, toLabel);
+        string toLabel   = PlayerStats.GetAgeStageLabelIndonesia(newStage);
+        string headline  = string.Format(agingNotificationTemplate, toLabel, Mathf.Max(1, dayNumber));
+        string detail    = string.Format(agingNotificationDetailTemplate, fromLabel, toLabel);
         string narrative;
         if (phaseScore > 70f)
             narrative = "Kebiasaan sehatmu di fase ini terbayar. Tubuhmu memasuki fase baru dengan lebih kuat.";
@@ -694,7 +669,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private IEnumerator ShowAgingNotificationRoutine(PlayerStats.AgeStage newStage, float phaseScore)
     {
         EnsureAgingNotificationPanel();
-        if (agingPanelRoot == null || agingPanelGroup == null || agingPanelTitleText == null || agingPanelBodyText == null || agingPanelContinueButton == null)
+        if (agingPanelRoot == null || agingPanelGroup == null ||
+            agingPanelTitleText == null || agingPanelBodyText == null || agingPanelContinueButton == null)
             yield break;
 
         if (ModalStateManager.Instance != null)
@@ -706,18 +682,18 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         {
             agingPanelRoot.SetAsLastSibling();
             agingPanelRoot.gameObject.SetActive(true);
-            agingPanelGroup.alpha = 1f;
-            agingPanelGroup.blocksRaycasts = true;
-            agingPanelGroup.interactable = true;
+            agingPanelGroup.alpha           = 1f;
+            agingPanelGroup.blocksRaycasts  = true;
+            agingPanelGroup.interactable    = true;
 
             agingPanelTitleText.text = $"Memasuki Usia {PlayerStats.GetAgeStageLabelIndonesia(newStage)}";
-            agingPanelBodyText.text = string.Empty;
+            agingPanelBodyText.text  = string.Empty;
             agingPanelContinueButton.onClick.RemoveAllListeners();
             agingPanelContinueButton.onClick.AddListener(() => continueClicked = true);
             agingPanelContinueButton.interactable = false;
 
-            string narrative = BuildAgingPanelNarrative(phaseScore);
-            float visibleCharacters = 0f;
+            string narrative          = BuildAgingPanelNarrative(phaseScore);
+            float  visibleCharacters  = 0f;
             const float charsPerSecond = 40f;
 
             while (visibleCharacters < narrative.Length)
@@ -741,9 +717,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
             if (agingPanelGroup != null)
             {
-                agingPanelGroup.alpha = 0f;
+                agingPanelGroup.alpha          = 0f;
                 agingPanelGroup.blocksRaycasts = false;
-                agingPanelGroup.interactable = false;
+                agingPanelGroup.interactable   = false;
             }
 
             if (agingPanelRoot != null)
@@ -756,7 +732,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private string BuildAgingPanelNarrative(float phaseScore)
     {
-        bool worked = WorkSessionManager.Instance != null && WorkSessionManager.Instance.HasWorkedToday;
+        bool worked    = WorkSessionManager.Instance   != null && WorkSessionManager.Instance.HasWorkedToday;
         bool exercised = GymProgressionSystem.Instance != null && GymProgressionSystem.Instance.HasTrainedToday;
 
         if (phaseScore > 70f && worked && exercised)
@@ -787,18 +763,17 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         return "Ada kemajuan, tapi masih banyak ruang untuk berkembang. Fase berikutnya adalah kesempatan untuk lebih konsisten.";
     }
 
+    // ── UI helpers (tidak berubah dari versi asli) ───────────
     private static TMP_FontAsset LoadAgingPanelFont(string resourcePath)
     {
         TMP_FontAsset fontAsset = Resources.Load<TMP_FontAsset>(resourcePath);
-        if (fontAsset != null)
-            return fontAsset;
-
-        return TMP_Settings.defaultFontAsset;
+        return fontAsset != null ? fontAsset : TMP_Settings.defaultFontAsset;
     }
 
     private void EnsureAgingNotificationPanel()
     {
-        if (agingPanelRoot != null && agingPanelGroup != null && agingPanelTitleText != null && agingPanelBodyText != null && agingPanelContinueButton != null)
+        if (agingPanelRoot != null && agingPanelGroup != null &&
+            agingPanelTitleText != null && agingPanelBodyText != null && agingPanelContinueButton != null)
             return;
 
         ResolveAgingPanelFromScene();
@@ -807,8 +782,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private void ResolveAgingPanelFromScene()
     {
         GameObject hudObject = GameObject.Find("HUD_Canvas");
-        if (hudObject == null)
-            return;
+        if (hudObject == null) return;
 
         Transform panelTransform = null;
         Transform[] children = hudObject.GetComponentsInChildren<Transform>(true);
@@ -821,22 +795,18 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             }
         }
 
-        if (panelTransform == null)
-            return;
+        if (panelTransform == null) return;
 
-        agingPanelRoot = panelTransform as RectTransform;
-        if (agingPanelRoot == null)
-            agingPanelRoot = panelTransform.GetComponent<RectTransform>();
-
+        agingPanelRoot  = panelTransform as RectTransform ?? panelTransform.GetComponent<RectTransform>();
         agingPanelGroup = panelTransform.GetComponent<CanvasGroup>();
-        agingPanelTitleText = FindChildByName(panelTransform, "TitleText")?.GetComponent<TextMeshProUGUI>();
-        agingPanelBodyText = FindChildByName(panelTransform, "BodyText")?.GetComponent<TextMeshProUGUI>();
+        agingPanelTitleText      = FindChildByName(panelTransform, "TitleText")?.GetComponent<TextMeshProUGUI>();
+        agingPanelBodyText       = FindChildByName(panelTransform, "BodyText")?.GetComponent<TextMeshProUGUI>();
         agingPanelContinueButton = FindChildByName(panelTransform, "LanjutButton")?.GetComponent<Button>();
 
         if (agingPanelGroup != null)
         {
-            agingPanelGroup.alpha = 0f;
-            agingPanelGroup.interactable = false;
+            agingPanelGroup.alpha          = 0f;
+            agingPanelGroup.interactable   = false;
             agingPanelGroup.blocksRaycasts = false;
         }
 
@@ -846,28 +816,18 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private static Transform FindChildByName(Transform root, string targetName)
     {
-        if (root == null || string.IsNullOrWhiteSpace(targetName))
-            return null;
-
+        if (root == null || string.IsNullOrWhiteSpace(targetName)) return null;
         Transform[] children = root.GetComponentsInChildren<Transform>(true);
         for (int i = 0; i < children.Length; i++)
-        {
-            if (children[i].name == targetName)
-                return children[i];
-        }
-
+            if (children[i].name == targetName) return children[i];
         return null;
     }
 
     private void ShowWakeMessage(string message, float duration)
     {
         EnsureWakeUi();
-        if (wakeText == null || wakeCanvasGroup == null)
-            return;
-
-        if (wakeMessageRoutine != null)
-            StopCoroutine(wakeMessageRoutine);
-
+        if (wakeText == null || wakeCanvasGroup == null) return;
+        if (wakeMessageRoutine != null) StopCoroutine(wakeMessageRoutine);
         wakeMessageRoutine = StartCoroutine(ShowWakeMessageRoutine(message, duration));
     }
 
@@ -882,11 +842,11 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         sleepCinematicCanvasGroup.alpha = 0f;
 
         float duration = Mathf.Max(0.2f, eyeCloseDuration);
-        float elapsed = 0f;
+        float elapsed  = 0f;
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
+            float t     = Mathf.Clamp01(elapsed / duration);
             float eased = t * t * (3f - 2f * t);
             sleepCinematicCanvasGroup.alpha = eased;
             yield return null;
@@ -898,11 +858,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private void HidePreSleepCinematic()
     {
-        if (sleepCinematicCanvasGroup != null)
-            sleepCinematicCanvasGroup.alpha = 0f;
-
-        if (sleepCinematicCanvas != null)
-            sleepCinematicCanvas.gameObject.SetActive(false);
+        if (sleepCinematicCanvasGroup != null) sleepCinematicCanvasGroup.alpha = 0f;
+        if (sleepCinematicCanvas      != null) sleepCinematicCanvas.gameObject.SetActive(false);
     }
 
     private void PrepareWakeEyeOpenCinematic(string dayName)
@@ -931,18 +888,17 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         sleepCinematicCanvasGroup.alpha = 1f;
 
         float duration = Mathf.Max(0.25f, eyeOpenDuration);
-        float hold = Mathf.Max(0f, wakeLineHoldDuration);
-        float elapsed = 0f;
+        float hold     = Mathf.Max(0f, wakeLineHoldDuration);
+        float elapsed  = 0f;
 
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
+            float t     = Mathf.Clamp01(elapsed / duration);
             float eased = t * t;
-
             sleepCinematicCanvasGroup.alpha = 1f - eased;
 
-            Color txtColor = sleepCinematicText.color;
+            Color txtColor       = sleepCinematicText.color;
             float textFadeOutStart = Mathf.Clamp01((hold + duration * 0.45f) / duration);
             float textAlpha = t < textFadeOutStart
                 ? 1f
@@ -961,8 +917,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (warmSleepLines == null || warmSleepLines.Length == 0)
             return "Tarik napas pelan. Besok kamu bisa mulai lagi dari awal yang lebih baik.";
 
-        int index = Random.Range(0, warmSleepLines.Length);
-        string line = warmSleepLines[index];
+        int    index = Random.Range(0, warmSleepLines.Length);
+        string line  = warmSleepLines[index];
         return string.IsNullOrWhiteSpace(line)
             ? "Tarik napas pelan. Besok kamu bisa mulai lagi dari awal yang lebih baik."
             : line.Trim();
@@ -977,16 +933,12 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (warmWakeLines == null || warmWakeLines.Length == 0)
             return fallback;
 
-        int index = Random.Range(0, warmWakeLines.Length);
-        string line = warmWakeLines[index];
-        if (string.IsNullOrWhiteSpace(line))
-            return fallback;
+        int    index = Random.Range(0, warmWakeLines.Length);
+        string line  = warmWakeLines[index];
+        if (string.IsNullOrWhiteSpace(line)) return fallback;
 
         string trimmed = line.Trim();
-        if (trimmed.Contains("{0}"))
-            return string.Format(trimmed, dayName);
-
-        return trimmed;
+        return trimmed.Contains("{0}") ? string.Format(trimmed, dayName) : trimmed;
     }
 
     private void EnsurePreSleepCinematicUi()
@@ -994,33 +946,31 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (sleepCinematicCanvas != null && sleepCinematicCanvasGroup != null && sleepCinematicText != null)
             return;
 
-        GameObject canvasObj = new GameObject("SleepPreCinematicCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
-        sleepCinematicCanvas = canvasObj.GetComponent<Canvas>();
-        sleepCinematicCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        GameObject canvasObj = new GameObject("SleepPreCinematicCanvas",
+            typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
+
+        sleepCinematicCanvas              = canvasObj.GetComponent<Canvas>();
+        sleepCinematicCanvas.renderMode   = RenderMode.ScreenSpaceOverlay;
         sleepCinematicCanvas.sortingOrder = 998;
 
         CanvasScaler scaler = canvasObj.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
 
-        GraphicRaycaster raycaster = canvasObj.GetComponent<GraphicRaycaster>();
-        raycaster.enabled = false;
-
-        sleepCinematicCanvasGroup = canvasObj.GetComponent<CanvasGroup>();
+        canvasObj.GetComponent<GraphicRaycaster>().enabled = false;
+        sleepCinematicCanvasGroup       = canvasObj.GetComponent<CanvasGroup>();
         sleepCinematicCanvasGroup.alpha = 0f;
 
-        GameObject panelObj = new GameObject("SleepEyeClosePanel", typeof(RectTransform), typeof(Image));
+        GameObject panelObj  = new GameObject("SleepEyeClosePanel", typeof(RectTransform), typeof(Image));
         RectTransform panelRect = panelObj.GetComponent<RectTransform>();
         panelRect.SetParent(canvasObj.transform, false);
         panelRect.anchorMin = Vector2.zero;
         panelRect.anchorMax = Vector2.one;
         panelRect.offsetMin = Vector2.zero;
         panelRect.offsetMax = Vector2.zero;
+        panelObj.GetComponent<Image>().color = new Color(0f, 0f, 0f, 1f);
 
-        Image panelImage = panelObj.GetComponent<Image>();
-        panelImage.color = new Color(0f, 0f, 0f, 1f);
-
-        GameObject textObj = new GameObject("SleepWarmLine", typeof(RectTransform), typeof(TextMeshProUGUI));
+        GameObject textObj  = new GameObject("SleepWarmLine", typeof(RectTransform), typeof(TextMeshProUGUI));
         RectTransform textRect = textObj.GetComponent<RectTransform>();
         textRect.SetParent(panelObj.transform, false);
         textRect.anchorMin = new Vector2(0.12f, 0.18f);
@@ -1028,24 +978,24 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
 
-        sleepCinematicText = textObj.GetComponent<TextMeshProUGUI>();
-        sleepCinematicText.alignment = TextAlignmentOptions.Center;
-        sleepCinematicText.fontSize = 30f;
-        sleepCinematicText.color = new Color(0.98f, 0.95f, 0.86f, 1f);
-        sleepCinematicText.textWrappingMode = TextWrappingModes.Normal;
-        sleepCinematicText.text = string.Empty;
+        sleepCinematicText                   = textObj.GetComponent<TextMeshProUGUI>();
+        sleepCinematicText.alignment         = TextAlignmentOptions.Center;
+        sleepCinematicText.fontSize          = 30f;
+        sleepCinematicText.color             = new Color(0.98f, 0.95f, 0.86f, 1f);
+        sleepCinematicText.textWrappingMode  = TextWrappingModes.Normal;
+        sleepCinematicText.text              = string.Empty;
 
         sleepCinematicCanvas.gameObject.SetActive(false);
     }
 
     private IEnumerator ShowWakeMessageRoutine(string message, float duration)
     {
-        wakeText.text = message;
-        wakeCanvasGroup.alpha = 1f;
+        wakeText.text              = message;
+        wakeCanvasGroup.alpha      = 1f;
         wakeCanvasGroup.blocksRaycasts = false;
         yield return new WaitForSecondsRealtime(Mathf.Max(0.5f, duration));
-        wakeCanvasGroup.alpha = 0f;
-        wakeMessageRoutine = null;
+        wakeCanvasGroup.alpha      = 0f;
+        wakeMessageRoutine         = null;
     }
 
     private void EnsureWakeUi()
@@ -1053,33 +1003,31 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (wakeCanvas != null && wakeCanvasGroup != null && wakeText != null)
             return;
 
-        GameObject canvasObj = new GameObject("SleepWakeCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
-        wakeCanvas = canvasObj.GetComponent<Canvas>();
-        wakeCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        GameObject canvasObj = new GameObject("SleepWakeCanvas",
+            typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
+
+        wakeCanvas              = canvasObj.GetComponent<Canvas>();
+        wakeCanvas.renderMode   = RenderMode.ScreenSpaceOverlay;
         wakeCanvas.sortingOrder = 120;
 
         CanvasScaler scaler = canvasObj.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
 
-        GraphicRaycaster raycaster = canvasObj.GetComponent<GraphicRaycaster>();
-        raycaster.enabled = false;
-
-        wakeCanvasGroup = canvasObj.GetComponent<CanvasGroup>();
+        canvasObj.GetComponent<GraphicRaycaster>().enabled = false;
+        wakeCanvasGroup       = canvasObj.GetComponent<CanvasGroup>();
         wakeCanvasGroup.alpha = 0f;
 
-        GameObject panelObj = new GameObject("WakePanel", typeof(RectTransform), typeof(Image));
+        GameObject panelObj  = new GameObject("WakePanel", typeof(RectTransform), typeof(Image));
         RectTransform panelRect = panelObj.GetComponent<RectTransform>();
         panelRect.SetParent(canvasObj.transform, false);
-        panelRect.anchorMin = new Vector2(0.5f, 0.87f);
-        panelRect.anchorMax = new Vector2(0.5f, 0.87f);
-        panelRect.pivot = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta = new Vector2(980f, 140f);
+        panelRect.anchorMin  = new Vector2(0.5f, 0.87f);
+        panelRect.anchorMax  = new Vector2(0.5f, 0.87f);
+        panelRect.pivot      = new Vector2(0.5f, 0.5f);
+        panelRect.sizeDelta  = new Vector2(980f, 140f);
+        panelObj.GetComponent<Image>().color = new Color(0.06f, 0.08f, 0.12f, 0.78f);
 
-        Image panelImage = panelObj.GetComponent<Image>();
-        panelImage.color = new Color(0.06f, 0.08f, 0.12f, 0.78f);
-
-        GameObject textObj = new GameObject("WakeText", typeof(RectTransform), typeof(TextMeshProUGUI));
+        GameObject textObj  = new GameObject("WakeText", typeof(RectTransform), typeof(TextMeshProUGUI));
         RectTransform textRect = textObj.GetComponent<RectTransform>();
         textRect.SetParent(panelObj.transform, false);
         textRect.anchorMin = new Vector2(0.05f, 0.12f);
@@ -1087,11 +1035,11 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         textRect.offsetMin = Vector2.zero;
         textRect.offsetMax = Vector2.zero;
 
-        wakeText = textObj.GetComponent<TextMeshProUGUI>();
-        wakeText.alignment = TextAlignmentOptions.Center;
-        wakeText.fontSize = 26f;
-        wakeText.color = new Color(0.98f, 0.94f, 0.84f, 1f);
+        wakeText                  = textObj.GetComponent<TextMeshProUGUI>();
+        wakeText.alignment        = TextAlignmentOptions.Center;
+        wakeText.fontSize         = 26f;
+        wakeText.color            = new Color(0.98f, 0.94f, 0.84f, 1f);
         wakeText.textWrappingMode = TextWrappingModes.Normal;
-        wakeText.text = string.Empty;
+        wakeText.text             = string.Empty;
     }
 }

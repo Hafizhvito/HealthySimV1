@@ -6852,7 +6852,7 @@ MonoBehaviour:
   chanceIfPoorDiet: 0.15
   disturbedRecoveryNormalized: 0.65
   poorDietThresholdDelta: 2
-  requireNightToSleep: 1
+  requireNightToSleep: 0
   clockSkipDuration: 2.7
   fadeDuration: 0.33
   sleepLockSource: SleepTransition

@@ -152,26 +152,29 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
     {
         if (PlayerStats.Instance == null)
             return;
-
+    
         FoodData food = selectedFood != null ? selectedFood : GetFallbackFood();
-
+    
         if (!TrySpendForFood(food, out int chargedPrice))
             return;
-
-        FoodData foodData = food;
+    
         PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect);
-        PlayerStats.Instance?.RegisterHealthScore(foodData.isHealthy ? 5f : -5f);
-
+        // DIHAPUS: PlayerStats.Instance?.RegisterHealthScore(foodData.isHealthy ? 5f : -5f);
+    
         if (PlayerActionTracker.Instance != null)
         {
             PlayerActionTracker.Instance.Track(
-                food.isHealthy ? PlayerActionTracker.ActionType.HealthyFoodTaken : PlayerActionTracker.ActionType.UnhealthyFoodTaken,
+                food.isHealthy
+                    ? PlayerActionTracker.ActionType.HealthyFoodTaken
+                    : PlayerActionTracker.ActionType.UnhealthyFoodTaken,
                 gameObject.name
             );
         }
-
-        Debug.Log($"[Interaction] {food.foodName} dibeli Rp{chargedPrice}. Energi +{food.energyRestored}, Kalori +{food.calories}, Mood {food.moodEffect:+0.##;-0.##;0}");
-
+    
+        Debug.Log($"[Interaction] {food.foodName} dibeli Rp{chargedPrice}. " +
+                $"Energi +{food.energyRestored}, Kalori +{food.calories}, " +
+                $"Mood {food.moodEffect:+0.##;-0.##;0}");
+    
         if (consumeOnInteract)
             gameObject.SetActive(false);
     }
@@ -267,3 +270,4 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
         return Mathf.Max(1, Mathf.RoundToInt(basePrice * multiplier));
     }
 }
+    

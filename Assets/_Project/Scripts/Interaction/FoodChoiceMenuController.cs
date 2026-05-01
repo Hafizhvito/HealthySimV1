@@ -249,20 +249,30 @@ public class FoodChoiceMenuController : MonoBehaviour
     {
         if (food == null)
             return;
-
+    
         if (!TryPurchaseFood(food))
             return;
-
+    
         if (PlayerStats.Instance != null)
         {
-            FoodData currentFood = food;
             PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect);
-            PlayerStats.Instance?.RegisterHealthScore(currentFood.isHealthy ? 5f : -5f);
+            // DIHAPUS: PlayerStats.Instance?.RegisterHealthScore(currentFood.isHealthy ? 5f : -5f);
         }
-
+    
+        // DITAMBAH: Track ke PlayerActionTracker supaya DailyHealthEvaluator bisa hitung diet score
+        if (PlayerActionTracker.Instance != null)
+        {
+            PlayerActionTracker.Instance.Track(
+                food.isHealthy
+                    ? PlayerActionTracker.ActionType.HealthyFoodTaken
+                    : PlayerActionTracker.ActionType.UnhealthyFoodTaken,
+                $"FoodMenu:{food.foodName}"
+            );
+        }
+    
         if (StoryManager.Instance != null)
             StoryManager.Instance.OnFoodEaten(food);
-
+    
         Debug.Log($"[FoodMenu] Dibeli dan dimakan: {food.foodName} (Rp{GetDisplayPrice(food)})");
         ShowPanelStatus($"Kamu makan {food.foodName}.", false, 1.2f);
         CloseMenu();
@@ -328,25 +338,26 @@ public class FoodChoiceMenuController : MonoBehaviour
             ShowPanelStatus("Data player belum siap.", true);
             return;
         }
-
+    
         int price = Mathf.Max(0, homeQuickDrinkPrice);
         if (price > 0 && PlayerStats.Instance.Money < price)
         {
             ShowPanelStatus($"Uang tidak cukup. Butuh Rp{price}.", true);
             return;
         }
-
+    
         if (price > 0)
             PlayerStats.Instance.SpendMoney(price);
-
+    
         PlayerStats.Instance.AddFood(homeQuickDrinkEnergy, homeQuickDrinkCalories, homeQuickDrinkMood);
-        PlayerStats.Instance?.RegisterHealthScore(5f);
-
+        // DIHAPUS: PlayerStats.Instance?.RegisterHealthScore(5f);
+    
+        // Track tetap ada — quick drink dianggap healthy
         if (PlayerActionTracker.Instance != null)
             PlayerActionTracker.Instance.Track(PlayerActionTracker.ActionType.HealthyFoodTaken, "HomeQuickDrink");
-
+    
         ShowPanelStatus($"Kamu minum {homeQuickDrinkName}.", false, 1.2f);
-    }
+}
 
     private int GetDisplayPrice(FoodData food)
     {

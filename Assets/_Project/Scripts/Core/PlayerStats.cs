@@ -39,6 +39,10 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] [HideInInspector] private float[] committedPhaseScores = new float[3] { 50f, 50f, 50f };
     [SerializeField] [HideInInspector] private float phaseCarryOverModifier = 1.0f;
 
+    [Header("Streak Counters (Hidden)")]
+    [SerializeField] [HideInInspector] private int gymSkipStreak  = 0;
+    [SerializeField] [HideInInspector] private int workSkipStreak = 0;
+
     [Header("Age Progression (Hidden)")]
     [SerializeField] [HideInInspector] private int progressionDayCount = 1;
     [SerializeField] [HideInInspector] private AgeStage currentAgeStage = AgeStage.Youth;
@@ -47,38 +51,44 @@ public class PlayerStats : MonoBehaviour
     [Header("Energy State Thresholds")]
     [SerializeField] private float warningThreshold = 40f;
     [SerializeField] private float criticalThreshold = 15f;
+    
 
     public enum EnergyState { Normal, Warning, Critical, Fainted }
     public enum AgeStage { Youth, Adult, Senior }
     public enum Gender { Male, Female }
+
     private EnergyState currentEnergyState = EnergyState.Normal;
     private float faintTimer = 0f;
     private float faintDuration = 3f;
     private float runningDuration;
 
-    // Public getters
-    public float CurrentEnergy => currentEnergy;
-    public float MaxEnergy => maxEnergy;
-    public float EnergyPercent => currentEnergy / maxEnergy;
-    public float CurrentMood => currentMood;
-    public float MaxMood => maxMood;
-    public float MoodPercent => currentMood / maxMood;
-    public float TotalCalories => totalCaloriesConsumed;
-    public float DailyCalorieTarget => dailyCalorieTarget;
+    // ── Public getters ───────────────────────────────────────
+    public float CurrentEnergy       => currentEnergy;
+    public float MaxEnergy           => maxEnergy;
+    public float EnergyPercent       => currentEnergy / maxEnergy;
+    public float CurrentMood         => currentMood;
+    public float MaxMood             => maxMood;
+    public float MoodPercent         => currentMood / maxMood;
+    public float TotalCalories       => totalCaloriesConsumed;
+    public float DailyCalorieTarget  => dailyCalorieTarget;
     public EnergyState CurrentEnergyState => currentEnergyState;
-    public string PlayerName => playerName;
-    public float PlayerBMI => playerBMI;
-    public Gender PlayerGender => playerGender;
-    public int Money => _money;
-    public float TrainingAdaptation => trainingAdaptation;
-    public float FatigueDebt => fatigueDebt;
+    public string PlayerName         => playerName;
+    public float PlayerBMI           => playerBMI;
+    public Gender PlayerGender       => playerGender;
+    public int Money                 => _money;
+    public float TrainingAdaptation  => trainingAdaptation;
+    public float FatigueDebt        => fatigueDebt;
     public float HealthScoreThisPhase => healthScoreThisPhase;
     public float[] CommittedPhaseScores => committedPhaseScores;
-    public float MovementDrainModifier => movementDrainModifier;
-    public int ProgressionDayCount => progressionDayCount;
-    public AgeStage CurrentAgeStage => currentAgeStage;
+    public float MovementDrainModifier  => movementDrainModifier;
+    public int ProgressionDayCount   => progressionDayCount;
+    public AgeStage CurrentAgeStage  => currentAgeStage;
 
-    // Events
+    // ── Streak getters ───────────────────────────────────────
+    public int GymSkipStreak         => gymSkipStreak;
+    public int WorkSkipStreak        => workSkipStreak;
+
+    // ── Events ───────────────────────────────────────────────
     public System.Action<EnergyState> OnEnergyStateChanged;
     public System.Action OnPlayerFainted;
     public System.Action<float> OnEnergyChanged;
@@ -119,7 +129,7 @@ public class PlayerStats : MonoBehaviour
         CheckFaintCondition();
     }
 
-    // Called by PlayerController every frame with current movement state
+    // ── Movement energy drain ────────────────────────────────
     public void DrainEnergy(bool isWalking, bool isRunning, float deltaTime)
     {
         if (currentEnergyState == EnergyState.Fainted) return;
@@ -142,8 +152,7 @@ public class PlayerStats : MonoBehaviour
         }
 
         float drainModifier = Mathf.Clamp(movementDrainModifier, 0.75f, 1.25f);
-        float scaledDrain = drainRate * Mathf.Clamp(movementDrainScale, 0.05f, 1f) * drainModifier;
-
+        float scaledDrain   = drainRate * Mathf.Clamp(movementDrainScale, 0.05f, 1f) * drainModifier;
         ModifyEnergy(-(scaledDrain * deltaTime));
     }
 
@@ -161,7 +170,7 @@ public class PlayerStats : MonoBehaviour
         OnCaloriesChanged?.Invoke(totalCaloriesConsumed);
     }
 
-    // Reduces current energy by normalized amount [0..1] of max energy.
+    /// <summary>Reduces current energy by normalised amount [0..1] of max energy.</summary>
     public void DrainEnergy(float normalizedAmount)
     {
         float clamped = Mathf.Clamp01(normalizedAmount);
@@ -180,11 +189,11 @@ public class PlayerStats : MonoBehaviour
         _money = Mathf.Max(0, _money - safeAmount);
     }
 
-    // Gym progression values are hidden gameplay stats used by gym systems.
+    /// <summary>Gym progression values are hidden gameplay stats used by gym systems.</summary>
     public void ApplyGymProgression(float adaptationDelta, float fatigueDelta)
     {
         trainingAdaptation = Mathf.Clamp(trainingAdaptation + adaptationDelta, 0f, 100f);
-        fatigueDebt = Mathf.Clamp(fatigueDebt + fatigueDelta, 0f, 100f);
+        fatigueDebt        = Mathf.Clamp(fatigueDebt        + fatigueDelta,    0f, 100f);
     }
 
     public void RegisterHealthScore(float delta)
@@ -205,6 +214,33 @@ public class PlayerStats : MonoBehaviour
         return total / 3f;
     }
 
+    // ── Streak methods ───────────────────────────────────────
+
+    /// <summary>Called by DailyHealthEvaluator when player did NOT gym today.</summary>
+    public void IncrementGymSkipStreak()
+    {
+        gymSkipStreak = Mathf.Max(0, gymSkipStreak + 1);
+    }
+
+    /// <summary>Called by DailyHealthEvaluator when player DID gym today.</summary>
+    public void ResetGymSkipStreak()
+    {
+        gymSkipStreak = 0;
+    }
+
+    /// <summary>Called by DailyHealthEvaluator when player did NOT work today.</summary>
+    public void IncrementWorkSkipStreak()
+    {
+        workSkipStreak = Mathf.Max(0, workSkipStreak + 1);
+    }
+
+    /// <summary>Called by DailyHealthEvaluator when player DID work today.</summary>
+    public void ResetWorkSkipStreak()
+    {
+        workSkipStreak = 0;
+    }
+
+    // ── Modifiers / setup ────────────────────────────────────
     public void SetGender(Gender g)
     {
         playerGender = g;
@@ -219,10 +255,11 @@ public class PlayerStats : MonoBehaviour
     public void ApplyPhaseModifiers()
     {
         PhaseModifierData data = GetPhaseModifier(currentAgeStage, playerGender);
-        dailyCalorieTarget = data.dailyCalorieTarget;
+        dailyCalorieTarget    = data.dailyCalorieTarget;
         movementDrainModifier = Mathf.Clamp(data.movementDrainMultiplier, 0.5f, 1.5f);
-        moodDrainRate = data.moodDrainMultiplier * 0.2f;
-        Debug.Log($"[PlayerStats] PhaseModifiers applied: stage={currentAgeStage} gender={playerGender} cal={dailyCalorieTarget} drain={movementDrainModifier} mood={moodDrainRate}");
+        moodDrainRate         = data.moodDrainMultiplier * 0.2f;
+        Debug.Log($"[PlayerStats] PhaseModifiers applied: stage={currentAgeStage} gender={playerGender} " +
+                  $"cal={dailyCalorieTarget} drain={movementDrainModifier} mood={moodDrainRate}");
     }
 
     private PhaseModifierData GetPhaseModifier(AgeStage stage, Gender gender)
@@ -243,7 +280,7 @@ public class PlayerStats : MonoBehaviour
     {
         progressionDayCount = Mathf.Max(1, dayNumber);
         previousStage = currentAgeStage;
-        newStage = ResolveAgeStageForDay(progressionDayCount);
+        newStage      = ResolveAgeStageForDay(progressionDayCount);
 
         if (newStage == previousStage)
             return false;
@@ -258,14 +295,25 @@ public class PlayerStats : MonoBehaviour
             phaseCarryOverModifier = 1.0f;
 
         maxEnergy = Mathf.Clamp(maxEnergy * phaseCarryOverModifier, 60f, 150f);
+
         int prevIndex = (int)previousStage;
         if (prevIndex >= 0 && prevIndex < committedPhaseScores.Length)
             committedPhaseScores[prevIndex] = healthScoreThisPhase;
+
         Debug.Log($"[PlayerStats] Committed phase score: {previousStage}={healthScoreThisPhase}");
+
         healthScoreThisPhase = 50f;
+
+        // Reset streaks on phase transition — new phase, fresh start
+        gymSkipStreak  = 0;
+        workSkipStreak = 0;
+        Debug.Log("[PlayerStats] Streak counters reset on phase transition.");
+
         ApplyPhaseModifiers();
 
-        Debug.Log($"[PlayerStats] Phase transition {previousStage}→{newStage}, score={healthScoreThisPhase}, modifier={phaseCarryOverModifier}, newMaxEnergy={maxEnergy}");
+        Debug.Log($"[PlayerStats] Phase transition {previousStage}→{newStage}, " +
+                  $"score={healthScoreThisPhase}, modifier={phaseCarryOverModifier}, newMaxEnergy={maxEnergy}");
+
         OnAgeStageChanged?.Invoke(previousStage, newStage, progressionDayCount);
         return true;
     }
@@ -274,13 +322,35 @@ public class PlayerStats : MonoBehaviour
     {
         return stage switch
         {
-            AgeStage.Youth => "Muda",
-            AgeStage.Adult => "Dewasa",
+            AgeStage.Youth  => "Muda",
+            AgeStage.Adult  => "Dewasa",
             AgeStage.Senior => "Lansia",
-            _ => "Muda"
+            _               => "Muda"
         };
     }
 
+    // ── Called from home screen ──────────────────────────────
+    public void SetPlayerData(string name, float height, float weight)
+    {
+        playerName   = name;
+        playerHeight = height;
+        playerWeight = weight;
+        CalculateBMI();
+    }
+
+    // ── Called by PlayerController ───────────────────────────
+    public float GetSpeedMultiplier()
+    {
+        return currentEnergyState switch
+        {
+            EnergyState.Warning  => 0.7f,
+            EnergyState.Critical => 0.4f,
+            EnergyState.Fainted  => 0f,
+            _                    => 1f
+        };
+    }
+
+    // ── Private helpers ──────────────────────────────────────
     void ModifyEnergy(float amount)
     {
         currentEnergy = Mathf.Clamp(currentEnergy + amount, 0f, maxEnergy);
@@ -302,10 +372,10 @@ public class PlayerStats : MonoBehaviour
     void UpdateEnergyState()
     {
         EnergyState newState;
-        if (currentEnergy <= 0) newState = EnergyState.Critical;
-        else if (currentEnergy <= criticalThreshold) newState = EnergyState.Critical;
-        else if (currentEnergy <= warningThreshold) newState = EnergyState.Warning;
-        else newState = EnergyState.Normal;
+        if (currentEnergy <= 0)                          newState = EnergyState.Critical;
+        else if (currentEnergy <= criticalThreshold)     newState = EnergyState.Critical;
+        else if (currentEnergy <= warningThreshold)      newState = EnergyState.Warning;
+        else                                             newState = EnergyState.Normal;
 
         if (newState != currentEnergyState)
         {
@@ -343,39 +413,14 @@ public class PlayerStats : MonoBehaviour
     private void SyncAgeProgressionFromDay(int dayNumber)
     {
         progressionDayCount = Mathf.Max(1, dayNumber);
-        currentAgeStage = ResolveAgeStageForDay(progressionDayCount);
+        currentAgeStage     = ResolveAgeStageForDay(progressionDayCount);
     }
 
     private static AgeStage ResolveAgeStageForDay(int dayNumber)
     {
         int safeDay = Mathf.Max(1, dayNumber);
-        if (safeDay >= 10)
-            return AgeStage.Senior;
-
-        if (safeDay >= 5)
-            return AgeStage.Adult;
-
+        if (safeDay >= 10) return AgeStage.Senior;
+        if (safeDay >= 5)  return AgeStage.Adult;
         return AgeStage.Youth;
-    }
-
-    // Called from home screen to set player data before gameplay
-    public void SetPlayerData(string name, float height, float weight)
-    {
-        playerName = name;
-        playerHeight = height;
-        playerWeight = weight;
-        CalculateBMI();
-    }
-
-    // Called by PlayerController to adjust speed based on energy state
-    public float GetSpeedMultiplier()
-    {
-        return currentEnergyState switch
-        {
-            EnergyState.Warning => 0.7f,
-            EnergyState.Critical => 0.4f,
-            EnergyState.Fainted => 0f,
-            _ => 1f
-        };
     }
 }
