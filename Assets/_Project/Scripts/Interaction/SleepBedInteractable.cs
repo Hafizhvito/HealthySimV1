@@ -80,7 +80,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] private string wakeWarningDisturbedSleep = "Peringatan: Tidurmu kurang nyenyak, jadi energimu belum pulih penuh.";
 
     [Header("Aging Transition")]
-    [SerializeField] private float agingNotificationDuration = 3.2f;
+    //[SerializeField] private float agingNotificationDuration = 3.2f;
     [SerializeField] private string agingNotificationTemplate = "Tubuhmu memasuki fase {0} pada Hari {1}.";
     [SerializeField] private string agingNotificationDetailTemplate = "Transisi dari fase {0} ke {1}.";
 

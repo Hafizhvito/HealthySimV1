@@ -53,7 +53,7 @@ public class NpcDialogueMenuController : MonoBehaviour
 
     [Header("Choice Cards")]
     [SerializeField] private float choiceCardHeight = 56f;
-    [SerializeField] private float choiceSpacing = 8f;
+    //[SerializeField] private float choiceSpacing = 8f;
     [SerializeField] private int maxDialogueChars = 260;
     [SerializeField] private int maxChoiceChars = 96;
 

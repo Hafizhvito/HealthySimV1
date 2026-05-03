@@ -17488,8 +17488,8 @@ MonoBehaviour:
   fallbackMoodGain: 8
   fallbackHealthy: 1
   consumeOnInteract: 1
-  foodCatalogProviderOverride: {fileID: 0}
-  foodStashOverride: {fileID: 0}
+  foodCatalogProviderOverride: {fileID: 2130000009}
+  foodStashOverride: {fileID: 2130000015}
 --- !u!23 &1873689980
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -20178,6 +20178,14 @@ GameObject:
   - component: {fileID: 2130000018}
   - component: {fileID: 2130000017}
   - component: {fileID: 2130000019}
+  - component: {fileID: 2130000030}
+  - component: {fileID: 2130000029}
+  - component: {fileID: 2130000028}
+  - component: {fileID: 2130000027}
+  - component: {fileID: 2130000026}
+  - component: {fileID: 2130000025}
+  - component: {fileID: 2130000024}
+  - component: {fileID: 2130000020}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -20238,6 +20246,8 @@ MonoBehaviour:
   - 50
   - 50
   phaseCarryOverModifier: 1
+  gymSkipStreak: 0
+  workSkipStreak: 0
   progressionDayCount: 1
   currentAgeStage: 0
   playerGender: 0
@@ -20485,6 +20495,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EndingManager
   endingTriggerDay: 10
+--- !u!114 &2130000020
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b83d8dc3fd85244498ebef5bfcbe080, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MobileInputController
+  forceMobileUI: 1
+  lookSensitivity: 0.08
 --- !u!1 &2130000021
 GameObject:
   m_ObjectHideFlags: 0
@@ -20533,6 +20557,125 @@ MonoBehaviour:
   faintRecoveryEnergy: 30
   respawnDelay: 2
   respawnPoint: {fileID: 2130000012}
+--- !u!114 &2130000024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 721ab451f76c8cf4cb685f280173c9e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FadeManager
+--- !u!114 &2130000025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 93b1940a9307f134cb06e9de103777e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorkSessionManager
+  _basePayPagi: 200
+  _basePaySiang: 150
+  _basePaySore: 150
+  _energyDrainFull: 0.35
+  _energyDrainPartial: 0.2
+  _energyThresholdFail: 0.3
+  _energyThresholdBonus: 0.6
+  _bonusMultiplier: 1.25
+--- !u!114 &2130000026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06e7d4dac65f900479feb389c4cfcbc8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorkReminderUI
+  showDelaySeconds: 1.5
+  autoDismissSeconds: 6
+  fadeDuration: 0.3
+--- !u!114 &2130000027
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c12c6a617feba74ca10511c62a340e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SessionFlowController
+--- !u!114 &2130000028
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6154abd320306444289d86e55dcf6f61, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IntroCutsceneController
+  phase0LetterboxDuration: 0.8
+  phase0FadeDuration: 1.2
+  topDownShotDuration: 3.5
+  playerShotDuration: 3
+  hotspotShotDuration: 3
+  narrationFadeInDuration: 0.6
+  narrationFadeOutDuration: 0.5
+  titleFadeToBlackDuration: 0.8
+  titleFadeInDuration: 0.6
+  subtitleFadeInDuration: 0.5
+  titleHoldDuration: 1.5
+  titleFadeOutDuration: 0.5
+  finalFadeToSceneDuration: 1
+  phase6LetterboxOutDuration: 0.8
+  introPriority: 80
+  gameplayPriority: 50
+  inactivePriority: 1
+  cutShakeAmplitude: 0.03
+  pulseMainLight: 1
+  introLightIntensity: 2.6
+  introLightColor: {r: 1, g: 0.88, b: 0.74, a: 1}
+  titleCardText: HealthSim
+  cinematicCanvasSortOrder: 99
+--- !u!114 &2130000029
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d5f1277d167ed748abc07b1aa0f220e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StoryIntroManager
+  backstoryDialogue: {fileID: 0}
+--- !u!114 &2130000030
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa2dbc20ba64ee8408ec3c9a00942e44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerActionTracker
 --- !u!1 &2135868699
 GameObject:
   m_ObjectHideFlags: 0

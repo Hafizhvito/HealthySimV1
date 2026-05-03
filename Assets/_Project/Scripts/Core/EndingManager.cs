@@ -314,9 +314,16 @@ public class EndingManager : MonoBehaviour
         if (ModalStateManager.Instance != null)
             ModalStateManager.Instance.CloseModal(ModalKey);
 
-        isShowing      = false;
-        Time.timeScale = 0f;
-        Debug.Log("[EndingManager] Game ended. timeScale=0");
+        // Ending selesai, langsung ke credit scene
+        isShowing = false;
+
+        if (CreditsController.Instance == null)
+        {
+            GameObject creditsGo = new GameObject("CreditsController");
+            creditsGo.AddComponent<CreditsController>();
+        }
+        // 
+        CreditsController.Instance.Play();
     }
 
     private void SetAccentColor(EndingType type)

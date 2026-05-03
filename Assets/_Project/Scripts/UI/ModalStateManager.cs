@@ -104,7 +104,7 @@ public class ModalStateManager : MonoBehaviour
             playerController.ResetInputLocks("ForceReset");
 
         OnModalStateChanged?.Invoke(false);
-        Debug.LogWarning("[ModalState] Force reset all modals.");
+        Debug.Log("[ModalState] Force reset all modals.");
     }
 
     private int GetActiveModalCount()
