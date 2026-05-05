@@ -252,7 +252,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         DailyHealthResult dailyEvalResult = null;
         ApplyRecovery(playerStats, disturbedSleep, energyBeforeSleep,
                     workedYesterday, lastWorkSession, lastWorkHadBonus,
-                    trainedYesterday, lastGymSession, out dailyEvalResult);
+                    trainedYesterday, lastGymSession, overworkedYesterday, out dailyEvalResult);
 
         // ── Advance day ──────────────────────────────────────
         timeManager.AdvanceToNextDayFromSleep();
@@ -331,6 +331,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         bool lastWorkHadBonus,
         bool trainedYesterday,
         GymSessionData lastGymSession,
+        bool overworkedYesterday,
         out DailyHealthResult evalResult)
     {
         // 1. Energy recovery
@@ -355,6 +356,22 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             PlayerActionTracker.Instance,
             stats
         );
+
+        if (stats != null)
+        {
+            float calorieRatio = 0f;
+            if (stats.DailyCalorieTarget > 0f)
+                calorieRatio = stats.TotalCalories / stats.DailyCalorieTarget;
+
+            stats.RegisterDailyHealthSnapshot(
+                evalResult,
+                disturbedSleep,
+                energyBeforeSleep,
+                workedYesterday,
+                trainedYesterday,
+                overworkedYesterday,
+                calorieRatio);
+        }
 
         stats.RegisterHealthScore(evalResult.totalDelta);
 
@@ -946,6 +963,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (sleepCinematicCanvas != null && sleepCinematicCanvasGroup != null && sleepCinematicText != null)
             return;
 
+        if (TryBindExistingPreSleepUi())
+            return;
+
         GameObject canvasObj = new GameObject("SleepPreCinematicCanvas",
             typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
 
@@ -1003,6 +1023,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (wakeCanvas != null && wakeCanvasGroup != null && wakeText != null)
             return;
 
+        if (TryBindExistingWakeUi())
+            return;
+
         GameObject canvasObj = new GameObject("SleepWakeCanvas",
             typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
 
@@ -1041,5 +1064,51 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         wakeText.color            = new Color(0.98f, 0.94f, 0.84f, 1f);
         wakeText.textWrappingMode = TextWrappingModes.Normal;
         wakeText.text             = string.Empty;
+    }
+
+    private bool TryBindExistingPreSleepUi()
+    {
+        GameObject canvasObj = GameObject.Find("SleepPreCinematicCanvas");
+        if (canvasObj == null)
+            return false;
+
+        SleepPreCinematicCanvasBinder binder = canvasObj.GetComponent<SleepPreCinematicCanvasBinder>();
+        if (binder != null)
+        {
+            sleepCinematicCanvas = binder.canvas != null ? binder.canvas : canvasObj.GetComponent<Canvas>();
+            sleepCinematicCanvasGroup = binder.canvasGroup != null ? binder.canvasGroup : canvasObj.GetComponent<CanvasGroup>();
+            sleepCinematicText = binder.warmText;
+            return sleepCinematicCanvas != null && sleepCinematicCanvasGroup != null && sleepCinematicText != null;
+        }
+
+        sleepCinematicCanvas = canvasObj.GetComponent<Canvas>();
+        sleepCinematicCanvasGroup = canvasObj.GetComponent<CanvasGroup>();
+        Transform textTransform = canvasObj.transform.Find("SleepEyeClosePanel/SleepWarmLine");
+        sleepCinematicText = textTransform != null ? textTransform.GetComponent<TextMeshProUGUI>() : null;
+
+        return sleepCinematicCanvas != null && sleepCinematicCanvasGroup != null && sleepCinematicText != null;
+    }
+
+    private bool TryBindExistingWakeUi()
+    {
+        GameObject canvasObj = GameObject.Find("SleepWakeCanvas");
+        if (canvasObj == null)
+            return false;
+
+        SleepWakeCanvasBinder binder = canvasObj.GetComponent<SleepWakeCanvasBinder>();
+        if (binder != null)
+        {
+            wakeCanvas = binder.canvas != null ? binder.canvas : canvasObj.GetComponent<Canvas>();
+            wakeCanvasGroup = binder.canvasGroup != null ? binder.canvasGroup : canvasObj.GetComponent<CanvasGroup>();
+            wakeText = binder.wakeText;
+            return wakeCanvas != null && wakeCanvasGroup != null && wakeText != null;
+        }
+
+        wakeCanvas = canvasObj.GetComponent<Canvas>();
+        wakeCanvasGroup = canvasObj.GetComponent<CanvasGroup>();
+        Transform textTransform = canvasObj.transform.Find("WakePanel/WakeText");
+        wakeText = textTransform != null ? textTransform.GetComponent<TextMeshProUGUI>() : null;
+
+        return wakeCanvas != null && wakeCanvasGroup != null && wakeText != null;
     }
 }

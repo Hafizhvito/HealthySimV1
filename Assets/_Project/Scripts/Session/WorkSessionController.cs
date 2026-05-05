@@ -116,7 +116,7 @@ public class WorkSessionController : MonoBehaviour
             if (bossObj != null)
             {
                 _bossInteractable = bossObj.GetComponent<NpcDialogueInteractable>();
-                Debug.LogWarning($"{FallbackLogPrefix} Resolved boss via NPCBoss tag lookup.");
+                Debug.Log($"{FallbackLogPrefix} Resolved boss via NPCBoss tag lookup.");
             }
         }
 

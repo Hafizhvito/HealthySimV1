@@ -205,7 +205,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
         GUILayout.Label(food.foodName, foodNameStyle);
         GUILayout.Label($"{food.category}  •  Kalori {food.calories:0}  •  Energi +{food.energyRestored:0}  •  Mood +{food.moodEffect:0}", foodDetailStyle);
-        GUILayout.Label($"Protein {food.Protein:0.#}g   Lemak {food.Fat:0.#}g   Gula {food.Sugar:0.#}g", nutrientStyle);
+        GUILayout.Label($"Protein {food.Protein:0.#}g   Lemak {food.Fat:0.#}g   Karbohidrat {food.Carbohydrate:0.#}g", nutrientStyle);
         GUILayout.EndVertical();
 
         GUILayout.BeginVertical(GUILayout.Width(170f));

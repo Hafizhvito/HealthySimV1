@@ -19,7 +19,6 @@ public class MobileInputController : MonoBehaviour
 
     public Vector2 MoveInput { get; private set; }
     public Vector2 LookDelta { get; private set; }
-    public bool InteractPressed { get; private set; }
 
     private const float JoystickRadius = 85f;
     private const float JoystickDeadZone = 0.05f;
@@ -33,18 +32,12 @@ public class MobileInputController : MonoBehaviour
     private static readonly Vector2 SwipeZoneAnchorMin = new Vector2(0.45f, 0f);
     private static readonly Vector2 SwipeZoneAnchorMax = new Vector2(1f, 1f);
 
-    private static readonly Vector2 InteractButtonAnchor = new Vector2(1f, 0f);
-    private static readonly Vector2 InteractButtonPivot = new Vector2(1f, 0f);
-    private static readonly Vector2 InteractButtonPosition = new Vector2(-80f, 120f);
-    private static readonly Vector2 InteractButtonSize = new Vector2(110f, 110f);
-
     private static readonly Vector2 PerspectiveButtonAnchor = new Vector2(1f, 0f);
     private static readonly Vector2 PerspectiveButtonPivot = new Vector2(1f, 0f);
     private static readonly Vector2 PerspectiveButtonPosition = new Vector2(-80f, 270f);
     private static readonly Vector2 PerspectiveButtonSize = new Vector2(110f, 40f);
 
     private PlayerController playerController;
-    private UniversalInteractionController interactionController;
     private CameraSystem cameraSystem;
     private Transform cameraSystemTransform;
 
@@ -62,10 +55,11 @@ public class MobileInputController : MonoBehaviour
     private bool isTouchUiEnabled;
     private bool fallbackPitchInitialized;
     private float fallbackPitch;
-    private bool interactResetPending;
 
     private static Sprite runtimeCircleSprite;
     private static Sprite runtimeRoundedRectSprite;
+
+    public bool IsTouchUiEnabled => isTouchUiEnabled;
 
     void Awake()
     {
@@ -142,7 +136,7 @@ public class MobileInputController : MonoBehaviour
         if (!isTouchUiEnabled)
             return;
 
-        if (playerController == null || interactionController == null || cameraSystemTransform == null)
+        if (playerController == null || cameraSystemTransform == null)
             ResolveSceneReferences();
 
         RefreshPerspectiveToggleLabel();
@@ -178,9 +172,6 @@ public class MobileInputController : MonoBehaviour
     {
         if (playerController == null)
             playerController = FindFirstObjectByType<PlayerController>();
-
-        if (interactionController == null)
-            interactionController = FindFirstObjectByType<UniversalInteractionController>();
 
         if (cameraSystem == null)
             cameraSystem = FindFirstObjectByType<CameraSystem>();
@@ -313,47 +304,6 @@ public class MobileInputController : MonoBehaviour
         lookSwipeZone = swipeZoneRect.gameObject.AddComponent<MobileSwipeLookZone>();
         lookSwipeZone.Initialize(this);
 
-        RectTransform interactRect = CreateControlCircle(
-            "InteractButton",
-            uiRoot.transform,
-            InteractButtonAnchor,
-            InteractButtonAnchor,
-            InteractButtonPivot,
-            InteractButtonPosition,
-            InteractButtonSize,
-            new Color(1f, 1f, 1f, 0.18f),
-            true,
-            true);
-
-        Image interactImage = interactRect.GetComponent<Image>();
-
-        MobileInteractButton mobileButton = interactRect.gameObject.AddComponent<MobileInteractButton>();
-        mobileButton.Initialize(
-            this,
-            interactRect,
-            interactImage,
-            new Color(1f, 1f, 1f, 0.18f),
-            new Color(1f, 1f, 1f, 0.38f),
-            new Vector3(0.9f, 0.9f, 1f),
-            0.08f);
-
-        GameObject labelObj = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-        labelObj.transform.SetParent(interactRect, false);
-
-        RectTransform labelRect = labelObj.GetComponent<RectTransform>();
-        labelRect.anchorMin = new Vector2(0f, 0f);
-        labelRect.anchorMax = new Vector2(1f, 1f);
-        labelRect.offsetMin = Vector2.zero;
-        labelRect.offsetMax = Vector2.zero;
-
-        TextMeshProUGUI label = labelObj.GetComponent<TextMeshProUGUI>();
-        label.text = "E";
-        label.alignment = TextAlignmentOptions.Center;
-        label.fontSize = 42f;
-        label.fontStyle = FontStyles.Bold;
-        label.color = new Color(1f, 0.85f, 0.2f, 0.9f);
-        label.raycastTarget = false;
-
         RectTransform perspectiveRect = CreateControlCircle(
             "PerspectiveToggleButton",
             uiRoot.transform,
@@ -456,7 +406,7 @@ public class MobileInputController : MonoBehaviour
 
         InvisibleTouchGraphic captureGraphic = zoneObj.GetComponent<InvisibleTouchGraphic>();
         captureGraphic.color = Color.clear;
-        captureGraphic.raycastTarget = true;
+        captureGraphic.raycastTarget = Application.isMobilePlatform;
 
         return rect;
     }
@@ -634,7 +584,6 @@ public class MobileInputController : MonoBehaviour
     {
         MoveInput = Vector2.zero;
         LookDelta = Vector2.zero;
-        InteractPressed = false;
     }
 
     private void ResetMotionInput()
@@ -667,17 +616,6 @@ public class MobileInputController : MonoBehaviour
         LookDelta = value;
     }
 
-    internal void NotifyInteractPressed()
-    {
-        InteractPressed = true;
-
-        if (interactionController != null)
-            interactionController.TriggerInteractFromMobile();
-
-        if (!interactResetPending)
-            StartCoroutine(ResetInteractFlagNextFrame());
-    }
-
     internal void TogglePerspectivePressed()
     {
         if (cameraSystem == null)
@@ -688,14 +626,6 @@ public class MobileInputController : MonoBehaviour
 
         cameraSystem.TogglePerspectiveFromMobile();
         RefreshPerspectiveToggleLabel(force: true);
-    }
-
-    private IEnumerator ResetInteractFlagNextFrame()
-    {
-        interactResetPending = true;
-        yield return null;
-        InteractPressed = false;
-        interactResetPending = false;
     }
 
     private IEnumerator SpringBack(RectTransform rt, Vector3 pressedScale, Vector3 normalScale, float duration)
@@ -930,95 +860,6 @@ public class MobileInputController : MonoBehaviour
         protected override void OnPopulateMesh(VertexHelper vh)
         {
             vh.Clear();
-        }
-    }
-
-    private sealed class MobileInteractButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
-    {
-        private MobileInputController owner;
-        private RectTransform buttonRect;
-        private Image buttonImage;
-        private Color releaseColor;
-        private Color pressedColor;
-        private Vector3 pressedScale;
-        private Vector3 normalScale = Vector3.one;
-        private float springDuration;
-        private Coroutine releaseRoutine;
-
-        public void Initialize(
-            MobileInputController ownerController,
-            RectTransform rect,
-            Image image,
-            Color normalColor,
-            Color downColor,
-            Vector3 buttonPressedScale,
-            float buttonSpringDuration)
-        {
-            owner = ownerController;
-            buttonRect = rect;
-            buttonImage = image;
-            releaseColor = normalColor;
-            pressedColor = downColor;
-            pressedScale = buttonPressedScale;
-            springDuration = buttonSpringDuration;
-
-            if (buttonRect != null)
-                buttonRect.localScale = Vector3.one;
-
-            if (buttonImage != null)
-                buttonImage.color = releaseColor;
-        }
-
-        public void OnPointerDown(PointerEventData eventData)
-        {
-            if (releaseRoutine != null)
-                StopCoroutine(releaseRoutine);
-
-            if (buttonRect != null)
-                buttonRect.localScale = pressedScale;
-
-            if (buttonImage != null)
-                buttonImage.color = pressedColor;
-
-            if (owner != null)
-                owner.NotifyInteractPressed();
-        }
-
-        public void OnPointerUp(PointerEventData eventData)
-        {
-            if (releaseRoutine != null)
-                StopCoroutine(releaseRoutine);
-
-            releaseRoutine = StartCoroutine(ReleaseFeedbackRoutine());
-        }
-
-        private IEnumerator ReleaseFeedbackRoutine()
-        {
-            Coroutine springRoutine = null;
-            if (owner != null && buttonRect != null)
-                springRoutine = owner.StartCoroutine(owner.SpringBack(buttonRect, pressedScale, normalScale, springDuration));
-
-            float elapsed = 0f;
-            Color startColor = buttonImage != null ? buttonImage.color : releaseColor;
-
-            while (elapsed < springDuration)
-            {
-                elapsed += Time.unscaledDeltaTime;
-                float t = Mathf.Clamp01(elapsed / Mathf.Max(0.0001f, springDuration));
-
-                if (buttonImage != null)
-                    buttonImage.color = Color.Lerp(startColor, releaseColor, Mathf.SmoothStep(0f, 1f, t));
-
-                yield return null;
-            }
-
-            if (buttonImage != null)
-                buttonImage.color = releaseColor;
-
-            if (springRoutine == null && buttonRect != null)
-                buttonRect.localScale = normalScale;
-
-            releaseRoutine = null;
         }
     }
 

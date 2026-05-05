@@ -39,6 +39,18 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] [HideInInspector] private float[] committedPhaseScores = new float[3] { 50f, 50f, 50f };
     [SerializeField] [HideInInspector] private float phaseCarryOverModifier = 1.0f;
 
+    [Header("Health Tracking (Hidden)")]
+    [SerializeField] [HideInInspector] private int totalDaysEvaluated = 0;
+    [SerializeField] [HideInInspector] private int poorDietDays = 0;
+    [SerializeField] [HideInInspector] private int noFoodDays = 0;
+    [SerializeField] [HideInInspector] private int highCalorieDays = 0;
+    [SerializeField] [HideInInspector] private int lowCalorieDays = 0;
+    [SerializeField] [HideInInspector] private int disturbedSleepDays = 0;
+    [SerializeField] [HideInInspector] private int lowEnergySleepDays = 0;
+    [SerializeField] [HideInInspector] private int skippedGymDays = 0;
+    [SerializeField] [HideInInspector] private int skippedWorkDays = 0;
+    [SerializeField] [HideInInspector] private int overworkedDays = 0;
+
     [Header("Streak Counters (Hidden)")]
     [SerializeField] [HideInInspector] private int gymSkipStreak  = 0;
     [SerializeField] [HideInInspector] private int workSkipStreak = 0;
@@ -83,6 +95,17 @@ public class PlayerStats : MonoBehaviour
     public float MovementDrainModifier  => movementDrainModifier;
     public int ProgressionDayCount   => progressionDayCount;
     public AgeStage CurrentAgeStage  => currentAgeStage;
+
+    public int TotalDaysEvaluated   => totalDaysEvaluated;
+    public int PoorDietDays         => poorDietDays;
+    public int NoFoodDays           => noFoodDays;
+    public int HighCalorieDays      => highCalorieDays;
+    public int LowCalorieDays       => lowCalorieDays;
+    public int DisturbedSleepDays   => disturbedSleepDays;
+    public int LowEnergySleepDays   => lowEnergySleepDays;
+    public int SkippedGymDays       => skippedGymDays;
+    public int SkippedWorkDays      => skippedWorkDays;
+    public int OverworkedDays       => overworkedDays;
 
     // ── Streak getters ───────────────────────────────────────
     public int GymSkipStreak         => gymSkipStreak;
@@ -199,6 +222,48 @@ public class PlayerStats : MonoBehaviour
     public void RegisterHealthScore(float delta)
     {
         healthScoreThisPhase = Mathf.Clamp(healthScoreThisPhase + delta, 0f, 100f);
+    }
+
+    public void RegisterDailyHealthSnapshot(
+        DailyHealthResult evalResult,
+        bool disturbedSleep,
+        float energyBeforeSleep,
+        bool workedYesterday,
+        bool trainedYesterday,
+        bool overworkedYesterday,
+        float calorieRatio)
+    {
+        totalDaysEvaluated++;
+
+        if (evalResult != null)
+        {
+            int totalFood = evalResult.healthyFoodCount + evalResult.unhealthyFoodCount;
+            if (totalFood == 0)
+                noFoodDays++;
+
+            if (evalResult.dietScore < 0f)
+                poorDietDays++;
+        }
+
+        if (calorieRatio > 1.30f)
+            highCalorieDays++;
+        else if (calorieRatio > 0f && calorieRatio < 0.50f)
+            lowCalorieDays++;
+
+        if (disturbedSleep)
+            disturbedSleepDays++;
+
+        if (energyBeforeSleep <= 0.20f)
+            lowEnergySleepDays++;
+
+        if (!trainedYesterday)
+            skippedGymDays++;
+
+        if (!workedYesterday)
+            skippedWorkDays++;
+
+        if (overworkedYesterday)
+            overworkedDays++;
     }
 
     public float GetAveragePhaseScore()

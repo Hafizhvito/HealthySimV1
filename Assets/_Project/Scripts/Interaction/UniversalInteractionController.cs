@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using System.Collections.Generic;
 
 #if ENABLE_INPUT_SYSTEM
@@ -24,6 +25,8 @@ public class UniversalInteractionController : MonoBehaviour
 
     private float nextInteractAllowedTime;
     private IInteractable currentInteractable;
+    private Transform currentInteractableTransform;
+    private Collider currentInteractableCollider;
     private bool pendingInteract;
 
     private Canvas hintCanvas;
@@ -33,6 +36,7 @@ public class UniversalInteractionController : MonoBehaviour
     private int visibleBubbleCount;
 
     private readonly Dictionary<Transform, BubbleVisual> bubbleByTransform = new Dictionary<Transform, BubbleVisual>();
+    private static Sprite bubbleCircleSprite;
 
     private sealed class BubbleVisual
     {
@@ -41,6 +45,37 @@ public class UniversalInteractionController : MonoBehaviour
         public Image Background;
         public TextMeshProUGUI Text;
         public Transform FollowTarget;
+        public IInteractable Interactable;
+        public Collider TargetCollider;
+        public BubbleTapHandler TapHandler;
+    }
+
+    private sealed class BubbleTapHandler : MonoBehaviour, IPointerClickHandler
+    {
+        private UniversalInteractionController owner;
+        private IInteractable target;
+        private Transform targetTransform;
+        private Collider targetCollider;
+
+        public void Initialize(UniversalInteractionController controller)
+        {
+            owner = controller;
+        }
+
+        public void SetTarget(IInteractable interactable, Transform transform, Collider collider)
+        {
+            target = interactable;
+            targetTransform = transform;
+            targetCollider = collider;
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (owner == null)
+                return;
+
+            owner.TryInteract(target, targetTransform, targetCollider);
+        }
     }
 
     void Start()
@@ -75,21 +110,7 @@ public class UniversalInteractionController : MonoBehaviour
 
         pendingInteract = false;
 
-        if (currentInteractable == null)
-            return;
-
-        if (Time.time < nextInteractAllowedTime)
-            return;
-
-        if (!currentInteractable.CanInteract(gameObject))
-            return;
-
-        nextInteractAllowedTime = Time.time + inputDebounceSeconds;
-
-        if (PlayerActionTracker.Instance != null)
-            PlayerActionTracker.Instance.Track(PlayerActionTracker.ActionType.GenericInteraction, currentInteractable.GetInteractionText());
-
-        currentInteractable.Interact(gameObject);
+        TryInteract(currentInteractable, currentInteractableTransform, currentInteractableCollider);
     }
 
     private void ResolveCurrentInteractable()
@@ -109,6 +130,8 @@ public class UniversalInteractionController : MonoBehaviour
 
         float bestScore = float.NegativeInfinity;
         IInteractable best = null;
+        Transform bestTransform = null;
+        Collider bestCollider = null;
 
         for (int i = 0; i < entries.Count; i++)
         {
@@ -141,10 +164,14 @@ public class UniversalInteractionController : MonoBehaviour
             {
                 bestScore = score;
                 best = entry.Interactable;
+                bestTransform = entry.Transform;
+                bestCollider = entry.Collider;
             }
         }
 
         currentInteractable = best;
+        currentInteractableTransform = bestTransform;
+        currentInteractableCollider = bestCollider;
     }
 
     private bool HasLineOfSight(Vector3 from, Vector3 to, Collider targetCollider, float distance)
@@ -259,6 +286,10 @@ public class UniversalInteractionController : MonoBehaviour
 
             keep.Add(entry.Transform);
             BubbleVisual bubble = GetOrCreateBubble(entry.Transform);
+            bubble.Interactable = entry.Interactable;
+            bubble.TargetCollider = entry.Collider;
+            if (bubble.TapHandler != null)
+                bubble.TapHandler.SetTarget(entry.Interactable, entry.Transform, entry.Collider);
 
             Vector3 worldPos = center + Vector3.up * bubbleHeight;
             bubble.Canvas.transform.position = worldPos;
@@ -270,6 +301,7 @@ public class UniversalInteractionController : MonoBehaviour
             bubble.Background.color = selected ? bubbleSelectedColor : bubbleNormalColor;
             bubble.Text.color = selected ? new Color(0.14f, 0.1f, 0.02f, 1f) : new Color(1f, 1f, 1f, 0.92f);
             bubble.RootRect.localScale = selected ? Vector3.one * 1.08f : Vector3.one;
+            bubble.Text.text = GetBubbleLabel();
         }
 
         var keys = new List<Transform>(bubbleByTransform.Keys);
@@ -291,11 +323,13 @@ public class UniversalInteractionController : MonoBehaviour
         GameObject canvasObj = new GameObject($"E_Bubble_{target.name}");
         Canvas canvas = canvasObj.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
-        canvas.sortingOrder = 20;
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 200;
+        canvas.worldCamera = playerCamera != null ? playerCamera : Camera.main;
         canvas.transform.localScale = Vector3.one * bubbleScale;
         canvasObj.AddComponent<CanvasScaler>();
         GraphicRaycaster raycaster = canvasObj.AddComponent<GraphicRaycaster>();
-        raycaster.enabled = false;
+        raycaster.enabled = true;
 
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
         canvasRect.sizeDelta = new Vector2(160f, 160f);
@@ -306,8 +340,17 @@ public class UniversalInteractionController : MonoBehaviour
         bgRect.sizeDelta = new Vector2(98f, 98f);
 
         Image bg = bgObj.AddComponent<Image>();
-        bg.raycastTarget = false;
+        bg.raycastTarget = true;
+        bg.sprite = GetOrCreateBubbleCircleSprite();
+        bg.type = Image.Type.Simple;
         bg.color = bubbleNormalColor;
+
+        Button button = bgObj.AddComponent<Button>();
+        button.transition = Selectable.Transition.None;
+        button.targetGraphic = bg;
+
+        BubbleTapHandler tapHandler = bgObj.AddComponent<BubbleTapHandler>();
+        tapHandler.Initialize(this);
 
         GameObject textObj = new GameObject("BubbleText");
         textObj.transform.SetParent(bgObj.transform, false);
@@ -316,7 +359,7 @@ public class UniversalInteractionController : MonoBehaviour
         rect.sizeDelta = new Vector2(82f, 82f);
 
         TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
-        text.text = "E";
+        text.text = GetBubbleLabel();
         text.alignment = TextAlignmentOptions.Center;
         text.fontSize = 68f;
         text.raycastTarget = false;
@@ -328,7 +371,8 @@ public class UniversalInteractionController : MonoBehaviour
             RootRect = bgRect,
             Background = bg,
             Text = text,
-            FollowTarget = target
+            FollowTarget = target,
+            TapHandler = tapHandler
         };
 
         bubbleByTransform[target] = bubble;
@@ -407,5 +451,101 @@ public class UniversalInteractionController : MonoBehaviour
     public void TriggerInteractFromMobile()
     {
         pendingInteract = true;
+    }
+
+    private void TryInteract(IInteractable interactable, Transform targetTransform, Collider targetCollider)
+    {
+        if (IsModalBlocked())
+            return;
+
+        if (interactable == null || targetTransform == null || targetCollider == null)
+            return;
+
+        if (!targetCollider.enabled || !targetTransform.gameObject.activeInHierarchy)
+            return;
+
+        if (Time.time < nextInteractAllowedTime)
+            return;
+
+        Vector3 playerPos = transform.position;
+        Vector3 targetPoint = targetCollider.bounds.center;
+        float distance = Vector3.Distance(playerPos, targetPoint);
+        if (distance <= 0.001f || distance > interactDistance)
+            return;
+
+        Vector3 forward = playerCamera != null ? playerCamera.transform.forward : transform.forward;
+        Vector3 dir = (targetPoint - playerPos).normalized;
+        float forwardDot = Vector3.Dot(forward, dir);
+        if (forwardDot < minForwardDot)
+            return;
+
+        Vector3 castOrigin = playerPos + Vector3.up * 1.1f;
+        if (!HasLineOfSight(castOrigin, targetPoint, targetCollider, distance + 0.8f))
+            return;
+
+        if (!interactable.CanInteract(gameObject))
+            return;
+
+        nextInteractAllowedTime = Time.time + inputDebounceSeconds;
+
+        if (PlayerActionTracker.Instance != null)
+            PlayerActionTracker.Instance.Track(PlayerActionTracker.ActionType.GenericInteraction, interactable.GetInteractionText());
+
+        interactable.Interact(gameObject);
+    }
+
+    private string GetBubbleLabel()
+    {
+        if (Application.isMobilePlatform)
+            return "?";
+
+        MobileInputController mobile = MobileInputController.Instance;
+        if (mobile != null && mobile.IsTouchUiEnabled)
+            return "?";
+
+        return "E";
+    }
+
+    private static Sprite GetOrCreateBubbleCircleSprite()
+    {
+        if (bubbleCircleSprite != null)
+            return bubbleCircleSprite;
+
+        const int size = 128;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        texture.name = "InteractionBubbleCircle";
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.filterMode = FilterMode.Bilinear;
+        texture.hideFlags = HideFlags.HideAndDontSave;
+
+        Color32[] pixels = new Color32[size * size];
+        float radius = (size - 1) * 0.5f;
+        Vector2 center = new Vector2(radius, radius);
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                int index = (y * size) + x;
+                float distance = Vector2.Distance(new Vector2(x, y), center);
+                float alpha = Mathf.Clamp01(radius - distance + 0.5f);
+                byte a = (byte)Mathf.RoundToInt(alpha * 255f);
+                pixels[index] = new Color32(255, 255, 255, a);
+            }
+        }
+
+        texture.SetPixels32(pixels);
+        texture.Apply(false, true);
+
+        bubbleCircleSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, size, size),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0,
+            SpriteMeshType.FullRect);
+
+        bubbleCircleSprite.name = "InteractionBubbleCircle";
+        return bubbleCircleSprite;
     }
 }

@@ -530,8 +530,10 @@ Material:
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
+  stringTagMap:
+    RenderType: Opaque
+  disabledShaderPasses:
+  - MOTIONVECTORS
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -628,7 +630,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.2, g: 0.38, b: 0.78, a: 1}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.19999996, g: 0.37999994, b: 0.78, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
@@ -889,7 +891,9 @@ MonoBehaviour:
   _clockUI: {fileID: 0}
   _dialogueUI: {fileID: 0}
   _mainSceneName: SampleScene
-  _postWorkDialogueId: npc_boss_post
+  _bossInteractableOverride: {fileID: 0}
+  _playerSpawnPointOverride: {fileID: 0}
+  _playerOverride: {fileID: 0}
   _postLoadDelay: 0.5
   _dialoguePollInterval: 0.05
 --- !u!4 &322330478
@@ -1036,8 +1040,10 @@ Material:
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
+  stringTagMap:
+    RenderType: Opaque
+  disabledShaderPasses:
+  - MOTIONVECTORS
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -1134,7 +1140,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.91, g: 0.87, b: 0.78, a: 1}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.91, g: 0.87, b: 0.78, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
@@ -1268,8 +1274,10 @@ Material:
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
+  stringTagMap:
+    RenderType: Opaque
+  disabledShaderPasses:
+  - MOTIONVECTORS
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -1366,7 +1374,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.45, g: 0.28, b: 0.15, a: 1}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.45, g: 0.27999997, b: 0.14999998, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
@@ -1388,8 +1396,10 @@ Material:
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
+  stringTagMap:
+    RenderType: Opaque
+  disabledShaderPasses:
+  - MOTIONVECTORS
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -1486,7 +1496,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.55, g: 0.55, b: 0.55, a: 1}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.54999995, g: 0.54999995, b: 0.54999995, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
@@ -1635,7 +1645,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 97cb8a2ba9f7c384f801d7e1ffe73211, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NpcDialogueInteractable
-  npcName: Warga Kota
+  npcName: Aldo
   dialogueOptions:
   - {fileID: 11400000, guid: 69eacab8990f51c479e86b774766fc55, type: 2}
   useGlobalDialogueCatalogWhenEmpty: 0
@@ -1646,6 +1656,12 @@ MonoBehaviour:
   hintHeight: 2.2
   hintDuration: 2.8
   speechCooldown: 0.3
+  socialEnergyGain: 1.5
+  socialMoodGain: 0.5
+  socialEnergyCooldown: 45
+  socialEnergyHintTemplate: Ngobrol bikin kamu agak fresh. Energi +{0:0.#}
+  dialogueCatalogProviderOverride: {fileID: 0}
+  playerOverride: {fileID: 0}
 --- !u!23 &938266731
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1758,8 +1774,10 @@ Material:
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
+  stringTagMap:
+    RenderType: Opaque
+  disabledShaderPasses:
+  - MOTIONVECTORS
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -1856,7 +1874,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
@@ -1983,6 +2001,7 @@ GameObject:
   m_Component:
   - component: {fileID: 987434508}
   - component: {fileID: 987434507}
+  - component: {fileID: 987434509}
   m_Layer: 0
   m_Name: DeskPointLight
   m_TagString: Untagged
@@ -2070,6 +2089,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &987434509
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 987434506}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &1098791955
 GameObject:
   m_ObjectHideFlags: 0
@@ -2201,8 +2249,10 @@ Material:
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
+  stringTagMap:
+    RenderType: Opaque
+  disabledShaderPasses:
+  - MOTIONVECTORS
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -2299,7 +2349,7 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.98, g: 0.98, b: 0.98, a: 1}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.97999996, g: 0.97999996, b: 0.97999996, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
@@ -2340,6 +2390,7 @@ MonoBehaviour:
   bossInteractable: {fileID: 938266730}
   preWorkDialogue: {fileID: 11400000, guid: 69eacab8990f51c479e86b774766fc55, type: 2}
   postWorkDialogue: {fileID: 11400000, guid: 4b1e7b0674ca3934e9ef9698c8cdbdf0, type: 2}
+  bossTag: NPCBoss
 --- !u!114 &1674257617
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2401,6 +2452,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NpcDialogueMenuController
   dialoguePanel: {fileID: 0}
   gradientOverlay: {fileID: 0}
+  letterboxTop: {fileID: 0}
+  letterboxBottom: {fileID: 0}
   npcSpeechArea: {fileID: 0}
   choiceContainer: {fileID: 0}
   npcNameText: {fileID: 0}
@@ -2416,7 +2469,6 @@ MonoBehaviour:
   typewriterCharsPerSecond: 54
   typewriterPunctuationPause: 0.03
   choiceCardHeight: 56
-  choiceSpacing: 8
   maxDialogueChars: 260
   maxChoiceChars: 96
 --- !u!114 &1674257621
@@ -2721,6 +2773,7 @@ MonoBehaviour:
   statusHoldDuration: 1.5
   fullBonusThreshold: 0.6
   partialThreshold: 0.3
+  severeDropThreshold: 0.2
 --- !u!1 &2077302220
 GameObject:
   m_ObjectHideFlags: 0

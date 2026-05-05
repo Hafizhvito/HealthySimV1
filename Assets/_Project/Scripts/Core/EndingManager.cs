@@ -131,25 +131,20 @@ public class EndingManager : MonoBehaviour
         return type switch
         {
             EndingType.Good => isFemale
-                ? "Selamat datang kembali. Saya senang bisa menyampaikan kabar baik hari ini. " +
-                  "Hasil pemeriksaan kamu secara keseluruhan sangat memuaskan. " +
-                  "Tubuhmu merespons dengan baik terhadap kebiasaan yang sudah kamu bangun selama ini."
-                : "Selamat datang kembali. Langsung saja, hasil pemeriksaan kamu hari ini sangat bagus. " +
-                  "Kondisi fisikmu berada di angka yang saya harapkan untuk usiamu sekarang. " +
-                  "Apa yang sudah kamu lakukan selama ini jelas memberikan dampak nyata.",
+                                ? "Selamat datang kembali. Kabar baik: hasil pemeriksaanmu sangat stabil. " +
+                                    "Kebiasaan kecil yang kamu jaga tiap hari benar-benar bekerja."
+                                : "Selamat datang kembali. Hasil pemeriksaanmu bagus dan konsisten. " +
+                                    "Tubuh merespons ketika pola hidup dijaga rutin.",
 
             EndingType.Neutral => isFemale
-                ? "Silakan duduk. Saya sudah periksa semua data kamu dari waktu ke waktu. " +
-                  "Ada kabar baik dan ada hal yang perlu kita bicarakan bersama. " +
-                  "Kondisimu tidak mengkhawatirkan, tapi ada beberapa catatan penting."
-                : "Silakan duduk. Terima kasih sudah datang untuk pemeriksaan ini. " +
-                  "Hasilnya cukup campuran. Ada yang sudah berjalan baik, " +
-                  "tapi ada juga beberapa hal yang sebaiknya mulai kita perhatikan sekarang.",
+                                ? "Silakan duduk. Ada yang sudah baik, tapi ritme harianmu belum stabil. " +
+                                    "Ini belum darurat, tapi perlu konsisten diperbaiki."
+                                : "Silakan duduk. Hasilnya campuran: ada kemajuan, ada kebiasaan yang masih bocor. " +
+                                    "Kita bisa rapikan pelan-pelan.",
 
             EndingType.Bad =>
-                "Terima kasih sudah meluangkan waktu untuk datang ke sini. " +
-                "Saya akan langsung bicara jujur karena saya rasa itu lebih baik dari pada berputar-putar. " +
-                "Hasil pemeriksaan kamu menunjukkan beberapa kondisi yang perlu segera ditangani.",
+                "Terima kasih sudah datang. Saya akan bicara jujur: tubuhmu sedang kewalahan. " +
+                "Ada tanda yang perlu ditangani lebih serius mulai sekarang.",
 
             _ => "Silakan duduk. Mari kita bahas kondisimu."
         };
@@ -174,32 +169,32 @@ public class EndingManager : MonoBehaviour
         // Deteksi tren (naik/turun/stabil)
         string trend = DetectTrend(youth, adult, senior);
 
-        return $"Mari saya jelaskan rekam jejakmu per fase.\n\n" +
-               $"Di masa muda, kondisimu tergolong {youthLabel}. {youthComment}\n\n" +
-               $"Memasuki usia dewasa, kesehatanmu {adultLabel}. {adultComment}\n\n" +
-               $"Di fase lansia ini, kondisimu {seniorLabel}. {seniorComment}\n\n" +
-               $"{trend}";
+         return $"Ringkasannya per fase:\n" +
+             $"- Muda: {youthLabel}. {youthComment}\n" +
+             $"- Dewasa: {adultLabel}. {adultComment}\n" +
+             $"- Lansia: {seniorLabel}. {seniorComment}\n\n" +
+             $"{trend}";
     }
 
     private static string BuildPhaseComment(string fase, float score, EndingType type)
     {
         if (type == EndingType.Good)
         {
-            if (score >= 65f) return "Pilihan harianmu di fase ini konsisten dan berdampak positif.";
-            return "Ada beberapa hari yang kurang optimal, tapi secara keseluruhan kamu tetap di jalur yang baik.";
+            if (score >= 65f) return "Rutinitasmu rapi, efeknya terasa nyata.";
+            return "Ada hari yang turun, tapi arahmu tetap sehat.";
         }
 
         if (type == EndingType.Neutral)
         {
-            if (score >= 65f) return "Fase ini adalah yang terbaik dalam perjalananmu.";
-            if (score >= 40f) return "Ada usaha yang terlihat, meski belum konsisten sepenuhnya.";
-            return "Di fase ini banyak kebiasaan yang belum mendukung kesehatanmu.";
+            if (score >= 65f) return "Fase ini paling stabil di perjalananmu.";
+            if (score >= 40f) return "Ada usaha, tapi masih sering putus di tengah.";
+            return "Banyak kebiasaan belum mendukung tubuhmu.";
         }
 
         // Bad
-        if (score >= 65f) return "Ironisnya, fase ini adalah yang paling baik dalam rekam jejakmu.";
-        if (score >= 40f) return "Ada momen baik, tapi tidak cukup untuk mengimbangi kebiasaan yang kurang sehat.";
-        return "Di fase ini tubuhmu sudah memberi sinyal, tapi belum sempat ditangani dengan serius.";
+        if (score >= 65f) return "Fase ini justru paling baik di datamu.";
+        if (score >= 40f) return "Ada momen baik, tapi tidak bertahan lama.";
+        return "Di fase ini tubuh paling sering memberi sinyal.";
     }
 
     private static string DetectTrend(float youth, float adult, float senior)
@@ -209,13 +204,13 @@ public class EndingManager : MonoBehaviour
         bool stabil = Mathf.Abs(senior - youth) < 10f;
 
         if (naik)
-            return "Yang menarik, kondisimu justru membaik seiring waktu. Itu jarang terjadi dan patut diapresiasi.";
+            return "Trennya naik. Artinya kebiasaanmu makin rapi.";
         if (turun)
-            return "Dari data ini, kondisimu menunjukkan tren menurun dari waktu ke waktu. Ini yang perlu kita tangani.";
+            return "Trennya turun. Ini sinyal yang perlu ditangani.";
         if (stabil)
-            return "Kondisimu relatif stabil dari fase ke fase. Tapi stabil di angka rendah tetap perlu perhatian.";
+            return "Trennya stabil. Kalau stabilnya rendah, tetap perlu perhatian.";
 
-        return "Kondisimu berfluktuasi cukup signifikan antar fase. Konsistensi adalah kunci yang masih perlu dibangun.";
+        return "Trennya naik-turun. Konsistensi adalah kunci berikutnya.";
     }
 
     private static string BuildDoctorConclusion(EndingType type, PlayerStats.Gender gender)
@@ -225,39 +220,22 @@ public class EndingManager : MonoBehaviour
         return type switch
         {
             EndingType.Good => isFemale
-                ? "Secara klinis, kondisimu sangat baik. Tidak ada tanda diabetes, " +
-                  "tekanan darahmu normal, dan hormonmu stabil untuk usiamu. " +
-                  "Saya jarang bisa bilang ini ke pasien, tapi kamu benar-benar merawat tubuhmu dengan baik. " +
-                  "Teruskan apa yang sudah kamu lakukan. Konsistensi kecil setiap hari ternyata berdampak besar."
-                : "Secara klinis, kondisimu sangat baik. Tidak ada tanda diabetes atau hipertensi. " +
-                  "Jantungmu sehat, berat badanmu terjaga. " +
-                  "Ini bukan sesuatu yang bisa dibeli atau didapat dalam semalam. " +
-                  "Ini hasil dari pilihan yang kamu buat setiap hari selama bertahun-tahun. " +
-                  "Pertahankan, dan tubuhmu akan terus mendukungmu.",
+                                ? "Secara klinis, kondisimu baik dan stabil. " +
+                                    "Ini bukti bahwa tidur cukup, makan seimbang, dan gerak rutin saling menguatkan."
+                                : "Secara klinis, kondisimu baik. " +
+                                    "Tubuh merespons ketika makan, tidur, dan gerak dijaga konsisten.",
 
             EndingType.Neutral => isFemale
-                ? "Ada beberapa catatan yang perlu kamu bawa pulang. " +
-                  "Gula darahmu sedikit di atas normal, belum masuk kategori diabetes, tapi perlu diawasi. " +
-                  "Tekanan darahmu juga sedikit tinggi di beberapa pengukuran terakhir. " +
-                  "Perubahan hormonal di usiamu membuat pola makan dan istirahat semakin penting, bukan semakin bisa diabaikan. " +
-                  "Saya sarankan mulai lebih perhatikan porsi makan dan jadwal tidurmu."
-                : "Ada beberapa hal yang perlu kamu perhatikan ke depan. " +
-                  "Ada indikasi pra-diabetes ringan dan tekanan darah yang kadang tinggi. " +
-                  "Belum sampai ke tahap yang mengharuskan obat, tapi ini sinyal yang tidak boleh diabaikan. " +
-                  "Pola makan dan aktivitas fisik yang lebih teratur bisa membalikkan kondisi ini sebelum berkembang lebih jauh. " +
-                  "Masih ada waktu untuk memperbaikinya.",
+                                ? "Ada beberapa catatan yang perlu dirapikan. " +
+                                    "Jika ritme makan dan tidur lebih teratur, kondisi ini bisa membaik."
+                                : "Ada sinyal yang perlu kamu perhatikan. " +
+                                    "Perbaiki pola makan dan aktivitas fisik sebelum kebiasaan buruk jadi menetap.",
 
             EndingType.Bad => isFemale
-                ? "Saya harus menyampaikan ini dengan jelas. " +
-                  "Ada tanda-tanda diabetes tipe 2 dan tekanan darah tinggi yang konsisten dalam data kamu. " +
-                  "Perubahan hormonal di usiamu memperburuk kondisi ini lebih cepat dari yang seharusnya. " +
-                  "Ini bukan sesuatu yang bisa kita tunda lagi. " +
-                  "Saya akan berikan rujukan dan rencana penanganan, tapi perubahan gaya hidup harus dimulai sekarang, bukan besok."
-                : "Saya akan bicara langsung karena ini penting. " +
-                  "Hasil menunjukkan diabetes tipe 2 yang sudah berkembang dan hipertensi yang perlu segera ditangani. " +
-                  "Ini bukan sesuatu yang muncul tiba-tiba. Ini akumulasi dari kebiasaan yang berlangsung bertahun-tahun. " +
-                  "Yang perlu kamu pegang adalah ini masih bisa diperbaiki jika kamu mulai sekarang. " +
-                  "Saya akan dampingi prosesnya, tapi keputusan ada di tanganmu.",
+                                ? "Ada tanda kondisi serius yang perlu ditangani. " +
+                                    "Mulai dari jadwal tidur, porsi makan, dan aktivitas fisik, semuanya harus dibenahi bertahap."
+                                : "Ada tanda kondisi serius yang perlu ditangani segera. " +
+                                    "Perubahan kecil yang konsisten masih bisa membalikkan arah.",
 
             _ => "Jaga kesehatanmu ke depan."
         };
@@ -287,8 +265,11 @@ public class EndingManager : MonoBehaviour
         SetAccentColor(type);
 
         string narrative = GetNarrative(type, gender);
+        // string diseaseInfo = BuildDiseaseInfoSection(PlayerStats.Instance);
+        // if (!string.IsNullOrEmpty(diseaseInfo))
+        //     narrative = narrative + "\n\n" + diseaseInfo;
         float  visible   = 0f;
-        const float cps  = 38f;
+        const float cps  = 50f;
 
         while (visible < narrative.Length)
         {
@@ -362,49 +343,188 @@ public class EndingManager : MonoBehaviour
         return type switch
         {
             EndingType.Good => isFemale
-                ? "Tiga fase hidup telah kamu jalani dengan pilihan yang sadar dan cukup konsisten.\n\n" +
-                  "Di tengah tekanan jadwal padat dan ekspektasi yang tidak selalu adil, " +
-                  "kamu tetap memilih makan dengan lebih benar, tetap bergerak, dan menjaga istirahat.\n\n" +
-                  "Tubuhmu merespons dengan cara terbaik yang ia bisa. Ini bukan keberuntungan.\n\n" +
-                  "Ini adalah hasil dari keputusan kecil yang kamu buat setiap hari, " +
-                  "bahkan di hari-hari yang terasa berat sekalipun."
-                : "Tiga fase hidup telah kamu jalani dan kamu tidak menyia-nyiakannya.\n\n" +
-                  "Makanan yang kamu pilih, tidur yang kamu jaga, dan keringat yang kamu keluarkan " +
-                  "semuanya terakumulasi menjadi sesuatu yang nyata.\n\n" +
-                  "Tubuhmu bukan sesuatu yang harus dipaksa. Ia adalah teman yang kamu rawat pelan-pelan.\n\n" +
-                  "Fondasi yang kamu bangun sudah cukup kuat untuk membawamu ke babak berikutnya.",
+                ? "Kamu sudah melewati setiap fase dengan pilihan yang kamu jaga.\n\n" +
+                "Tidak selalu sempurna, tapi cukup konsisten untuk membuat perbedaan.\n\n" +
+                "Dan tubuhmu mengingat itu."
+                : "Perjalananmu tidak selalu mudah, tapi kamu menjalaninya dengan cukup konsisten.\n\n" +
+                "Pilihan kecil yang kamu ulang setiap hari mulai membentuk sesuatu yang nyata.\n\n" +
+                "Dan tubuhmu merespons.",
 
             EndingType.Neutral => isFemale
-                ? "Ada hari-hari yang baik dan ada yang tidak, dan kamu sudah merasakannya sendiri.\n\n" +
-                  "Fluktuasi energi, mood yang naik turun, tidur yang kadang tidak cukup.\n\n" +
-                  "Dokter tidak menemukan sesuatu yang darurat. Tapi catatan kecil yang ada " +
-                  "sebaiknya tidak terus diabaikan.\n\n" +
-                  "Perubahan tidak harus besar untuk terasa. Konsistensi kecil setiap hari " +
-                  "jauh lebih berharga dari niat besar yang tidak pernah dimulai."
-                : "Ada hari-hari yang berjalan baik dan ada yang tidak.\n\n" +
-                  "Kamu tidak selalu membuat pilihan terbaik, tapi kamu juga tidak berhenti mencoba.\n\n" +
-                  "Tidak ada yang darurat dari hasil pemeriksaan ini. " +
-                  "Tapi ada beberapa hal yang kalau dibiarkan, bisa berkembang menjadi masalah lebih besar.\n\n" +
-                  "Masih ada ruang untuk memperbaiki ritme hidupmu. Dan waktu terbaik untuk mulai adalah sekarang.",
+                ? "Ada hari yang berjalan baik, ada yang tidak.\n\n" +
+                "Kamu sudah mencoba, tapi belum sepenuhnya konsisten.\n\n" +
+                "Dan mungkin, ini saatnya mulai lebih serius menjaga dirimu."
+                : "Tidak semua berjalan sesuai rencana.\n\n" +
+                "Tapi kamu juga tidak berhenti mencoba.\n\n" +
+                "Masih ada waktu untuk memperbaiki arah ini.",
 
             EndingType.Bad => isFemale
-                ? "Tubuhmu sudah lama mencoba memberi tahu sesuatu, " +
-                  "lewat kelelahan yang tidak wajar, mood yang sulit dikendalikan, " +
-                  "dan energi yang habis sebelum hari selesai.\n\n" +
-                  "Kamu duduk di ruang tunggu sambil menunggu hasil yang sudah lama tertunda.\n\n" +
-                  "Dokter bicara dengan hati-hati tapi jelas. Ada beberapa kondisi yang perlu segera ditangani.\n\n" +
-                  "Tapi ini bukan tentang menyalahkan diri sendiri. " +
-                  "Ini tentang memilih untuk mulai dari titik ini, dengan cara yang berbeda."
-                : "Tubuhmu sudah lama mencoba memberi sinyal, " +
-                  "lewat rasa lelah yang tidak kunjung hilang, tidur yang tidak pernah terasa cukup, " +
-                  "dan energi yang menghilang bahkan sebelum siang.\n\n" +
-                  "Hari ini kamu akhirnya duduk di sana, mendengarkan hasil yang sudah lama tertunda.\n\n" +
-                  "Dokter bicara pelan tapi tegas. Kondisi ini nyata dan perlu ditangani sekarang.\n\n" +
-                  "Tapi setiap orang punya titik baliknya masing-masing. " +
-                  "Dan mungkin, ini adalah milikmu.",
+                ? "Tubuhmu sudah lama memberi sinyal.\n\n" +
+                "Dan hari ini, kamu akhirnya benar-benar mendengarnya.\n\n" +
+                "Mungkin ini bukan akhir. Tapi titik untuk mulai berubah."
+                : "Tubuhmu sudah lama mencoba berbicara.\n\n" +
+                "Dan sekarang, kamu tidak bisa lagi mengabaikannya.\n\n" +
+                "Setiap orang punya titik baliknya. Ini mungkin milikmu.",
 
             _ => "Perjalananmu telah selesai."
         };
+    }
+
+    private struct DiseaseRisk
+    {
+        public string Name;
+        public string Description;
+        public string Reason;
+        public float Score;
+    }
+
+    private static string BuildDiseaseInfoSection(PlayerStats stats)
+    {
+        if (stats == null || stats.TotalDaysEvaluated <= 0)
+            return "Info kesehatan:\nData harian belum cukup untuk membuat kesimpulan yang spesifik.";
+
+        var risks = BuildDiseaseRisks(stats);
+        risks.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+        const float riskThreshold = 0.35f;
+        bool hasRisk = risks.Count > 0 && risks[0].Score >= riskThreshold;
+        int count = Mathf.Min(3, risks.Count);
+
+        string header = hasRisk
+            ? "Info penyakit yang perlu diperhatikan:"
+            : "Info kesehatan: belum ada indikasi kuat, tapi ada area yang perlu dijaga:";
+
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        sb.Append(header);
+
+        for (int i = 0; i < count; i++)
+        {
+            DiseaseRisk risk = risks[i];
+            sb.Append("\n- ");
+            sb.Append(risk.Name);
+            sb.Append(": ");
+            sb.Append(risk.Description);
+            if (!string.IsNullOrEmpty(risk.Reason))
+            {
+                sb.Append("\n  ");
+                sb.Append(risk.Reason);
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private static System.Collections.Generic.List<DiseaseRisk> BuildDiseaseRisks(PlayerStats stats)
+    {
+        float days = Mathf.Max(1f, stats.TotalDaysEvaluated);
+        float poorDietRatio = stats.PoorDietDays / days;
+        float noFoodRatio = stats.NoFoodDays / days;
+        float highCalRatio = stats.HighCalorieDays / days;
+        float lowCalRatio = stats.LowCalorieDays / days;
+        float disturbedSleepRatio = stats.DisturbedSleepDays / days;
+        float lowEnergySleepRatio = stats.LowEnergySleepDays / days;
+        float skippedGymRatio = stats.SkippedGymDays / days;
+        float overworkedRatio = stats.OverworkedDays / days;
+
+        var risks = new System.Collections.Generic.List<DiseaseRisk>
+        {
+            new DiseaseRisk
+            {
+                Name = "Diabetes tipe 2",
+                Description = "Gula darah tinggi akibat resistensi insulin.",
+                Reason = BuildReason(new []
+                {
+                    ReasonIf(poorDietRatio >= 0.35f, "pola makan sering tidak sehat"),
+                    ReasonIf(highCalRatio >= 0.35f, "kalori sering berlebih"),
+                    ReasonIf(skippedGymRatio >= 0.45f, "aktivitas fisik jarang")
+                }),
+                Score = (poorDietRatio * 0.55f) + (highCalRatio * 0.35f) + (skippedGymRatio * 0.10f)
+            },
+            new DiseaseRisk
+            {
+                Name = "Hipertensi",
+                Description = "Tekanan darah tinggi yang membebani jantung.",
+                Reason = BuildReason(new []
+                {
+                    ReasonIf(overworkedRatio >= 0.35f, "ritme kerja terlalu berat"),
+                    ReasonIf(disturbedSleepRatio >= 0.35f, "tidur sering terganggu"),
+                    ReasonIf(lowEnergySleepRatio >= 0.35f, "energi sangat rendah sebelum tidur")
+                }),
+                Score = (overworkedRatio * 0.45f) + (disturbedSleepRatio * 0.35f) + (lowEnergySleepRatio * 0.20f)
+            },
+            new DiseaseRisk
+            {
+                Name = "Kolesterol tinggi",
+                Description = "Lemak darah tinggi yang meningkatkan risiko kardiovaskular.",
+                Reason = BuildReason(new []
+                {
+                    ReasonIf(poorDietRatio >= 0.35f, "pola makan sering tidak sehat"),
+                    ReasonIf(highCalRatio >= 0.35f, "kalori sering berlebih")
+                }),
+                Score = (poorDietRatio * 0.60f) + (highCalRatio * 0.40f)
+            },
+            new DiseaseRisk
+            {
+                Name = "Obesitas",
+                Description = "Penumpukan lemak tubuh yang mengganggu metabolisme.",
+                Reason = BuildReason(new []
+                {
+                    ReasonIf(highCalRatio >= 0.35f, "kalori sering berlebih"),
+                    ReasonIf(skippedGymRatio >= 0.40f, "aktivitas fisik jarang"),
+                    ReasonIf(poorDietRatio >= 0.35f, "pola makan tidak seimbang")
+                }),
+                Score = (highCalRatio * 0.50f) + (skippedGymRatio * 0.30f) + (poorDietRatio * 0.20f)
+            },
+            new DiseaseRisk
+            {
+                Name = "Kelelahan kronis",
+                Description = "Kelelahan berkepanjangan yang mengganggu fungsi harian.",
+                Reason = BuildReason(new []
+                {
+                    ReasonIf(disturbedSleepRatio >= 0.35f, "tidur sering terganggu"),
+                    ReasonIf(lowEnergySleepRatio >= 0.35f, "energi terlalu rendah sebelum tidur"),
+                    ReasonIf(overworkedRatio >= 0.35f, "ritme kerja terlalu berat")
+                }),
+                Score = (disturbedSleepRatio * 0.45f) + (lowEnergySleepRatio * 0.35f) + (overworkedRatio * 0.20f)
+            },
+            new DiseaseRisk
+            {
+                Name = "Gangguan tidur",
+                Description = "Kualitas tidur rendah yang menurunkan pemulihan tubuh.",
+                Reason = BuildReason(new []
+                {
+                    ReasonIf(disturbedSleepRatio >= 0.35f, "tidur sering terganggu"),
+                    ReasonIf(lowEnergySleepRatio >= 0.35f, "energi terlalu rendah sebelum tidur"),
+                    ReasonIf(noFoodRatio >= 0.35f, "sering melewatkan makan")
+                }),
+                Score = (disturbedSleepRatio * 0.70f) + (lowEnergySleepRatio * 0.30f)
+            }
+        };
+
+        return risks;
+    }
+
+    private static string ReasonIf(bool condition, string reason)
+    {
+        return condition ? reason : string.Empty;
+    }
+
+    private static string BuildReason(string[] reasons)
+    {
+        var list = new System.Collections.Generic.List<string>();
+        for (int i = 0; i < reasons.Length; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(reasons[i]))
+                list.Add(reasons[i]);
+        }
+
+        if (list.Count == 0)
+            return "Alasan: pola hidup belum stabil secara konsisten.";
+
+        if (list.Count > 2)
+            list = list.GetRange(0, 2);
+
+        return "Alasan: " + string.Join(", ", list) + ".";
     }
 
     // ── Panel builder (tidak berubah dari versi asli) ────────────────
@@ -413,11 +533,9 @@ public class EndingManager : MonoBehaviour
     {
         if (panelRoot != null) return;
 
-        Canvas[] canvases = FindObjectsByType<Canvas>(
-            FindObjectsInactive.Include, FindObjectsSortMode.None);
-        Transform parent = null;
-        foreach (var c in canvases)
-            if (c.gameObject.name == "HUD_Canvas") { parent = c.transform; break; }
+        Transform parent = FindHudCanvas();
+        if (TryBindExistingPanel(parent))
+            return;
 
         if (parent == null)
         {
@@ -539,6 +657,66 @@ public class EndingManager : MonoBehaviour
         btnTmp.alignment        = TextAlignmentOptions.Center;
 
         root.SetActive(false);
+    }
+
+    private static Transform FindHudCanvas()
+    {
+        Canvas[] canvases = FindObjectsByType<Canvas>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < canvases.Length; i++)
+            if (canvases[i].gameObject.name == "HUD_Canvas")
+                return canvases[i].transform;
+
+        return null;
+    }
+
+    private bool TryBindExistingPanel(Transform parent)
+    {
+        if (parent == null)
+            return false;
+
+        Transform panelTransform = FindChildByName(parent, "EndingPanel");
+        if (panelTransform == null)
+            return false;
+
+        EndingPanelBinder binder = panelTransform.GetComponent<EndingPanelBinder>();
+        if (binder != null)
+        {
+            panelRoot = binder.panelRoot != null ? binder.panelRoot : panelTransform.GetComponent<RectTransform>();
+            panelGroup = binder.panelGroup != null ? binder.panelGroup : panelTransform.GetComponent<CanvasGroup>();
+            titleText = binder.titleText;
+            bodyText = binder.bodyText;
+            closeButton = binder.closeButton;
+        }
+        else
+        {
+            panelRoot = panelTransform as RectTransform ?? panelTransform.GetComponent<RectTransform>();
+            panelGroup = panelTransform.GetComponent<CanvasGroup>();
+
+            Transform card = panelTransform.Find("Card");
+            titleText = FindChildByName(card, "TitleText")?.GetComponent<TextMeshProUGUI>();
+            bodyText = FindChildByName(card, "BodyText")?.GetComponent<TextMeshProUGUI>();
+            closeButton = FindChildByName(card, "CloseButton")?.GetComponent<Button>();
+        }
+
+        if (panelRoot == null || panelGroup == null || titleText == null || bodyText == null || closeButton == null)
+            return false;
+
+        panelGroup.alpha = 0f;
+        panelGroup.blocksRaycasts = false;
+        panelGroup.interactable = false;
+        panelRoot.gameObject.SetActive(false);
+        return true;
+    }
+
+    private static Transform FindChildByName(Transform root, string targetName)
+    {
+        if (root == null || string.IsNullOrWhiteSpace(targetName)) return null;
+        Transform[] children = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < children.Length; i++)
+            if (children[i].name == targetName) return children[i];
+        return null;
     }
 
     private class EndingDoctorActor : IDialogueActor

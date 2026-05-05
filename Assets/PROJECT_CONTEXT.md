@@ -74,6 +74,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - MobileInputController builds touch controls entirely via code and injects movement input to PlayerController for Android and Editor force-test mode
 - Interaction and prompts:
   - UniversalInteractionController resolves nearest valid target with line-of-sight filtering
+  - World interaction bubbles are tappable on mobile and show '?' as the cue; keyboard E remains on desktop
   - InteractableRegistry and IInteractable standardize registration and interaction calls
 - Food and stash:
   - FoodCatalogProvider loads food data assets
@@ -101,7 +102,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
 - UI and onboarding:
   - HUDAutoSetup builds runtime HUD and enforces 1920x1080 landscape scaler in its generated canvas
   - HUDManager updates stat bars and energy visuals
-  - MobileInputController creates a runtime overlay touch canvas (sort order 10) with dual joysticks and interact button, and auto-hides during modals/cutscenes
+  - MobileInputController creates a runtime overlay touch canvas (sort order 10) with movement joystick, look swipe zone, and perspective toggle; interaction uses world bubble tap
   - TutorialSequentialUI handles step-by-step onboarding panel
   - TutorialContextualUI handles queued one-time contextual hints
   - TutorialSequentialUI and TutorialContextualUI are gated by intro cutscene active state
@@ -123,7 +124,7 @@ Ringkasan (ID): Semua subsistem inti sudah tersambung, termasuk tutorial/reminde
   - Balancing note: shorter timeline increases decision pressure, so stamina/economy tuning should be validated against this faster cadence
 
 - Nutrient schema:
-  - FoodData now exposes protein, fat, and sugar for downstream logic and UI text usage.
+  - FoodData now exposes protein, fat, carbohydrate, and sugar for downstream logic and UI text usage.
 - Movement drain sustainability:
   - `movementDrainModifier` is stored on PlayerStats and applied inside movement energy drain calculation.
   - Clamp range: 0.75 to 1.25 (hidden gameplay modifier, not shown as HUD bar).

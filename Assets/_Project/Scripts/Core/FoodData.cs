@@ -19,6 +19,7 @@ public class FoodData : ScriptableObject
 
     public float Protein => protein;
     public float Fat => fat;
+    public float Carbohydrate => carbohydrate;
     public float Sugar => sugar;
 
     [Header("Classification")]

@@ -10,6 +10,7 @@ HealthySimV1 is a Unity 6 URP prototype focused on a short daily loop: move, int
 - Secondary work scene: Assets/Scenes/OfficeScene.unity
 - Runtime: playable in Editor with core loop active
 - QA: manual smoke testing only
+- Mobile interaction: tap world bubbles marked '?' (desktop still uses E)
 
 Ringkasan (ID): Proyek sudah bisa dimainkan end-to-end untuk loop utama, tetapi QA masih manual dan belum ada test otomatis.
 
@@ -128,6 +129,7 @@ Catatan (ID): Format commit konsisten memudahkan tracking perubahan di tim.
 - Confirm gym can only be done once per day and resets after sleep.
 
 8. Check Console for new errors.
+
 
 Catatan (ID): Checklist ini cukup untuk validasi cepat bahwa loop utama tetap aman.
 
