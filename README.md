@@ -130,7 +130,6 @@ Catatan (ID): Format commit konsisten memudahkan tracking perubahan di tim.
 
 8. Check Console for new errors.
 
-
 Catatan (ID): Checklist ini cukup untuk validasi cepat bahwa loop utama tetap aman.
 
 ### Common Errors and Quick Fixes
