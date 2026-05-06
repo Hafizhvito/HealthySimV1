@@ -18,13 +18,29 @@ public class SampleSceneBootstrap : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoBootstrapAfterSceneLoad()
     {
-        var activeScene = SceneManager.GetActiveScene();
-        if (activeScene.name != TargetSceneName)
+        SceneManager.sceneLoaded += OnSceneLoaded; // load script di setiap scene, karena script ini langsung aktif kalo di play
+    }
+
+    private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Debug.Log($"Bootstrap check — scene loaded: {scene.name}");
+
+        if (scene.name != TargetSceneName) // skip scene kalo bukan yang dituju
+        {
+            Debug.Log($"Bootstrap skip — bukan {TargetSceneName}");
             return;
+        }
+
+        // hilangkan script di scene supaya tidak dipanggil lagi
+        SceneManager.sceneLoaded -= OnSceneLoaded;
 
         if (FindFirstObjectByType<SampleSceneBootstrap>() != null)
+        {
+            Debug.Log("Bootstrap sudah ada, skip.");
             return;
+        }
 
+        Debug.Log("Bootstrap spawning...");
         var bootstrap = new GameObject("SampleSceneBootstrap");
         bootstrap.AddComponent<SampleSceneBootstrap>();
     }
