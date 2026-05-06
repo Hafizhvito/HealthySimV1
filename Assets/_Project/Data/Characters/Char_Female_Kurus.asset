@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d8b0a0566614df9b81b90da44e3f8e4, type: 3}
+  m_Name: Char_Female_Kurus
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  characterName: Nisa
+  startingAge: 18
+  backstoryText: "Nisa selalu terkontrol soal makan \u2014 tapi lama-lama berubah
+    terlalu ketat. Hindari nasi, takut minyak, merasa bersalah kalau makan lebih
+    dari rencana.\n\nHasilnya tubuhnya kekurangan banyak hal. Sudah waktunya belajar
+    makan dengan benar, bukan sekadar sedikit."
+  backstorySummary: Terlalu ketat soal makan, tanpa sadar tubuhnya kekurangan nutrisi
+    penting.
+  additionalBackstoryLines: []

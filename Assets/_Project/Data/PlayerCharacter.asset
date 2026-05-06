@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d8b0a0566614df9b81b90da44e3f8e4, type: 3}
+  m_Name: PlayerCharacter
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  characterName: Hafizh
+  startingAge: 18
+  backstoryText: Hafizh baru saja memulai hidupnya sendiri di kota perantauan. Jauh
+    dari keluarga, ia harus belajar mengatur makan, istirahat, dan waktunya sendiri
+    untuk pertama kalinya. Setiap pilihan kecil hari ini akan membentuk kesehatannya
+    di masa depan.
+  backstorySummary: Kamu datang ke kota ini dengan kebiasaan hidup yang belum teratur.
+  additionalBackstoryLines:
+  - Kamu sering menunda makan sehat karena ritme kerja yang padat.
+  - Hari ini kamu memutuskan untuk mulai membangun kebiasaan yang lebih baik.

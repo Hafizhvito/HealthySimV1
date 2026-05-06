@@ -1,0 +1,261 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5aa518e4af5578b49bceaf67d84d4250, type: 3}
+  m_Name: NPCUtama_Dialogue
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueGraphData
+  npcId: npc_utama
+  npcDisplayName: Sari
+  initialTrust: 10
+  startNodeId: node_0
+  nodes:
+  - nodeId: node_0
+    fallbackLine: Oh- eh, iya? Maaf, kaget. Kirain cuma angin lewat. Kamu... warga
+      sini bukan? Kayaknya belum pernah lihat.
+    variationPool: []
+    choices:
+    - choiceText: Baru dateng. Lagi orientasi.
+      nextNodeId: node_1a
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Iya, emang kamu kenal semua orang di sini?
+      nextNodeId: node_1b
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Salah, aku emang angin.
+      nextNodeId: node_1c
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_1a
+    fallbackLine: Oh baru ya. Pantesan. Mau kemana emang? Daerah sini lumayan gampang
+      nyasar kalau ga tau.
+    variationPool: []
+    choices:
+    - choiceText: Lagi nyari tempat makan.
+      nextNodeId: node_2_food
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Belum tau juga sih.
+      nextNodeId: node_2_wander
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_1b
+    fallbackLine: Haha, ya enggak juga sih. Tapi muka baru itu keliatan, gitu.
+    variationPool: []
+    choices:
+    - choiceText: Fair enough.
+      nextNodeId: node_2_wander
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Namaku [Player]. Kamu?
+      nextNodeId: node_2_intro
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: Aku Sari. Biasanya di sini kalau lagi males pulang cepet.
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_1c
+    fallbackLine: ...Hah.
+    variationPool: []
+    choices:
+    - choiceText: Hehe.
+      nextNodeId: node_2_wander
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: Oke lucu sih dikit.
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_2_food
+    fallbackLine: Tempat makan... tergantung mau yang gimana. Yang deket sini ada
+      warung Pak Yono. Aku sering ke sana kalau lagi males masak.
+    variationPool: []
+    choices:
+    - choiceText: Makanannya enak?
+      nextNodeId: node_3_food
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Oke, makasih.
+      nextNodeId: node_end_neutral
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_3_food
+    fallbackLine: Enak sih. Simple. Ga berat juga, jadi ga ngantuk habis makan.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Aku paling ga suka makan siang yang bikin ngantuk. Rugi banget.
+    isConversationEnd: 1
+    isTerminal: 1
+  - nodeId: node_2_wander
+    fallbackLine: Santai aja dulu. Daerah sini ga sebesar yang keliatan kok.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Ntar kalau butuh sesuatu, tanya aja ke orang. Rata-rata helpful.
+    isConversationEnd: 1
+    isTerminal: 1
+  - nodeId: node_2_intro
+    fallbackLine: Sari. Biasanya di sini kalau lagi ga ada kerjaan atau males balik
+      duluan.
+    variationPool: []
+    choices:
+    - choiceText: Enak juga ya.
+      nextNodeId: node_end_friendly
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Aku duluan ya.
+      nextNodeId: node_end_neutral
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: node_end_friendly
+    fallbackLine: Iya sih. Ntar ketemu lagi mungkin.
+    variationPool: []
+    choices: []
+    npcFollowUpText: 
+    isConversationEnd: 1
+    isTerminal: 1
+  - nodeId: node_end_neutral
+    fallbackLine: Oh, oke. Hati-hati.
+    variationPool: []
+    choices: []
+    npcFollowUpText: 
+    isConversationEnd: 1
+    isTerminal: 1
