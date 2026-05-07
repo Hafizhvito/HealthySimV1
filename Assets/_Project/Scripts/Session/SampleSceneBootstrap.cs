@@ -56,6 +56,20 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsurePlaceholderInteractables();
         WirePlaceholderDialogueAssignments();
 
+        PlayerData.Load();
+        if (PlayerStats.Instance != null)
+        {
+            string savedName   = !string.IsNullOrWhiteSpace(PlayerData.PlayerName) ? PlayerData.PlayerName : "Pemain";
+            float savedHeight  = PlayerData.TinggiBadan > 0 ? PlayerData.TinggiBadan : 170f;
+            float savedWeight  = PlayerData.BeratBadan  > 0 ? PlayerData.BeratBadan  : 65f;
+            PlayerStats.Instance.SetPlayerData(savedName, savedHeight, savedWeight);
+            Debug.Log($"[Bootstrap] PlayerData wired → name={savedName} h={savedHeight} w={savedWeight}");
+        }
+        else
+        {
+            Debug.LogWarning("[Bootstrap] PlayerStats.Instance null — SetPlayerData skipped.");
+        }
+
         StartCoroutine(RunIntroSequence());
     }
 
@@ -85,6 +99,7 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsureComponent<WorkSessionManager>(manager);
         EnsureComponent<FadeManager>(manager);
         EnsureComponent<MobileInputController>(manager);
+        EnsureComponent<BazaarManager>(manager);
     }
 
     private void EnsureEventSystemSetup()

@@ -66,8 +66,11 @@ public class InputFormManager : MonoBehaviour
 
         currentPanel = transitionNama;
 
-        panelFade.alpha = 1f;
-        panelFade.DOFade(0f, 0.5f).SetEase(Ease.OutCubic);
+        if (panelFade != null)
+        {
+            panelFade.alpha = 1f;
+            panelFade.DOFade(0f, 0.5f).SetEase(Ease.OutCubic);
+        }
 
         PlayerData.Load();
 
@@ -125,6 +128,10 @@ public class InputFormManager : MonoBehaviour
 
     private void ShakeElement(RectTransform target) // Animasi
     {
+        if (target == null)
+            return;
+
+        target.DOKill();
         target.DOShakePosition(0.3f, 10f, 20).SetEase(Ease.OutCubic);
     }
 
@@ -134,6 +141,9 @@ public class InputFormManager : MonoBehaviour
 
     private void ShowValidationMessage(string message)
     {
+        if (txtValidation == null)
+            return;
+
         txtValidation.text = message;
         txtValidation.alpha = 1f;
 
@@ -165,8 +175,14 @@ public class InputFormManager : MonoBehaviour
 
     private void AnimateCards()
     {
+        if (dataCards == null || dataCards.Length == 0)
+            return;
+
         foreach (var card in dataCards)
         {
+            if (card == null)
+                continue;
+
             // Reset posisi & alpha
             card.anchoredPosition += Vector2.right * 100f;
             CanvasGroup cg = card.GetComponent<CanvasGroup>();
@@ -178,6 +194,9 @@ public class InputFormManager : MonoBehaviour
         {
             int index = i;
             float delay = i * 0.1f;
+
+            if (dataCards[i] == null)
+                continue;
 
             dataCards[i].DOAnchorPosX(
                 dataCards[i].anchoredPosition.x - 100f, 0.3f).SetDelay(delay).SetEase(Ease.OutCubic);
@@ -196,7 +215,8 @@ public class InputFormManager : MonoBehaviour
         if (!IsNamaValid())
         {
             // Animasi shake input field jika kosong
-            inputNama.GetComponent<RectTransform>().DOShakePosition(0.3f, 10f, 20);
+            if (inputNama != null)
+                ShakeElement(inputNama.GetComponent<RectTransform>());
             return;
         }
 
@@ -275,5 +295,20 @@ public class InputFormManager : MonoBehaviour
     {
         panelSkipConfirm.SetActive(false);
         inputNama.text = PlayerData.PlayerName;
+    }
+
+    private void OnDisable()
+    {
+        validationTween?.Kill();
+        panelFade?.DOKill();
+
+        if (inputNama != null)
+            inputNama.GetComponent<RectTransform>()?.DOKill();
+
+        if (dataCards != null)
+        {
+            for (int i = 0; i < dataCards.Length; i++)
+                dataCards[i]?.DOKill();
+        }
     }
 }

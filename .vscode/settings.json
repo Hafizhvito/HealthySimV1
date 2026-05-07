@@ -67,5 +67,5 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "HealthySimV1-main.slnx"
+    "dotnet.defaultSolution": "HealthySimV1.slnx"
 }

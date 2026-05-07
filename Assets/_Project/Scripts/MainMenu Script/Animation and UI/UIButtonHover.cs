@@ -26,14 +26,24 @@ public class UIButtonHover : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     // Saat ditekan tombolnya
     public void OnPointerDown(PointerEventData eventData)
     {
-        rectTransform.DOScale(pressScale, scaleDuration).SetEase(Ease.OutQuad);
-        buttonImage.DOColor(pressColor, colorDuration);
+        rectTransform?.DOKill();
+        buttonImage?.DOKill();
+        rectTransform?.DOScale(pressScale, scaleDuration).SetEase(Ease.OutQuad);
+        buttonImage?.DOColor(pressColor, colorDuration);
     }
 
     // Saat dilepas tombolnya
     public void OnPointerUp(PointerEventData eventData)
     {
-        rectTransform.DOScale(1f, scaleDuration).SetEase(Ease.OutBack);
-        buttonImage.DOColor(normalColor, colorDuration);
+        rectTransform?.DOKill();
+        buttonImage?.DOKill();
+        rectTransform?.DOScale(1f, scaleDuration).SetEase(Ease.OutBack);
+        buttonImage?.DOColor(normalColor, colorDuration);
+    }
+
+    private void OnDisable()
+    {
+        rectTransform?.DOKill();
+        buttonImage?.DOKill();
     }
 }

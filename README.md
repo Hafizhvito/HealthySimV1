@@ -212,6 +212,7 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Intro cutscene sequence and completion events
   - One-time character backstory dialogue box appears right after intro cutscene completion
   - Backstory content now driven by CharacterData ScriptableObject variants
+  - Backstory title/body now prefers PlayerStats name (wired from PlayerData before intro)
   - Sequential tutorial panel after intro
   - Contextual tutorial toast queue (NPC/energy/food/work conditions)
   - Sequential/contextual tutorial and work reminder are suppressed while cutscene is active
@@ -228,6 +229,12 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Phase modifiers now apply by age and gender (daily calories, movement drain, mood drain)
   - Next-day movement drain now supports hidden gym-based sustainability modifier (`movementDrainModifier`, no HUD exposure)
   - Late-wake consequence applies energy penalty + narrative warning only (no time cut, no period skip)
+- Bazaar event (new):
+  - Bazaar spawn check runs after sleep day-advance (eligible day 5/10/15...)
+  - Spawn chance defaults to 80% (configurable), hides when not active
+  - Bazaar interactable opens food menu with discounted prices
+  - Bazaar menu selects 10 foods + 3 drinks (no duplicates) from configured pool
+  - Bazaar object is a scene prefab for designer-friendly swapping
 
 ## Character Variants
 
@@ -295,6 +302,7 @@ Tujuan: memudahkan penggantian aset sementara ke aset final tanpa memutus alur g
 - UI contract:
   - `HUD_Canvas` tersedia saat runtime
   - Dialog/food/stash/tutorial binding tidak boleh bergantung pada rename child tanpa update wiring
+  - Placeholder interactables now have prefab assets for designer-friendly swapping
 
 Validator dan telemetry:
 
@@ -311,6 +319,7 @@ Ringkasan (ID): Fase 1 tidak mengubah behavior gameplay. Fokusnya menambah pagar
 - Runtime UI scaler is not fully unified across all runtime-created canvases
   - Example: InteractionHintCanvas and IntroTextCanvas still use portrait-style reference sizing
 - TMP icon glyph fallback warnings still appear for some Unicode symbols in HUD/tutorial labels
+- Bazaar pool requires enough FoodData items (>=10 foods and >=3 drinks) to avoid short lists
 
 Ringkasan (ID): Risiko utama sekarang ada di konsistensi UI dan minimnya automated test. Struktur UI lama dan baru masih campur.
 

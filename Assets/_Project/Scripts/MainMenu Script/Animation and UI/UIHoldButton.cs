@@ -25,6 +25,8 @@ public class UIHoldButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
     public void OnPointerDown(PointerEventData eventData)
     {
         onDown?.Invoke();
+        transform.DOKill();
+        buttonImage?.DOKill();
         transform.DOScale(pressScale, scaleDuration).SetEase(Ease.OutQuad);
         buttonImage?.DOColor(pressColor, scaleDuration);
     }
@@ -32,6 +34,8 @@ public class UIHoldButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
     public void OnPointerUp(PointerEventData eventData)
     {
         onUp?.Invoke();
+        transform.DOKill();
+        buttonImage?.DOKill();
         transform.DOScale(1f, scaleDuration).SetEase(Ease.OutBack);
         buttonImage?.DOColor(normalColor, scaleDuration);
     }
@@ -39,7 +43,15 @@ public class UIHoldButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
     public void OnPointerExit(PointerEventData eventData)
     {
         onUp?.Invoke();
+        transform.DOKill();
+        buttonImage?.DOKill();
         transform.DOScale(1f, scaleDuration).SetEase(Ease.OutBack);
         buttonImage?.DOColor(normalColor, scaleDuration);
+    }
+
+    private void OnDisable()
+    {
+        transform.DOKill();
+        buttonImage?.DOKill();
     }
 }

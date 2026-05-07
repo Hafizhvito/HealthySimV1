@@ -21,6 +21,9 @@ public class UITipsSystem : MonoBehaviour
 
     private void Start()
     {
+        if (tipsText == null || tips == null || tips.Length == 0)
+            return;
+
         ShuffleTips();
 
         tipsText.text = tips[currentIndex];
@@ -42,6 +45,9 @@ public class UITipsSystem : MonoBehaviour
 
     private void ShowNextTip() // Animasi
     {
+        if (tipsText == null || tips == null || tips.Length == 0)
+            return;
+
         isFading = true;
 
         tipsText.DOFade(0f, fadeDuration).SetEase(Ease.OutCubic).OnComplete(() =>
@@ -55,10 +61,18 @@ public class UITipsSystem : MonoBehaviour
 
     private void ShuffleTips() // Ngerandom Tips (opsional sih, kalo gak dipake hapus aja nanti)
     {
+        if (tips == null || tips.Length == 0)
+            return;
+
         for (int i = tips.Length - 1; i > 0; i--)
         {
             int randomIndex = Random.Range(0, i + 1);
             (tips[i], tips[randomIndex]) = (tips[randomIndex], tips[i]);
         }
+    }
+
+    private void OnDisable()
+    {
+        tipsText?.DOKill();
     }
 }

@@ -60,6 +60,11 @@ Ringkasan (ID): Onboarding tim disederhanakan ke alur clone -> open -> compile -
   - Aging progression updates on wake after day increment, with stage transitions at day 5 and day 10
   - Next-day movement energy sustainability is applied as hidden `movementDrainModifier` on PlayerStats (clamped 0.75-1.25)
   - Late-wake rule applies energy penalty + narrative warning only, without changing TimeManager schedule
+- Bazaar event system:
+  - Bazaar eligibility checks run after sleep day-advance
+  - Eligible only on day interval (5/10/15...) and must pass spawn chance roll (default 0.8)
+  - Bazaar object is a scene prefab (inactive by default, toggled active on eligible days)
+  - Bazaar menu uses discounted FoodData and selects 10 foods + 3 drinks without duplicates
 
 Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physics dan sistem lock input berbasis sumber.
 
@@ -85,6 +90,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - SessionFoodStash and stash UI controllers manage saved food lifecycle
   - Runtime bootstrap enforces one restaurant food pickup and one home station interaction point in `SampleScene`
   - Extra `FoodPickupInteractable` duplicates are removed at runtime, and legacy `Interactable_FoodCube` is removed when full restaurant + home setup already exists
+  - Placeholder interactables now have prefab assets for designer-friendly swapping
 - Dialogue:
   - DialogueGraphData and DialogueCatalogProvider supply graph/content
   - NpcDialogueMenuController drives cinematic dialogue UI
@@ -98,6 +104,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - GymSessionController runs trainer pre/post dialogue and clock-based session animation before applying progression
   - StoryIntroManager and IntroCutsceneController expose completion events
   - BackstoryDialogueController shows a one-time character backstory dialogue box immediately after intro cutscene
+    - BackstoryDialogueController now prefers PlayerStats name (wired from PlayerData before intro)
   - SessionFlowController and StoryManager coordinate progression transitions
 - UI and onboarding:
   - HUDAutoSetup builds runtime HUD and enforces 1920x1080 landscape scaler in its generated canvas
@@ -225,7 +232,7 @@ Ringkasan (ID): Debt teknis terbesar ada di konsistensi UI dan belum adanya test
 
 ## DATA SNAPSHOT
 
-- Food assets detected: 25
+- Food assets detected: 43
 - Dialogue assets detected: 30
 - Primary scenes:
   - Assets/Scenes/SampleScene.unity

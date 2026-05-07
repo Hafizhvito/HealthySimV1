@@ -256,6 +256,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         // ── Advance day ──────────────────────────────────────
         timeManager.AdvanceToNextDayFromSleep();
+        if (BazaarManager.Instance != null)
+            BazaarManager.Instance.TrySpawnBazaar(timeManager.CurrentDayNumber);
         string     wakeDayName    = timeManager.GetDayNameIndonesia();
         bool ageStageChanged = playerStats.SyncDayAndTryAdvanceAgeStage(
             timeManager.CurrentDayNumber,

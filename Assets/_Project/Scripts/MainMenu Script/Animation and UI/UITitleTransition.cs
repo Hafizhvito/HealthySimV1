@@ -24,6 +24,9 @@ public class UITitleTransition : MonoBehaviour
 
     private void Start()
     {
+        if (rectTransform == null || tmpImg == null)
+            return;
+
         // Kondisi awal — tidak terlihat
         tmpImg.color = new Color(
             tmpImg.color.r,
@@ -40,7 +43,16 @@ public class UITitleTransition : MonoBehaviour
 
     private void StartFloatLoop()
     {
+        if (rectTransform == null)
+            return;
+
         // Float naik-turun terus menerus
         rectTransform.DOAnchorPosY(rectTransform.anchoredPosition.y + floatAmount, floatDuration).SetEase(Ease.InOutSine).SetLoops(-1, LoopType.Yoyo);
+    }
+
+    private void OnDisable()
+    {
+        rectTransform?.DOKill();
+        tmpImg?.DOKill();
     }
 }

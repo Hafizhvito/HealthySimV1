@@ -190,11 +190,11 @@ public class BackstoryDialogueController : MonoBehaviour
     {
         ResolveCharacterDataIfNeeded();
 
-        if (characterData != null && !string.IsNullOrWhiteSpace(characterData.characterName))
-            return characterData.characterName.Trim();
-
         if (PlayerStats.Instance != null && !string.IsNullOrWhiteSpace(PlayerStats.Instance.PlayerName))
             return PlayerStats.Instance.PlayerName.Trim();
+
+        if (characterData != null && !string.IsNullOrWhiteSpace(characterData.characterName))
+            return characterData.characterName.Trim();
 
         return "Latar Belakang Karakter";
     }
@@ -211,7 +211,8 @@ public class BackstoryDialogueController : MonoBehaviour
         if (sb.Length == 0)
             sb.Append(BuildDefaultBackstoryText());
 
-        return sb.ToString().Trim();
+        string body = sb.ToString().Trim();
+        return ApplyPlayerName(body);
     }
 
     private string BuildDefaultBackstoryText()
@@ -221,6 +222,24 @@ public class BackstoryDialogueController : MonoBehaviour
         return $"{name} sedang memulai fase baru untuk hidup lebih sehat.\n\n" +
                "Selama ini pola makan, istirahat, dan aktivitas harian belum konsisten.\n\n" +
                "Sekarang kamu memilih membangun kebiasaan sehat sedikit demi sedikit, dimulai dari keputusan kecil setiap hari.";
+    }
+
+    private string ApplyPlayerName(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return body;
+
+        string playerName = PlayerStats.Instance != null ? PlayerStats.Instance.PlayerName : string.Empty;
+        if (string.IsNullOrWhiteSpace(playerName))
+            return body;
+
+        string resolved = body.Replace("{playerName}", playerName)
+                              .Replace("{name}", playerName);
+
+        if (characterData != null && !string.IsNullOrWhiteSpace(characterData.characterName))
+            resolved = resolved.Replace(characterData.characterName, playerName);
+
+        return resolved;
     }
 
     private void ResolveCharacterDataIfNeeded()

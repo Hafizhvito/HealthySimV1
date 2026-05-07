@@ -107,11 +107,15 @@ public class InputStepper : MonoBehaviour
 
     private void UpdateDisplay(bool animate)
     {
+        if (txtValue == null || btnMinus == null || btnPlus == null)
+            return;
+
         txtValue.text = currentValue.ToString(format);
 
         if (animate)
         {
             // Animasi scale kecil saat nilai berubah
+            txtValue.rectTransform.DOKill();
             txtValue.rectTransform.DOScale(1.2f, 0.08f).SetEase(Ease.OutQuad).OnComplete(() =>
                 txtValue.rectTransform.DOScale(1f, 0.08f).SetEase(Ease.InQuad));
         }
@@ -119,5 +123,10 @@ public class InputStepper : MonoBehaviour
         // Disable tombol kalau sudah di batas
         btnMinus.interactable = currentValue > minValue;
         btnPlus.interactable = currentValue < maxValue;
+    }
+
+    private void OnDisable()
+    {
+        txtValue?.rectTransform.DOKill();
     }
 }

@@ -22,8 +22,17 @@ public class LoadingManager : MonoBehaviour
     // Nama scene yang akan di-load (dikirim dari scene lain)
     public static string TargetScene;
 
+    private Tween fadeTween;
+    private Tween loadingTween;
+
     private void Start()
     {
+        if (barFill == null || txtPercentage == null || panelFade == null || panelLoading == null)
+        {
+            Debug.LogWarning("[LoadingManager] Missing UI references; loading UI disabled.");
+            return;
+        }
+
         // Pastikan bar mulai dari 0
         barFill.fillAmount = 0f;
         txtPercentage.text = "0%";
@@ -32,9 +41,12 @@ public class LoadingManager : MonoBehaviour
 
         // Fade in dari hitam
         panelFade.alpha = 1f;
-        panelFade.DOFade(0f, fadeDuration).SetEase(Ease.OutCubic).OnComplete(() =>
+        panelFade.DOKill();
+        panelLoading.DOKill();
+        fadeTween = panelFade.DOFade(0f, fadeDuration).SetEase(Ease.OutCubic).OnComplete(() =>
         {
-            panelLoading.DOFade(1f, elementFadeIn).SetEase(Ease.OutCubic).OnComplete(() => StartCoroutine(LoadSceneAsync()));
+            loadingTween = panelLoading.DOFade(1f, elementFadeIn).SetEase(Ease.OutCubic)
+                .OnComplete(() => StartCoroutine(LoadSceneAsync()));
         });
     }
 
@@ -85,11 +97,23 @@ public class LoadingManager : MonoBehaviour
         // AudioManager._Instance?.StopMusic();
 
         // merubah layar ke hitam
-        panelFade.DOFade(1f, fadeDuration).SetEase(Ease.InCubic);
+        if (panelFade != null)
+        {
+            panelFade.DOKill();
+            fadeTween = panelFade.DOFade(1f, fadeDuration).SetEase(Ease.InCubic);
+        }
 
         yield return new WaitForSeconds(fadeDuration);
 
         // mengaktifkan scene yang sudah selesai di-load
         asyncLoad.allowSceneActivation = true;
+    }
+
+    private void OnDisable()
+    {
+        fadeTween?.Kill();
+        loadingTween?.Kill();
+        panelFade?.DOKill();
+        panelLoading?.DOKill();
     }
 }

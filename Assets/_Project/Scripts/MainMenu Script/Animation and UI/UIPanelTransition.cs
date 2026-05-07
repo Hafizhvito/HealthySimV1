@@ -24,6 +24,9 @@ public class UIPanelTransition : MonoBehaviour
 
     public void Show(int direction = 1)
     {
+        if (canvasGroup == null || rectTransform == null)
+            return;
+
         gameObject.SetActive(true);
 
         // Reset posisi & alpha sebelum animasi
@@ -31,13 +34,20 @@ public class UIPanelTransition : MonoBehaviour
         canvasGroup.alpha = 0f;
 
         // Animasi fade + slide up
+        rectTransform.DOKill();
+        canvasGroup.DOKill();
         rectTransform.DOAnchorPos(originalPosition, duration).SetEase(easeIn);
         canvasGroup.DOFade(1f, duration).SetEase(easeIn);
     }
 
     public void Hide(int direction = 1, System.Action onComplete = null)
     {
+        if (canvasGroup == null || rectTransform == null)
+            return;
+
         // Animasi fade + slide down
+        rectTransform.DOKill();
+        canvasGroup.DOKill();
         rectTransform.DOAnchorPos(originalPosition - Vector2.right * slideOffset * direction, duration).SetEase(easeOut);
 
         canvasGroup.DOFade(0f, duration).SetEase(easeOut).OnComplete(() =>
@@ -45,5 +55,11 @@ public class UIPanelTransition : MonoBehaviour
                 gameObject.SetActive(false);
                 onComplete?.Invoke();
             });
+    }
+
+    private void OnDisable()
+    {
+        rectTransform?.DOKill();
+        canvasGroup?.DOKill();
     }
 }

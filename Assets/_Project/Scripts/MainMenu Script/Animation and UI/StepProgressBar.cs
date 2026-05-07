@@ -49,6 +49,9 @@ public class StepProgressBar : MonoBehaviour
     // update bar lansung atau pakai animasi
     private void UpdateBar(int step, bool animate)
     {
+        if (barFill == null || txtStepLabel == null)
+            return;
+
         float targetFill = (float)step / totalSteps;
         Color targetColor = Color.Lerp(colorStart, colorEnd, targetFill);
 
@@ -59,6 +62,7 @@ public class StepProgressBar : MonoBehaviour
 
         if (animate)
         {
+            barFill.DOKill();
             barFill.DOFillAmount(targetFill, animDuration).SetEase(animEase);
             barFill.DOColor(targetColor, animDuration).SetEase(animEase);
         }
@@ -66,6 +70,11 @@ public class StepProgressBar : MonoBehaviour
         {
             barFill.fillAmount = targetFill;
         }
+    }
+
+    private void OnDisable()
+    {
+        barFill?.DOKill();
     }
 
     // getter buat script lain
