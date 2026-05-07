@@ -18,16 +18,24 @@ public class UIPanelTransition : MonoBehaviour
     private void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+
         rectTransform = GetComponent<RectTransform>();
-        originalPosition = rectTransform.anchoredPosition;
+        if (rectTransform != null)
+            originalPosition = rectTransform.anchoredPosition;
     }
 
     public void Show(int direction = 1)
     {
-        if (canvasGroup == null || rectTransform == null)
-            return;
-
         gameObject.SetActive(true);
+
+        if (rectTransform == null)
+        {
+            if (canvasGroup != null)
+                canvasGroup.alpha = 1f;
+            return;
+        }
 
         // Reset posisi & alpha sebelum animasi
         rectTransform.anchoredPosition = originalPosition + Vector2.right * slideOffset * direction;
@@ -42,8 +50,12 @@ public class UIPanelTransition : MonoBehaviour
 
     public void Hide(int direction = 1, System.Action onComplete = null)
     {
-        if (canvasGroup == null || rectTransform == null)
+        if (rectTransform == null)
+        {
+            gameObject.SetActive(false);
+            onComplete?.Invoke();
             return;
+        }
 
         // Animasi fade + slide down
         rectTransform.DOKill();

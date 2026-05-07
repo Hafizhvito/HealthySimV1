@@ -52,8 +52,8 @@ public class TutorialSequentialUI : MonoBehaviour
 
     private readonly HintData[] hints =
     {
-        new HintData("\u2726", "Cara Bergerak", "Gunakan W A S D untuk berjalan.\nTahan Shift untuk berlari."),
-        new HintData("\u2B21", "Cara Berinteraksi", "Dekati objek atau NPC,\nlalu tap E untuk berinteraksi.")
+        new HintData("*", "Cara Bergerak", "Gunakan W A S D untuk berjalan.\nTahan Shift untuk berlari."),
+        new HintData(">", "Cara Berinteraksi", "Dekati objek atau NPC,\nlalu tap E untuk berinteraksi.")
     };
 
     private Canvas hudCanvas;
