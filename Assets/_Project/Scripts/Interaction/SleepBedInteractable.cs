@@ -37,8 +37,14 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] [Range(0f, 1f)] private float chanceIfNoWork = 0.20f;
     [SerializeField] [Range(0f, 1f)] private float chanceIfOverwork = 0.25f;
     [SerializeField] [Range(0f, 1f)] private float chanceIfPoorDiet = 0.15f;
+    [SerializeField] [Range(1f, 3f)] private float disturbanceMultiplier = 1.6f;
     [SerializeField] [Range(0f, 1f)] private float disturbedRecoveryNormalized = 0.65f;
     [SerializeField] private int poorDietThresholdDelta = 2;
+
+    [Header("Late Wake Timing")]
+    [SerializeField] [Range(5, 11)] private int normalWakeHour = 7;
+    [SerializeField] [Range(6, 12)] private int disturbedWakeHour = 8;
+    [SerializeField] [Range(7, 13)] private int lateWakeHour = 9;
 
     [Header("Transition")]
     [SerializeField] private bool requireNightToSleep = true;
@@ -241,10 +247,12 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         HidePreSleepCinematic();
 
+        int wakeHour = ResolveWakeHour(disturbedSleep, lateWakePenaltyTriggered);
+
         if (clockUi != null)
         {
             bool clockDone = false;
-            clockUi.PlayTimeSkipAnimation("Istirahat Malam", 21, 7, clockSkipDuration, () => clockDone = true);
+            clockUi.PlayTimeSkipAnimation("Istirahat Malam", 21, wakeHour, clockSkipDuration, () => clockDone = true);
             yield return new WaitUntil(() => clockDone);
         }
 
@@ -258,6 +266,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         timeManager.AdvanceToNextDayFromSleep();
         if (BazaarManager.Instance != null)
             BazaarManager.Instance.TrySpawnBazaar(timeManager.CurrentDayNumber);
+        timeManager.SetTimeByHour(wakeHour);
         string     wakeDayName    = timeManager.GetDayNameIndonesia();
         bool ageStageChanged = playerStats.SyncDayAndTryAdvanceAgeStage(
             timeManager.CurrentDayNumber,
@@ -320,6 +329,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
                              disturbedSleep, lateWakePenaltyTriggered, dailyEvalResult),
             wakeMessageDuration);
 
+        if (EndingManager.Instance != null)
+            EndingManager.Instance.NotifySleepCompleted(timeManager.CurrentDayNumber);
+
         sleepRoutine = null;
     }
 
@@ -377,6 +389,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         stats.RegisterHealthScore(evalResult.totalDelta);
 
+        ApplyDailyWeightShift(stats, evalResult, disturbedSleep, trainedYesterday, workedYesterday, overworkedYesterday);
+
         Debug.Log($"[SleepBed] {evalResult}");
         Debug.Log($"[SleepBed] diet='{evalResult.dietNote}' gym='{evalResult.gymNote}' work='{evalResult.workNote}'");
 
@@ -385,6 +399,75 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             PlayerActionTracker.Instance.ResetDailyFoodCounts();
 
         stats.ResetDailyCalories();
+    }
+
+    private void ApplyDailyWeightShift(
+        PlayerStats stats,
+        DailyHealthResult evalResult,
+        bool disturbedSleep,
+        bool trainedYesterday,
+        bool workedYesterday,
+        bool overworkedYesterday)
+    {
+        if (stats == null)
+            return;
+
+        float calorieRatio = stats.DailyCalorieTarget > 0f
+            ? stats.TotalCalories / stats.DailyCalorieTarget
+            : 0f;
+
+        int healthy = evalResult != null ? evalResult.healthyFoodCount : 0;
+        int unhealthy = evalResult != null ? evalResult.unhealthyFoodCount : 0;
+        int totalFood = healthy + unhealthy;
+
+        float delta = 0f;
+        string reason = string.Empty;
+
+        if (totalFood == 0)
+        {
+            delta -= 0.2f;
+            reason += "no_food ";
+        }
+
+        if (calorieRatio > 1.15f)
+        {
+            delta += 0.25f;
+            reason += "high_calorie ";
+        }
+        else if (calorieRatio > 0f && calorieRatio < 0.75f)
+        {
+            delta -= 0.2f;
+            reason += "low_calorie ";
+        }
+
+        if (unhealthy > healthy)
+        {
+            delta += 0.15f;
+            reason += "unhealthy_bias ";
+        }
+
+        if (disturbedSleep)
+        {
+            delta += 0.1f;
+            reason += "disturbed_sleep ";
+        }
+
+        if (!trainedYesterday)
+        {
+            delta += 0.05f;
+            reason += "no_gym ";
+        }
+
+        if (!workedYesterday || overworkedYesterday)
+        {
+            delta += 0.05f;
+            reason += "work_stress ";
+        }
+
+        delta = Mathf.Clamp(delta, -0.35f, 0.35f);
+
+        if (Mathf.Abs(delta) > 0.001f)
+            stats.AdjustWeight(delta, reason.Trim());
     }
 
     private void ApplyNextDayMovementDrainModifier(PlayerStats stats, bool trainedYesterday, float adaptationBeforeSleep, float fatigueBeforeSleep)
@@ -580,7 +663,18 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (!workedYesterday)    chance += chanceIfNoWork;
         if (overworkedYesterday) chance += chanceIfOverwork;
         if (poorDietYesterday)   chance += chanceIfPoorDiet;
-        return Mathf.Clamp01(chance);
+        return Mathf.Clamp01(chance * Mathf.Max(1f, disturbanceMultiplier));
+    }
+
+    private int ResolveWakeHour(bool disturbedSleep, bool lateWakePenaltyTriggered)
+    {
+        if (lateWakePenaltyTriggered)
+            return Mathf.Max(normalWakeHour, lateWakeHour);
+
+        if (disturbedSleep)
+            return Mathf.Max(normalWakeHour, disturbedWakeHour);
+
+        return normalWakeHour;
     }
 
     private float CalculateLateWakeChance(WorkSessionManager workSessionManager, GymProgressionSystem gymProgressionSystem, PlayerStats playerStats, float energyBeforeSleep)

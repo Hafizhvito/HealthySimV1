@@ -52,8 +52,8 @@ public class TutorialSequentialUI : MonoBehaviour
 
     private readonly HintData[] hints =
     {
-        new HintData("*", "Cara Bergerak", "Gunakan W A S D untuk berjalan.\nTahan Shift untuk berlari."),
-        new HintData(">", "Cara Berinteraksi", "Dekati objek atau NPC,\nlalu tap E untuk berinteraksi.")
+        new HintData(string.Empty, "Cara Bergerak", "Gunakan W A S D untuk berjalan.\nTahan Shift untuk berlari."),
+        new HintData(string.Empty, "Cara Berinteraksi", "Dekati objek atau NPC,\nlalu tap E untuk berinteraksi.")
     };
 
     private Canvas hudCanvas;
@@ -427,7 +427,10 @@ public class TutorialSequentialUI : MonoBehaviour
     private void ApplyHint(HintData hint)
     {
         if (hintIconText != null)
-            hintIconText.text = hint.icon;
+        {
+            hintIconText.text = string.Empty;
+            hintIconText.gameObject.SetActive(false);
+        }
 
         if (hintTitleText != null)
             hintTitleText.text = hint.title;
@@ -557,9 +560,10 @@ public class TutorialSequentialUI : MonoBehaviour
 
         TextMeshProUGUI icon = CreateTmpText(rowRect, "HintIcon", 36f, new Color32(255, 232, 160, 255), TextAlignmentOptions.Center);
         LayoutElement iconLayout = icon.gameObject.AddComponent<LayoutElement>();
-        iconLayout.preferredWidth = 48f;
-        iconLayout.minWidth = 48f;
+        iconLayout.preferredWidth = 0f;
+        iconLayout.minWidth = 0f;
         iconLayout.flexibleWidth = 0f;
+        icon.gameObject.SetActive(false);
 
         GameObject rightObj = new GameObject("RightColumn", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
         RectTransform rightRect = rightObj.GetComponent<RectTransform>();

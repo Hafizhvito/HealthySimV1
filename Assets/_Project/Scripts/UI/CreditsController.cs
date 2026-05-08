@@ -21,6 +21,9 @@ public class CreditsController : MonoBehaviour
     [Header("Optional BGM Source")]
     [SerializeField] private AudioSource bgmSource;
 
+    [Header("Exit Settings")]
+    [SerializeField] private string mainMenuSceneName = "MainMenu";
+
     // ── Runtime UI ───────────────────────────────────────────────────
     private Canvas          creditsCanvas;
     private CanvasGroup     creditsGroup;
@@ -41,6 +44,10 @@ public class CreditsController : MonoBehaviour
         ( "Dr. dr. Sri Wuryanti, MS, Sp.GK",           30f, FontStyles.Bold,   6f  ),
         ( "Spesialis Gizi Klinik",                      22f, FontStyles.Normal, 4f  ),
         ( "RS YARSI Jakarta",                           22f, FontStyles.Normal, 80f ),
+
+        // Dosen Pembimbing
+        ( "Dosen Pembimbing",                           22f, FontStyles.Normal, 12f ),
+        ( "Paramaresthi Windriyani, S.Kom., M.Eng.",     28f, FontStyles.Bold,   80f ),
 
         // Tim
         ( "Dikembangkan oleh",                          22f, FontStyles.Normal, 12f ),
@@ -141,8 +148,11 @@ public class CreditsController : MonoBehaviour
         yield return StartCoroutine(FadeCanvas(1f, 0f, fadeInDuration));
 
         creditsCanvas.gameObject.SetActive(false);
-        Time.timeScale = 0f;
+        Time.timeScale = 1f;
         isRunning      = false;
+
+        if (!string.IsNullOrWhiteSpace(mainMenuSceneName))
+            SceneLoader.LoadScene(mainMenuSceneName);
 
         Debug.Log("[CreditsController] Credit scene selesai.");
     }

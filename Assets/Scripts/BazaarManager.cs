@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class BazaarManager : MonoBehaviour
 {
@@ -14,6 +15,8 @@ public class BazaarManager : MonoBehaviour
     private GameObject bazaarCubeObject;
     private BazaarInteractable bazaarInteractable;
     private bool bazaarActiveToday = false;
+    private int lastSpawnDay = -1;
+    private TimeManager timeManager;
 
     private void Awake()
     {
@@ -33,6 +36,18 @@ public class BazaarManager : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+        TryBindTimeManager();
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        UnbindTimeManager();
+    }
+
     public void TrySpawnBazaar(int dayNumber)
     {
         HideBazaarObject();
@@ -45,6 +60,9 @@ public class BazaarManager : MonoBehaviour
             return;
 
         if (dayNumber % bazaarIntervalDays != 0)
+            return;
+
+        if (dayNumber == lastSpawnDay)
             return;
 
         if (Random.value > spawnChance)
@@ -74,6 +92,7 @@ public class BazaarManager : MonoBehaviour
         bazaarCubeObject.SetActive(true);
 
         bazaarActiveToday = true;
+        lastSpawnDay = dayNumber;
         Debug.Log($"[BazaarManager] Bazaar spawned on day {dayNumber}.");
     }
 
@@ -115,6 +134,53 @@ public class BazaarManager : MonoBehaviour
         GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
         obj.name = string.IsNullOrWhiteSpace(bazaarObjectName) ? "Interactable_Bazaar" : bazaarObjectName;
         return obj;
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        ResolveBazaarObject();
+        HideBazaarObject();
+        TryBindTimeManager();
+    }
+
+    private void TryBindTimeManager()
+    {
+        if (timeManager == null)
+            timeManager = FindFirstObjectByType<TimeManager>();
+
+        if (timeManager == null)
+            return;
+
+        timeManager.OnDayChanged -= HandleDayChanged;
+        timeManager.OnDayChanged += HandleDayChanged;
+    }
+
+    private void UnbindTimeManager()
+    {
+        if (timeManager != null)
+            timeManager.OnDayChanged -= HandleDayChanged;
+
+        timeManager = null;
+    }
+
+    private void HandleDayChanged(int dayNumber, string dayName)
+    {
+        if (!IsEligibleDay(dayNumber))
+        {
+            bazaarActiveToday = false;
+            HideBazaarObject();
+        }
+    }
+
+    private bool IsEligibleDay(int dayNumber)
+    {
+        if (bazaarIntervalDays <= 0)
+            return false;
+
+        if (dayNumber < bazaarIntervalDays)
+            return false;
+
+        return dayNumber % bazaarIntervalDays == 0;
     }
 
     public bool IsBazaarActiveToday => bazaarActiveToday;

@@ -212,7 +212,8 @@ public class BackstoryDialogueController : MonoBehaviour
             sb.Append(BuildDefaultBackstoryText());
 
         string body = sb.ToString().Trim();
-        return ApplyPlayerName(body);
+        body = ApplyPlayerName(body);
+        return ApplyPlayerProfile(body);
     }
 
     private string BuildDefaultBackstoryText()
@@ -240,6 +241,71 @@ public class BackstoryDialogueController : MonoBehaviour
             resolved = resolved.Replace(characterData.characterName, playerName);
 
         return resolved;
+    }
+
+    private string ApplyPlayerProfile(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return body;
+
+        string profileLine = BuildPlayerProfileLine();
+        if (string.IsNullOrWhiteSpace(profileLine))
+            return body;
+
+        if (body.Contains("{height}") || body.Contains("{weight}"))
+        {
+            body = body.Replace("{height}", GetPlayerHeight().ToString("0"))
+                       .Replace("{weight}", GetPlayerWeight().ToString("0"));
+            return body;
+        }
+
+        if (body.Contains("tinggi badan") || body.Contains("berat badan"))
+            return body;
+
+        return $"{profileLine}\n\n{body}";
+    }
+
+    private string BuildPlayerProfileLine()
+    {
+        string name = ResolveTitle();
+        float height = GetPlayerHeight();
+        float weight = GetPlayerWeight();
+
+        if (string.IsNullOrWhiteSpace(name) || height <= 0f || weight <= 0f)
+            return string.Empty;
+
+        string ageLabel = ResolveAgeLabel();
+        return $"{name} adalah {ageLabel} dengan tinggi badan {height:0} cm dan berat badan {weight:0} kg.";
+    }
+
+    private float GetPlayerHeight()
+    {
+        if (PlayerData.TinggiBadan > 0f)
+            return PlayerData.TinggiBadan;
+
+        return 0f;
+    }
+
+    private float GetPlayerWeight()
+    {
+        if (PlayerData.BeratBadan > 0f)
+            return PlayerData.BeratBadan;
+
+        return 0f;
+    }
+
+    private string ResolveAgeLabel()
+    {
+        if (PlayerStats.Instance == null)
+            return "remaja";
+
+        return PlayerStats.Instance.CurrentAgeStage switch
+        {
+            PlayerStats.AgeStage.Youth => "remaja",
+            PlayerStats.AgeStage.Adult => "dewasa",
+            PlayerStats.AgeStage.Senior => "lansia",
+            _ => "remaja"
+        };
     }
 
     private void ResolveCharacterDataIfNeeded()

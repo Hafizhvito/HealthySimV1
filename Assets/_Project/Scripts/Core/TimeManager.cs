@@ -105,6 +105,14 @@ public class TimeManager : MonoBehaviour
     public void PauseTime() => isRunning = false;
     public void ResumeTime() => isRunning = true;
 
+    public void SetTimeByHour(float hour)
+    {
+        float clampedHour = Mathf.Clamp(hour, 0f, 24f);
+        float normalized = clampedHour / 24f;
+        currentGameTime = totalGameDuration * normalized;
+        CheckPeriodChange();
+    }
+
     void CheckPeriodChange()
     {
         TimePeriod newPeriod;

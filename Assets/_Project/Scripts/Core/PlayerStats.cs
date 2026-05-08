@@ -379,6 +379,8 @@ public class PlayerStats : MonoBehaviour
         Debug.Log($"[PlayerStats] Phase transition {previousStage}→{newStage}, " +
                   $"score={healthScoreThisPhase}, modifier={phaseCarryOverModifier}, newMaxEnergy={maxEnergy}");
 
+        ApplyPhaseWeightShift(previousStage, newStage, healthScoreThisPhase);
+
         OnAgeStageChanged?.Invoke(previousStage, newStage, progressionDayCount);
         return true;
     }
@@ -401,6 +403,47 @@ public class PlayerStats : MonoBehaviour
         playerHeight = height;
         playerWeight = weight;
         CalculateBMI();
+    }
+
+    public void AdjustWeight(float deltaKg, string reason)
+    {
+        if (Mathf.Abs(deltaKg) <= 0.0001f)
+            return;
+
+        float before = playerWeight;
+        playerWeight = Mathf.Clamp(playerWeight + deltaKg, 35f, 200f);
+        CalculateBMI();
+
+        Debug.Log($"[PlayerStats] Weight change {before:0.0} -> {playerWeight:0.0} kg ({deltaKg:+0.0;-0.0;0.0}). {reason}");
+    }
+
+    private void ApplyPhaseWeightShift(AgeStage previousStage, AgeStage newStage, float phaseScore)
+    {
+        float delta;
+        string reason;
+
+        if (phaseScore < 40f)
+        {
+            delta = 3.5f;
+            reason = $"phase_{previousStage}_to_{newStage} unhealthy";
+        }
+        else if (phaseScore < 60f)
+        {
+            delta = 1.5f;
+            reason = $"phase_{previousStage}_to_{newStage} mixed";
+        }
+        else if (phaseScore > 75f)
+        {
+            delta = -2.0f;
+            reason = $"phase_{previousStage}_to_{newStage} healthy";
+        }
+        else
+        {
+            delta = 0.5f;
+            reason = $"phase_{previousStage}_to_{newStage} stable";
+        }
+
+        AdjustWeight(delta, reason);
     }
 
     // ── Called by PlayerController ───────────────────────────

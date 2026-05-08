@@ -31,7 +31,7 @@ public class CameraSystem : MonoBehaviour
     [SerializeField] private float dialogueZoomDuration = 0.3f;
 
     [Header("Dialogue Cinematic Drift")]
-    [SerializeField] private bool enableDialogueCinematicDrift = true;
+    [SerializeField] private bool enableDialogueCinematicDrift = false;
     [SerializeField] [Range(0f, 0.4f)] private float dialogueDriftSideOffset = 0.18f;
     [SerializeField] [Range(0f, 0.2f)] private float dialogueDriftDistanceOffset = 0.1f;
     [SerializeField] private float dialogueDriftDuration = 1.4f;

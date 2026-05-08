@@ -20,6 +20,9 @@ public class EndingManager : MonoBehaviour
     private bool isShowing;
     private EndingType pendingEndingType;
     private PlayerStats.Gender pendingGender;
+    private bool creditsPending;
+    private bool endingTriggered;
+    private int creditsAfterDay = -1;
 
     void Awake()
     {
@@ -33,7 +36,7 @@ public class EndingManager : MonoBehaviour
 
     public void TriggerEnding()
     {
-        if (isShowing) return;
+        if (isShowing || endingTriggered) return;
         if (PlayerStats.Instance == null) return;
 
         float avg = PlayerStats.Instance.GetAveragePhaseScore();
@@ -48,6 +51,8 @@ public class EndingManager : MonoBehaviour
         pendingGender = gender;
 
         Debug.Log($"[EndingManager] avg={avg:F1} gender={gender} -> {pendingEndingType}");
+
+        endingTriggered = true;
 
         if (NpcDialogueMenuController.Instance == null)
         {
@@ -75,6 +80,25 @@ public class EndingManager : MonoBehaviour
         if (NpcDialogueMenuController.Instance != null)
             NpcDialogueMenuController.Instance.OnDialogueClosed -= HandleDoctorDialogueClosed;
         StartCoroutine(ShowEndingRoutine(pendingEndingType, pendingGender));
+    }
+
+    public void NotifySleepCompleted(int currentDayNumber)
+    {
+        if (!creditsPending)
+            return;
+
+        if (creditsAfterDay < 0 || currentDayNumber <= creditsAfterDay)
+            return;
+
+        creditsPending = false;
+
+        if (CreditsController.Instance == null)
+        {
+            GameObject creditsGo = new GameObject("CreditsController");
+            creditsGo.AddComponent<CreditsController>();
+        }
+
+        CreditsController.Instance.Play();
     }
 
     // ── Dialogue builder ─────────────────────────────────────────────
@@ -295,16 +319,10 @@ public class EndingManager : MonoBehaviour
         if (ModalStateManager.Instance != null)
             ModalStateManager.Instance.CloseModal(ModalKey);
 
-        // Ending selesai, langsung ke credit scene
+        // Ending selesai, credits diputar setelah pemain tidur lagi.
         isShowing = false;
-
-        if (CreditsController.Instance == null)
-        {
-            GameObject creditsGo = new GameObject("CreditsController");
-            creditsGo.AddComponent<CreditsController>();
-        }
-        // 
-        CreditsController.Instance.Play();
+        creditsPending = true;
+        creditsAfterDay = TimeManager.Instance != null ? TimeManager.Instance.CurrentDayNumber : -1;
     }
 
     private void SetAccentColor(EndingType type)
