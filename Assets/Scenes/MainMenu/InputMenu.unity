@@ -441,7 +441,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 24880051}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 123b480ef3a2db048b1785b556488a0a, type: 3}
   m_Name: 
@@ -473,6 +473,7 @@ MonoBehaviour:
   btnLakiLaki: {fileID: 1451550107}
   btnPerempuan: {fileID: 1991693069}
   animDuration: 0.2
+  targetSelected: 1.1
 --- !u!114 &24880055
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2225,7 +2226,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d90e47600473205419f441e0f61cf667, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIPanelTransition
-  duration: 0.3
+  duration: 0.5
   slideOffset: 50
   easeIn: 9
   easeOut: 8
@@ -2870,7 +2871,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d90e47600473205419f441e0f61cf667, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIPanelTransition
-  duration: 0.3
+  duration: 0.5
   slideOffset: 50
   easeIn: 9
   easeOut: 8
@@ -6749,7 +6750,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d90e47600473205419f441e0f61cf667, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIPanelTransition
-  duration: 0.3
+  duration: 0.5
   slideOffset: 50
   easeIn: 9
   easeOut: 8
@@ -7087,7 +7088,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d90e47600473205419f441e0f61cf667, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIPanelTransition
-  duration: 0.3
+  duration: 0.5
   slideOffset: 50
   easeIn: 9
   easeOut: 8
@@ -7926,7 +7927,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1451550106}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a3336418e47d33b4081929347555fbfa, type: 3}
   m_Name: 
@@ -9440,7 +9441,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d90e47600473205419f441e0f61cf667, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIPanelTransition
-  duration: 0.3
+  duration: 0.5
   slideOffset: 50
   easeIn: 9
   easeOut: 8
@@ -10511,7 +10512,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1991693064}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a3336418e47d33b4081929347555fbfa, type: 3}
   m_Name: 
