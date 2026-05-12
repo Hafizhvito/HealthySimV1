@@ -10,7 +10,7 @@ public class StepProgressBar : MonoBehaviour
     [SerializeField] private TMP_Text txtStepLabel;
 
     [Header("Settings")]
-    [SerializeField] private int totalSteps = 3;
+    [SerializeField] private int totalSteps = 4;
     [SerializeField] private float animDuration = 0.4f;
     [SerializeField] private Ease animEase = Ease.OutCubic;
 

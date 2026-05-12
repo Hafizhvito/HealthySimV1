@@ -10,12 +10,14 @@ public class InputFormManager : MonoBehaviour
     [SerializeField] private GameObject panelTinggi;
     [SerializeField] private GameObject panelBerat;
     [SerializeField] private GameObject panelRingkasan;
+    [SerializeField] private GameObject panelGender;
 
     [Header("Transitions")]
     [SerializeField] private UIPanelTransition transitionNama;
     [SerializeField] private UIPanelTransition transitionTinggi;
     [SerializeField] private UIPanelTransition transitionBerat;
     [SerializeField] private UIPanelTransition transitionRingkasan;
+    [SerializeField] private UIPanelTransition transitionGender;
 
     [Header("Ringkasan Animation")]
     [SerializeField] private RectTransform[] dataCards;
@@ -32,10 +34,13 @@ public class InputFormManager : MonoBehaviour
     [Header("Scene Settings")]
     [SerializeField] private string nextSceneName = "GameScene";
 
-    [Header("Skip Form")]
-    [SerializeField] private GameObject panelSkipConfirm;
-    [SerializeField] private TMP_Text txtValidation; // tambah di Panel_Nama
-    [SerializeField] private TMP_Text txtDataPreview;
+    // [Header("Skip Form")]
+    // [SerializeField] private GameObject panelSkipConfirm;
+    // [SerializeField] private TMP_Text txtValidation; // tambah di Panel_Nama
+    // [SerializeField] private TMP_Text txtDataPreview;
+
+    [Header("Gender References")]
+    [SerializeField] private UIGenderSelector genderSelector;
 
     [Header("Input Stepper References")]
     [SerializeField] private InputStepper stepperTinggi;
@@ -43,6 +48,7 @@ public class InputFormManager : MonoBehaviour
 
     [Header("Ringkasan References")]
     [SerializeField] private TMP_Text txtNama;
+    [SerializeField] private TMP_Text txtGender;
     [SerializeField] private TMP_Text txtTinggi;
     [SerializeField] private TMP_Text txtBerat;
     [SerializeField] private TMP_Text txtBMI;
@@ -59,10 +65,11 @@ public class InputFormManager : MonoBehaviour
     private void Start()
     {
         panelNama.SetActive(true);
+        panelGender.SetActive(false);
         panelTinggi.SetActive(false);
         panelBerat.SetActive(false);
         panelRingkasan.SetActive(false);
-        panelSkipConfirm.SetActive(false);
+        // panelSkipConfirm.SetActive(false);
 
         currentPanel = transitionNama;
 
@@ -74,27 +81,30 @@ public class InputFormManager : MonoBehaviour
 
         PlayerData.Load();
 
+        inputNama.text = "";
+
+
         // Cek apakah sudah ada data sebelumnya
-        if (!string.IsNullOrEmpty(PlayerData.PlayerName))
-        {
-            ShowSkipConfirm();
-        }
-        else
-        {
-            inputNama.text = "";
-        }
+        // if (!string.IsNullOrEmpty(PlayerData.PlayerName))
+        // {
+        //     ShowSkipConfirm();
+        // }
+        // else
+        // {
+        //     inputNama.text = "";
+        // }
     }
 
 
-    private void ShowSkipConfirm()
-    {
-        txtDataPreview.text =
-        $"Nama: {PlayerData.PlayerName}\n" +
-        $"Tinggi: {PlayerData.TinggiBadan} cm\n" +
-        $"Berat: {PlayerData.BeratBadan} kg\n" +
-        $"BMI: {PlayerData.BMI:F1} ({PlayerData.KategoriBMI})";
-        panelSkipConfirm.SetActive(true);
-    }
+    // private void ShowSkipConfirm()
+    // {
+    //     txtDataPreview.text =
+    //     $"Nama: {PlayerData.PlayerName}\n" +
+    //     $"Tinggi: {PlayerData.TinggiBadan} cm\n" +
+    //     $"Berat: {PlayerData.BeratBadan} kg\n" +
+    //     $"BMI: {PlayerData.BMI:F1} ({PlayerData.KategoriBMI})";
+    //     panelSkipConfirm.SetActive(true);
+    // }
 
     // ── Navigasi Panel ────────────────────────────────────────
     private void ShowPanel(UIPanelTransition nextPanel, int direction = 1)
@@ -112,14 +122,14 @@ public class InputFormManager : MonoBehaviour
         if (string.IsNullOrWhiteSpace(nama))
         {
             ShakeElement(inputNama.GetComponent<RectTransform>());
-            ShowValidationMessage("Nama tidak boleh kosong!");
+            // ShowValidationMessage("Nama tidak boleh kosong!");
             return false;
         }
 
         if (nama.Length < 2)
         {
             ShakeElement(inputNama.GetComponent<RectTransform>());
-            ShowValidationMessage("Nama terlalu pendek!");
+            // ShowValidationMessage("Nama terlalu pendek!");
             return false;
         }
 
@@ -139,24 +149,25 @@ public class InputFormManager : MonoBehaviour
 
     private Tweener validationTween;
 
-    private void ShowValidationMessage(string message)
-    {
-        if (txtValidation == null)
-            return;
+    // private void ShowValidationMessage(string message)
+    // {
+    //     if (txtValidation == null)
+    //         return;
 
-        txtValidation.text = message;
-        txtValidation.alpha = 1f;
+    //     txtValidation.text = message;
+    //     txtValidation.alpha = 1f;
 
-        // Auto hide setelah 2 detik
-        validationTween?.Kill();
-        validationTween = txtValidation.DOFade(0f, 0.3f).SetDelay(2f);
-    }
+    //     // Auto hide setelah 2 detik
+    //     validationTween?.Kill();
+    //     validationTween = txtValidation.DOFade(0f, 0.3f).SetDelay(2f);
+    // }
 
     // ── Ringkasan ─────────────────────────────────────────────
 
     private void UpdateRingkasan()
     {
         txtNama.text = PlayerData.PlayerName;
+        txtGender.text = PlayerData.JenisKelamin;
         txtTinggi.text = $"{PlayerData.TinggiBadan} cm";
         txtBerat.text = $"{PlayerData.BeratBadan} kg";
         txtBMI.text = $"{PlayerData.BMI:F1} — {PlayerData.KategoriBMI}";
@@ -193,18 +204,18 @@ public class InputFormManager : MonoBehaviour
         for (int i = 0; i < dataCards.Length; i++)
         {
             int index = i;
-            float delay = i * 0.1f;
+            float delay = i * 0.5f;
 
             if (dataCards[i] == null)
                 continue;
 
             dataCards[i].DOAnchorPosX(
-                dataCards[i].anchoredPosition.x - 100f, 0.3f).SetDelay(delay).SetEase(Ease.OutCubic);
+                dataCards[i].anchoredPosition.x - 100f, 0.5f).SetDelay(delay).SetEase(Ease.OutCubic);
 
             CanvasGroup cg = dataCards[i].GetComponent<CanvasGroup>();
             if (cg != null)
             {
-                cg.DOFade(1f, 0.3f).SetDelay(delay).SetEase(Ease.OutCubic);
+                cg.DOFade(1f, 0.5f).SetDelay(delay).SetEase(Ease.OutCubic);
             }
         }
     }
@@ -225,8 +236,29 @@ public class InputFormManager : MonoBehaviour
 
         // Lanjut ke step berikutnya
         stepProgressBar.NextStep();
-        ShowPanel(transitionTinggi, 1);
+        ShowPanel(transitionGender, 1);
         // AudioManager._Instance?.PlaySFX(null);
+    }
+
+    public void OnLanjutDariGender()
+    {
+        if (!genderSelector.IsSelected())
+        {
+            // Shake kedua tombol kalau belum pilih
+            ShakeElement(genderSelector.GetComponent<RectTransform>());
+            // ShowValidationMessage("Pilih jenis kelamin dulu!");
+            return;
+        }
+
+        PlayerData.JenisKelamin = genderSelector.GetGender();
+        stepProgressBar.NextStep();
+        ShowPanel(transitionTinggi, 1);
+    }
+
+    public void OnKembaliDariGender()
+    {
+        stepProgressBar.PreviousStep();
+        ShowPanel(transitionNama, -1);
     }
 
     public void OnLanjutDariTinggi()
@@ -241,7 +273,7 @@ public class InputFormManager : MonoBehaviour
     public void OnKembaliDariTinggi()
     {
         stepProgressBar.PreviousStep();
-        ShowPanel(transitionNama, -1);
+        ShowPanel(transitionGender, -1);
     }
 
     public void OnLanjutDariBerat()
@@ -276,26 +308,26 @@ public class InputFormManager : MonoBehaviour
     }
 
     // Tombol "Gunakan Data Lama" di panelSkipConfirm
-    public void OnGunakanDataLama()
-    {
-        panelSkipConfirm.SetActive(false);
-        UpdateRingkasan();
+    // public void OnGunakanDataLama()
+    // {
+    //     panelSkipConfirm.SetActive(false);
+    //     UpdateRingkasan();
 
-        // Langsung ke ringkasan
-        panelNama.SetActive(false);
-        panelRingkasan.SetActive(true);
-        currentPanel = transitionRingkasan;
+    //     // Langsung ke ringkasan
+    //     panelNama.SetActive(false);
+    //     panelRingkasan.SetActive(true);
+    //     currentPanel = transitionRingkasan;
 
-        // Set progress bar ke penuh
-        stepProgressBar.SetStep(3);
-    }
+    //     // Set progress bar ke penuh
+    //     stepProgressBar.SetStep(3);
+    // }
 
     // Tombol "Input Ulang" di panelSkipConfirm
-    public void OnInputUlang()
-    {
-        panelSkipConfirm.SetActive(false);
-        inputNama.text = PlayerData.PlayerName;
-    }
+    // public void OnInputUlang()
+    // {
+    //     panelSkipConfirm.SetActive(false);
+    //     inputNama.text = PlayerData.PlayerName;
+    // }
 
     private void OnDisable()
     {

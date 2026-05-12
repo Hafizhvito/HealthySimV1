@@ -4,12 +4,14 @@ using UnityEngine;
 public class PlayerData : MonoBehaviour
 {
     public static string PlayerName { get; set; } = "";
+    public static string JenisKelamin { get; set; } = "";
     public static float TinggiBadan { get; set; } = 160f;
     public static float BeratBadan { get; set; } = 60f;
 
     void Start()
     {
         PlayerPrefs.DeleteKey("PlayerName");
+        PlayerPrefs.DeleteKey("JenisKelamin");
         PlayerPrefs.DeleteKey("TinggiBadan");
         PlayerPrefs.DeleteKey("BeratBadan");
     }
@@ -40,6 +42,7 @@ public class PlayerData : MonoBehaviour
     public static void Save()
     {
         PlayerPrefs.SetString("PlayerName", PlayerName);
+        PlayerPrefs.SetString("JenisKelamin", JenisKelamin);
         PlayerPrefs.SetFloat("TinggiBadan", TinggiBadan);
         PlayerPrefs.SetFloat("BeratBadan", BeratBadan);
         PlayerPrefs.Save();
@@ -49,6 +52,7 @@ public class PlayerData : MonoBehaviour
     public static void Load()
     {
         PlayerName = PlayerPrefs.GetString("PlayerName", "");
+        PlayerName = PlayerPrefs.GetString("JenisKelamin", "");
         TinggiBadan = PlayerPrefs.GetFloat("TinggiBadan", 160f);
         BeratBadan = PlayerPrefs.GetFloat("BeratBadan", 60f);
     }

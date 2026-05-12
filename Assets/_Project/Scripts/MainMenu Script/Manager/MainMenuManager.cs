@@ -11,7 +11,7 @@ public class MainMenuManager : MonoBehaviour
     [SerializeField] private GameObject panelMain;
     [SerializeField] private GameObject panelOption;
     [SerializeField] private GameObject panelCredit;
-    [SerializeField] private GameObject panelLoadGame;
+    // [SerializeField] private GameObject panelLoadGame;
 
     // Scene
     [Header("Scene Settings")]
@@ -27,7 +27,7 @@ public class MainMenuManager : MonoBehaviour
     [SerializeField] private UIPanelTransition transitionMain;
     [SerializeField] private UIPanelTransition transitionOptions;
     [SerializeField] private UIPanelTransition transitionCredits;
-    [SerializeField] private UIPanelTransition transitionLoadGame;
+    // [SerializeField] private UIPanelTransition transitionLoadGame;
 
     // Audio
     [Header("Audio")]
@@ -42,7 +42,7 @@ public class MainMenuManager : MonoBehaviour
         panelMain.SetActive(true);
         panelOption.SetActive(false);
         panelCredit.SetActive(false);
-        panelLoadGame.SetActive(false);
+        // panelLoadGame.SetActive(false);
         LoadOptions();
         currentPanel = transitionMain;
         AudioManager._Instance.PlayMusic(menuMusic);
@@ -68,21 +68,21 @@ public class MainMenuManager : MonoBehaviour
     }
 
     // Logika Load Game
-    public void OnLoadSlot(int slotIndex)
-    {
-        string key = "SaveSlot_" + slotIndex;
+    // public void OnLoadSlot(int slotIndex)
+    // {
+    //     string key = "SaveSlot_" + slotIndex;
 
-        if (PlayerPrefs.HasKey(key))
-        {
-            Debug.Log($"Loading slot {slotIndex}...");
-            // Nanti bisa dihubungkan ke sistem save game
-            SceneManager.LoadScene(gameSceneName);
-        }
-        else
-        {
-            Debug.Log($"Slot {slotIndex} kosong.");
-        }
-    }
+    //     if (PlayerPrefs.HasKey(key))
+    //     {
+    //         Debug.Log($"Loading slot {slotIndex}...");
+    //         // Nanti bisa dihubungkan ke sistem save game
+    //         SceneManager.LoadScene(gameSceneName);
+    //     }
+    //     else
+    //     {
+    //         Debug.Log($"Slot {slotIndex} kosong.");
+    //     }
+    // }
 
     // Panggilan dari tombol
     public void OnPlayButton()
@@ -92,11 +92,11 @@ public class MainMenuManager : MonoBehaviour
         SceneLoader.LoadScene(gameSceneName);
     }
 
-    public void OnLoadGameButton()
-    {
-        ShowPanel(transitionLoadGame);
-        Debug.Log("Load Success");
-    }
+    // public void OnLoadGameButton()
+    // {
+    //     ShowPanel(transitionLoadGame);
+    //     Debug.Log("Load Success");
+    // }
 
     public void OnOptionsButton()
     {
