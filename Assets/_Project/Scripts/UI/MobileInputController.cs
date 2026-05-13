@@ -364,9 +364,9 @@ public class MobileInputController : MonoBehaviour
         controlObj.transform.SetParent(parent, false);
 
         RectTransform rect = controlObj.GetComponent<RectTransform>();
-    rect.anchorMin = anchorMin;
-    rect.anchorMax = anchorMax;
-    rect.pivot = pivot;
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.pivot = pivot;
         rect.anchoredPosition = anchoredPos;
         rect.sizeDelta = size;
 

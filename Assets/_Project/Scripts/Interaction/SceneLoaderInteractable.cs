@@ -20,8 +20,8 @@ using UnityEngine;
 public class SceneLoaderInteractable : MonoBehaviour, IInteractable
 {
     [SerializeField] private string _targetSceneName; // nanti tinggal ubah disini saja lewat inspector
+    [SerializeField] private string _targetSpawnID; // nanti ubah juga ini untuk posisi spawnnya
     [SerializeField] private string _promptText = "Masuk";
-    [SerializeField] private FadeManager _fadeManagerOverride;
 
     private Collider _cachedCollider;
 
@@ -55,7 +55,7 @@ public class SceneLoaderInteractable : MonoBehaviour, IInteractable
 
     public void OnInteract(GameObject player)
     {
-        FadeManager fadeManager = _fadeManagerOverride != null ? _fadeManagerOverride : FadeManager.Instance;
+        FadeManager fadeManager = FadeManager.Instance;
 
         if (fadeManager == null)
         {
@@ -63,6 +63,7 @@ public class SceneLoaderInteractable : MonoBehaviour, IInteractable
             return;
         }
 
+        SpawnPlayerManager.TargetSpawnID = _targetSpawnID;
         fadeManager.FadeToBlackAndLoad(_targetSceneName, 0.5f);
     }
 }

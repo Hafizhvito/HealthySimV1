@@ -2,9 +2,15 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 public class HUDManager : MonoBehaviour
 {
+    public static HUDManager Instance { get; private set; } // biar kagak perlu buat canvas lagi
+
+    [Header("Settings HUD")]
+    [SerializeField] private string[] _hideInScenes = { "MainMenu", "InputMenu", "LoadingScreen" };
+
     [Header("Energy Bar")]
     [SerializeField] private Image energyBarFill;
     [SerializeField] private Image energyBarWarningFill;
@@ -71,8 +77,69 @@ public class HUDManager : MonoBehaviour
     private bool energyFillPivotInitialized;
     private bool energyChipPivotInitialized;
 
+    // canvas
+    private CanvasGroup canvasGroup;
+
+    private void Awake()
+    {
+        // ================= Ini code singleton ==================
+        /* Jadi jangan dihapus demi kesejahteraan semua scene yang membutuhkan HUDnya */
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        canvasGroup = GetComponent<CanvasGroup>();
+        // =======================================================
+    }
+
+    // ================ HUD Logic ================================
+    /* OnEnable dan OnDisable boleh dipake */
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        bool shouldHide = System.Array.Exists(_hideInScenes, s => s == scene.name);
+
+        SetHUDVisible(!shouldHide);
+    }
+
+    public void SetHUDVisible(bool visible)
+    {
+        if (canvasGroup == null) return;
+
+        canvasGroup.alpha = visible ? 1f : 0f;
+        canvasGroup.interactable = visible;
+        canvasGroup.blocksRaycasts = visible;
+    }
+    // ===========================================================
+
     void Start()
     {
+        // ================= Ini code singleton ==================
+        /* Jadi jangan dihapus demi kesejahteraan semua scene yang membutuhkan HUDnya */
+        // if (Instance != null && Instance != this)
+        // {
+        //     Destroy(gameObject);
+        //     return;
+        // }
+
+        // Instance = this;
+        // DontDestroyOnLoad(gameObject);
+        // canvasGroup = GetComponent<CanvasGroup>();
+        // =======================================================
+
         TryInitialize();
 
         // Initialize UI
