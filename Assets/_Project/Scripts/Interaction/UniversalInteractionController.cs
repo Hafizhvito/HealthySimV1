@@ -436,9 +436,9 @@ public class UniversalInteractionController : MonoBehaviour
     private bool PressedInteractionThisFrame()
     {
         bool legacy = false;
-    #if ENABLE_LEGACY_INPUT_MANAGER
+#if ENABLE_LEGACY_INPUT_MANAGER
         legacy = Input.GetKeyDown(KeyCode.E);
-    #endif
+#endif
 
 #if ENABLE_INPUT_SYSTEM
         bool inputSystem = Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame;
