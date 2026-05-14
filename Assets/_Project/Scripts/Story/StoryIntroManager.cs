@@ -6,6 +6,8 @@ public class StoryIntroManager : MonoBehaviour
 {
     public static StoryIntroManager Instance { get; private set; }
 
+    private const string INTRO_PLAYED_KEY = "StoryIntroPlayed";
+
     public event System.Action OnIntroFlowCompleted;
 
     [Header("Optional Intro Follow-up")]
@@ -29,11 +31,23 @@ public class StoryIntroManager : MonoBehaviour
 
     public IEnumerator StartIntroFlow()
     {
+        bool alreadyPlayed = PlayerPrefs.GetInt(INTRO_PLAYED_KEY, 0) == 1;
+
+        if (alreadyPlayed)
+        {
+            Debug.Log("[StoryIntro] Intro sudah pernah dimainkan — skip.");
+            OnIntroFlowCompleted?.Invoke();
+            yield break;
+        }
+
         if (templates == null || templates.Length == 0)
         {
             OnIntroFlowCompleted?.Invoke();
             yield break;
         }
+
+        PlayerPrefs.SetInt(INTRO_PLAYED_KEY, 1);
+        PlayerPrefs.Save();
 
         int index = SessionSeedManager.Instance != null
             ? SessionSeedManager.Instance.NextInt(0, templates.Length)
@@ -61,6 +75,14 @@ public class StoryIntroManager : MonoBehaviour
         }
 
         OnIntroFlowCompleted?.Invoke();
+    }
+
+    // ── reset untuk testing ───────────────────────────────────
+    [ContextMenu("Reset Intro Flag")]
+    public void ResetIntroFlag()
+    {
+        PlayerPrefs.DeleteKey(INTRO_PLAYED_KEY);
+        Debug.Log("[StoryIntro] Intro flag di-reset — akan muncul lagi saat Play.");
     }
 
     private BackstoryDialogueController ResolveBackstoryDialogueController()

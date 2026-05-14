@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections;
+
 public class SpawnPlayerManager : MonoBehaviour
 {
     public static SpawnPlayerManager _Instance { get; private set; }
@@ -33,7 +35,27 @@ public class SpawnPlayerManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(TargetSpawnID)) return;
 
-        // SpawnPoint dengan ID yang sesuai
+        Debug.Log($"[Spawn] Scene loaded: {scene.name}, TargetSpawnID: {TargetSpawnID}");
+        StartCoroutine(SpawnAfterEverything());
+    }
+
+    private IEnumerator SpawnAfterEverything()
+    {
+        // Tunggu Bootstrap selesai — Bootstrap jalan di Start()
+        // Kita tunggu beberapa frame + waktu ekstra
+        yield return null;          // frame 1
+        yield return null;          // frame 2
+        yield return null;          // frame 3
+        yield return new WaitForSeconds(0.2f); // ekstra safety
+
+        SpawnPlayer();
+    }
+
+    private void SpawnPlayer()
+    {
+        if (string.IsNullOrEmpty(TargetSpawnID)) return;
+
+        // Cari SpawnPoint
         SpawnPointID[] spawnPoints = FindObjectsByType<SpawnPointID>(
             FindObjectsInactive.Include,
             FindObjectsSortMode.None);
@@ -50,29 +72,38 @@ public class SpawnPlayerManager : MonoBehaviour
 
         if (targetSpawn == null)
         {
-            Debug.LogWarning($"[PlayerSpawnManager] SpawnPoint '{TargetSpawnID}' tidak ditemukan di {scene.name}!");
+            Debug.LogWarning($"[Spawn] SpawnPoint '{TargetSpawnID}' tidak ditemukan!");
             return;
         }
 
-        // memindahkan player ke SpawnPoint
+        // Cari player
         GameObject player = GameObject.FindWithTag("Player");
         if (player == null)
         {
-            Debug.LogWarning("[PlayerSpawnManager] Player tidak ditemukan!");
+            Debug.LogWarning("[Spawn] Player tidak ditemukan!");
             return;
         }
 
-        // disable controller sementara agar tidak error
+        // Disable CharacterController sementara
         CharacterController cc = player.GetComponent<CharacterController>();
         if (cc != null) cc.enabled = false;
 
+        // Teleport player
         player.transform.position = targetSpawn.transform.position;
         player.transform.rotation = targetSpawn.transform.rotation;
 
         if (cc != null) cc.enabled = true;
 
-        Debug.Log($"[PlayerSpawnManager] Player di-spawn di '{TargetSpawnID}' → {targetSpawn.transform.position}");
+        Debug.Log($"[Spawn] ✅ Player di-spawn di '{TargetSpawnID}' → {targetSpawn.transform.position}");
 
+        // Reset setelah dipakai
         TargetSpawnID = "";
+    }
+
+    // ── Dev Tool ──────────────────────────────────────────────
+    [ContextMenu("Test Spawn")]
+    public void TestSpawn()
+    {
+        SpawnPlayer();
     }
 }
