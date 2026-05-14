@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -15,7 +14,7 @@ public class MobileInputController : MonoBehaviour
     public static MobileInputController Instance { get; private set; }
 
     [SerializeField] private bool forceMobileUI = true;
-    [SerializeField] private float lookSensitivity = 0.08f;
+    [SerializeField] [Range(0.01f, 0.3f)] private float lookSensitivity = 0.06f;
 
     public Vector2 MoveInput { get; private set; }
     public Vector2 LookDelta { get; private set; }
@@ -49,9 +48,6 @@ public class MobileInputController : MonoBehaviour
     private bool lastPerspectiveFirstPerson;
     private bool hasPerspectiveState;
 
-    private MethodInfo cameraLookVectorMethod;
-    private MethodInfo cameraLookFloatMethod;
-    private bool cameraMethodLookupDone;
     private bool isTouchUiEnabled;
     private bool fallbackPitchInitialized;
     private float fallbackPitch;
@@ -74,6 +70,7 @@ public class MobileInputController : MonoBehaviour
         isTouchUiEnabled = ShouldEnableTouchUi();
 
         ResolveSceneReferences();
+        TryBindExistingUi();
 
         if (isTouchUiEnabled)
             BuildUi();
@@ -191,52 +188,40 @@ public class MobileInputController : MonoBehaviour
             }
         }
 
-        if (cameraSystem != null && !cameraMethodLookupDone)
-            CacheCameraLookMethods();
+        // Camera look input is handled via CameraSystem.
     }
 
-    private void CacheCameraLookMethods()
+    private void TryBindExistingUi()
     {
-        cameraMethodLookupDone = true;
+        if (uiRoot != null)
+            return;
 
-        string[] methodNames =
-        {
-            "AddLookInput",
-            "InjectLookInput",
-            "ApplyLookInput",
-            "RotateCamera",
-            "PanCamera"
-        };
+        Transform existingRoot = transform.Find("MobileInputCanvas");
+        if (existingRoot == null)
+            return;
 
-        for (int i = 0; i < methodNames.Length; i++)
-        {
-            MethodInfo vectorMethod = cameraSystem.GetType().GetMethod(
-                methodNames[i],
-                BindingFlags.Instance | BindingFlags.Public,
-                null,
-                new[] { typeof(Vector2) },
-                null);
-
-            if (vectorMethod != null)
-            {
-                cameraLookVectorMethod = vectorMethod;
-                return;
-            }
-
-            MethodInfo floatMethod = cameraSystem.GetType().GetMethod(
-                methodNames[i],
-                BindingFlags.Instance | BindingFlags.Public,
-                null,
-                new[] { typeof(float), typeof(float) },
-                null);
-
-            if (floatMethod != null)
-            {
-                cameraLookFloatMethod = floatMethod;
-                return;
-            }
-        }
+        uiRoot = existingRoot.gameObject;
+        uiCanvas = uiRoot.GetComponent<Canvas>();
+        moveJoystick = uiRoot.GetComponentInChildren<MobileJoystick>(true);
+        lookSwipeZone = uiRoot.GetComponentInChildren<MobileSwipeLookZone>(true);
+        perspectiveToggleLabel = uiRoot.GetComponentInChildren<TextMeshProUGUI>(true);
     }
+
+#if UNITY_EDITOR
+    public void EditorBuildUiForPrefab()
+    {
+        forceMobileUI = true;
+        isTouchUiEnabled = true;
+
+        if (uiRoot != null)
+        {
+            DestroyImmediate(uiRoot);
+            uiRoot = null;
+        }
+
+        BuildUi();
+    }
+#endif
 
     private void BuildUi()
     {
@@ -510,41 +495,13 @@ public class MobileInputController : MonoBehaviour
 
     private void ApplyLookInput(Vector2 lookInput)
     {
-        if (lookInput.sqrMagnitude <= 0.000001f || cameraSystemTransform == null)
+        if (lookInput.sqrMagnitude <= 0.000001f)
             return;
 
-        float yawDelta = lookInput.x;
-        float pitchDelta = lookInput.y;
-
-        if (TryInvokeCameraLookMethod(yawDelta, pitchDelta))
-            return;
-
-        fallbackPitch = Mathf.Clamp(fallbackPitch + pitchDelta, -60f, 70f);
-
-        Vector3 euler = cameraSystemTransform.eulerAngles;
-        euler.y += yawDelta;
-        euler.x = fallbackPitch;
-        cameraSystemTransform.rotation = Quaternion.Euler(euler);
-    }
-
-    private bool TryInvokeCameraLookMethod(float yawDelta, float pitchDelta)
-    {
         if (cameraSystem == null)
-            return false;
+            return;
 
-        if (cameraLookVectorMethod != null)
-        {
-            cameraLookVectorMethod.Invoke(cameraSystem, new object[] { new Vector2(yawDelta, pitchDelta) });
-            return true;
-        }
-
-        if (cameraLookFloatMethod != null)
-        {
-            cameraLookFloatMethod.Invoke(cameraSystem, new object[] { yawDelta, pitchDelta });
-            return true;
-        }
-
-        return false;
+        cameraSystem.AddLookInput(lookInput, lookSensitivity);
     }
 
     private static float NormalizePitch(float xAngle)
@@ -827,7 +784,10 @@ public class MobileInputController : MonoBehaviour
             if (!isSwiping || eventData.pointerId != swipePointerId || owner == null)
                 return;
 
-            Vector2 lookDelta = (eventData.position - swipePrevPosition) * owner.lookSensitivity;
+            Vector2 rawDelta = eventData.position - swipePrevPosition;
+            float screenW = Mathf.Max(1f, Screen.width);
+            float screenH = Mathf.Max(1f, Screen.height);
+            Vector2 lookDelta = new Vector2(rawDelta.x / screenW, rawDelta.y / screenH);
             lookDelta.y = -lookDelta.y;
 
             pendingLookDelta = lookDelta;

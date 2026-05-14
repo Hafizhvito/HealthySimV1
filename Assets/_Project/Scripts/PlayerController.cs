@@ -75,6 +75,7 @@ public class PlayerController : MonoBehaviour
     private PhysicsMaterial runtimeLowFrictionMaterial;
 
     private Vector3 moveDir;
+    private Vector3 desiredMoveDir;
     private Vector2 rawInput;       // raw input dibaca di Update
     private Vector2 keyboardInput;  // keyboard input sampled in Update
     private bool hasKeyboardInput;
@@ -248,6 +249,10 @@ public class PlayerController : MonoBehaviour
         if (targetMoveDir.magnitude > 1f)
             targetMoveDir.Normalize();
 
+        desiredMoveDir = targetMoveDir.sqrMagnitude > 0.0001f
+            ? targetMoveDir.normalized
+            : Vector3.zero;
+
         // Gunakan fixedDeltaTime agar konsisten dengan physics step
         moveDir = Vector3.Lerp(moveDir, targetMoveDir,
             inputDirectionSmooth * Time.fixedDeltaTime);
@@ -300,11 +305,24 @@ public class PlayerController : MonoBehaviour
 
     void Rotate()
     {
-        Vector3 horizontalVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-        if (horizontalVel.sqrMagnitude < rotationInputThreshold * rotationInputThreshold)
+        if (cameraSystem != null && cameraSystem.IsFirstPerson)
+        {
+            Vector3 lookForward = cachedCameraForward;
+            if (lookForward.sqrMagnitude < 0.0001f)
+                return;
+
+            Quaternion targetRotation = Quaternion.LookRotation(lookForward);
+            rb.MoveRotation(Quaternion.Slerp(
+                rb.rotation,
+                targetRotation,
+                rotationSpeed * Time.fixedDeltaTime));
+            return;
+        }
+
+        if (desiredMoveDir.sqrMagnitude < rotationInputThreshold * rotationInputThreshold)
             return;
 
-        Quaternion target = Quaternion.LookRotation(horizontalVel.normalized);
+        Quaternion target = Quaternion.LookRotation(desiredMoveDir);
         rb.MoveRotation(Quaternion.Slerp(
             rb.rotation,
             target,

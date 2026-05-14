@@ -13,6 +13,9 @@ public class StoryIntroManager : MonoBehaviour
     [Header("Optional Intro Follow-up")]
     [SerializeField] private BackstoryDialogueController backstoryDialogue;
 
+    [Header("Intro Debug")]
+    [SerializeField] private bool forcePlayIntro = false;
+
     private StoryTemplate[] templates;
 
     public StoryTemplate ActiveTemplate { get; private set; }
@@ -33,7 +36,7 @@ public class StoryIntroManager : MonoBehaviour
     {
         bool alreadyPlayed = PlayerPrefs.GetInt(INTRO_PLAYED_KEY, 0) == 1;
 
-        if (alreadyPlayed)
+        if (alreadyPlayed && !forcePlayIntro)
         {
             Debug.Log("[StoryIntro] Intro sudah pernah dimainkan — skip.");
             OnIntroFlowCompleted?.Invoke();

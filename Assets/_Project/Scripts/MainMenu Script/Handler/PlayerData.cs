@@ -8,8 +8,13 @@ public class PlayerData : MonoBehaviour
     public static float TinggiBadan { get; set; } = 160f;
     public static float BeratBadan { get; set; } = 60f;
 
+    [SerializeField] private bool clearPrefsOnStart = false;
+
     void Start()
     {
+        if (!clearPrefsOnStart)
+            return;
+
         PlayerPrefs.DeleteKey("PlayerName");
         PlayerPrefs.DeleteKey("JenisKelamin");
         PlayerPrefs.DeleteKey("TinggiBadan");
@@ -52,7 +57,7 @@ public class PlayerData : MonoBehaviour
     public static void Load()
     {
         PlayerName = PlayerPrefs.GetString("PlayerName", "");
-        PlayerName = PlayerPrefs.GetString("JenisKelamin", "");
+        JenisKelamin = PlayerPrefs.GetString("JenisKelamin", "");
         TinggiBadan = PlayerPrefs.GetFloat("TinggiBadan", 160f);
         BeratBadan = PlayerPrefs.GetFloat("BeratBadan", 60f);
     }

@@ -15,6 +15,9 @@ public class SampleSceneBootstrap : MonoBehaviour
     private const string TargetSceneName = "SampleScene";
     private const string FallbackLogPrefix = "[SwapContract/Fallback]";
 
+    [Header("Intro Cutscene")]
+    [SerializeField] private bool forceIntroEveryPlay = true;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoBootstrapAfterSceneLoad()
     {
@@ -326,8 +329,13 @@ public class SampleSceneBootstrap : MonoBehaviour
         // Let singleton startup settle for one frame.
         yield return null;
 
-        if (StoryIntroManager.Instance != null)
-            yield return StoryIntroManager.Instance.StartIntroFlow();
+        if (StoryIntroManager.Instance == null)
+            yield break;
+
+        if (forceIntroEveryPlay)
+            StoryIntroManager.Instance.ResetIntroFlag();
+
+        yield return StoryIntroManager.Instance.StartIntroFlow();
     }
 
     private static T EnsureComponent<T>(GameObject target) where T : Component

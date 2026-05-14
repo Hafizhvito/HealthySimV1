@@ -18,6 +18,15 @@ public class CameraSystem : MonoBehaviour
     [SerializeField] private CinemachineBrain.UpdateMethods brainUpdateMethod = CinemachineBrain.UpdateMethods.SmartUpdate;
     [SerializeField] private CinemachineBrain.BrainUpdateMethods blendUpdateMethod = CinemachineBrain.BrainUpdateMethods.LateUpdate;
 
+    [Header("Look Input")]
+    [SerializeField] private bool enableDesktopMouseLook = true;
+    [SerializeField] [Range(0.1f, 6f)] private float mouseLookSensitivity = 1f;
+    [SerializeField] private float lookSmoothing = 10f;
+    [SerializeField] private float fppPitchMin = -60f;
+    [SerializeField] private float fppPitchMax = 60f;
+    [SerializeField] private float transitionDuration = 0.25f;
+    [SerializeField] private Transform playerRoot;
+
     [Header("Startup Cinematic")]
     [SerializeField] private bool playStartupCinematic = true;
     [SerializeField] private float startupCinematicDuration = 1.35f;
@@ -41,15 +50,22 @@ public class CameraSystem : MonoBehaviour
     private CinemachineBrain brain;
     private CinemachineThirdPersonFollow tppFollow;
     private CinemachineOrbitalFollow orbitalFollow;
+    private CinemachinePanTilt fppPanTilt;
+    private CinemachineInputAxisController tppInputController;
+    private CinemachineInputAxisController fppInputController;
     private bool hasZoomState;
     private bool isDialogueZoomed;
     private float defaultTppDistance;
     private float defaultTppSide;
     private float defaultTppFov;
     private float defaultFppFov;
+    private float lastTppYaw;
+    private float lastTppPitch;
+    private Vector2 smoothedLookDelta;
     private Coroutine dialogueZoomRoutine;
     private Coroutine dialogueDriftRoutine;
     private Coroutine startupCinematicRoutine;
+    private Coroutine transitionRoutine;
 
     public bool IsFirstPerson => isFirstPerson;
 
@@ -59,6 +75,13 @@ public class CameraSystem : MonoBehaviour
         {
             tppFollow = tppCamera.GetComponent<CinemachineThirdPersonFollow>();
             orbitalFollow = tppCamera.GetComponent<CinemachineOrbitalFollow>();
+            tppInputController = tppCamera.GetComponent<CinemachineInputAxisController>();
+        }
+
+        if (fppCamera != null)
+        {
+            fppPanTilt = fppCamera.GetComponent<CinemachinePanTilt>();
+            fppInputController = fppCamera.GetComponent<CinemachineInputAxisController>();
         }
 
         if (Camera.main != null)
@@ -82,6 +105,13 @@ public class CameraSystem : MonoBehaviour
                 playerRenderers = player.GetComponentsInChildren<Renderer>();
         }
 
+        if (playerRoot == null)
+        {
+            GameObject player = GameObject.FindWithTag("Player");
+            if (player != null)
+                playerRoot = player.transform;
+        }
+
         ApplyBrainUpdateMode();
         SetTPP();
 
@@ -102,6 +132,9 @@ public class CameraSystem : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Escape) && !isFirstPerson)
             UnlockCursor();
+
+        if (enableDesktopMouseLook && !IsTouchInputActive())
+            HandleDesktopMouseLook();
     }
 
     public void TogglePerspectiveFromMobile()
@@ -136,15 +169,169 @@ public class CameraSystem : MonoBehaviour
         isFirstPerson = false;
         SetPlayerRenderersVisible(true);
         UnlockCursor();
+
+        smoothedLookDelta = Vector2.zero;
+        SetInputControllersEnabled(tppEnabled: true, fppEnabled: false);
+        StartTransition(TransitionDirection.ToTPP);
     }
 
     void SetFPP()
     {
-        tppCamera.Priority = activePriority;
-        fppCamera.Priority = activePriority + 1;
+        tppCamera.Priority = inactivePriority;
+        fppCamera.Priority = activePriority;
         isFirstPerson = true;
         SetPlayerRenderersVisible(false);
         LockCursor();
+
+        smoothedLookDelta = Vector2.zero;
+        SetInputControllersEnabled(tppEnabled: false, fppEnabled: false);
+        StartTransition(TransitionDirection.ToFPP);
+    }
+
+    public void AddLookInput(Vector2 lookDelta, float sensitivity)
+    {
+        if (isFirstPerson)
+        {
+            Vector2 scaled = lookDelta * Mathf.Max(0.001f, sensitivity);
+            if (scaled.sqrMagnitude <= 0.000001f)
+                return;
+
+            ApplyFppLookInput(scaled.x, scaled.y);
+            return;
+        }
+
+        float dt = Time.unscaledDeltaTime;
+        float scale = Mathf.Max(0.01f, sensitivity) * dt;
+        Vector2 scaledTpp = lookDelta * scale;
+        float t = lookSmoothing <= 0f ? 1f : 1f - Mathf.Exp(-lookSmoothing * dt);
+        smoothedLookDelta = Vector2.Lerp(smoothedLookDelta, scaledTpp, t);
+        ApplyTppLookInput(smoothedLookDelta.x, smoothedLookDelta.y);
+    }
+
+    private void ApplyFppLookInput(float yawDelta, float pitchDelta)
+    {
+        if (playerRoot != null && Mathf.Abs(yawDelta) > 0.000001f)
+            playerRoot.Rotate(Vector3.up, yawDelta, Space.World);
+
+        if (fppPanTilt == null)
+            return;
+
+        InputAxis tilt = fppPanTilt.TiltAxis;
+        tilt.Value = Mathf.Clamp(tilt.Value - pitchDelta, fppPitchMin, fppPitchMax);
+        fppPanTilt.TiltAxis = tilt;
+
+        InputAxis pan = fppPanTilt.PanAxis;
+        pan.Value = 0f;
+        fppPanTilt.PanAxis = pan;
+    }
+
+    private void ApplyTppLookInput(float yawDelta, float pitchDelta)
+    {
+        if (orbitalFollow == null)
+            return;
+
+        InputAxis yaw = orbitalFollow.HorizontalAxis;
+        InputAxis pitch = orbitalFollow.VerticalAxis;
+
+        yaw.Value += yawDelta;
+        pitch.Value += -pitchDelta;
+
+        orbitalFollow.HorizontalAxis = yaw;
+        orbitalFollow.VerticalAxis = pitch;
+
+        lastTppYaw = yaw.Value;
+        lastTppPitch = pitch.Value;
+    }
+
+    private void HandleDesktopMouseLook()
+    {
+        if (Cursor.lockState != CursorLockMode.Locked && !Input.GetMouseButton(1))
+            return;
+
+        float mouseX = Input.GetAxis("Mouse X");
+        float mouseY = Input.GetAxis("Mouse Y");
+
+        if (Mathf.Abs(mouseX) < 0.0001f && Mathf.Abs(mouseY) < 0.0001f)
+            return;
+
+        Vector2 lookDelta = new Vector2(mouseX, mouseY) * mouseLookSensitivity;
+        AddLookInput(lookDelta, 1f);
+    }
+
+    private bool IsTouchInputActive()
+    {
+        if (Application.isMobilePlatform)
+            return true;
+
+        if (MobileInputController.Instance != null && MobileInputController.Instance.IsTouchUiEnabled)
+            return Input.touchCount > 0;
+
+        return false;
+    }
+
+    private void SetInputControllersEnabled(bool tppEnabled, bool fppEnabled)
+    {
+        if (tppInputController != null)
+            tppInputController.enabled = tppEnabled;
+
+        if (fppInputController != null)
+            fppInputController.enabled = fppEnabled;
+    }
+
+    private void StartTransition(TransitionDirection direction)
+    {
+        if (transitionRoutine != null)
+            StopCoroutine(transitionRoutine);
+
+        transitionRoutine = StartCoroutine(TransitionRoutine(direction));
+    }
+
+    private IEnumerator TransitionRoutine(TransitionDirection direction)
+    {
+        float duration = Mathf.Max(0.01f, transitionDuration);
+        float elapsed = 0f;
+
+        float startYaw = orbitalFollow != null ? orbitalFollow.HorizontalAxis.Value : 0f;
+        float startPitch = orbitalFollow != null ? orbitalFollow.VerticalAxis.Value : 0f;
+        float targetYaw = direction == TransitionDirection.ToFPP ? startYaw : lastTppYaw;
+        float targetPitch = direction == TransitionDirection.ToFPP ? startPitch : lastTppPitch;
+
+        float startTilt = fppPanTilt != null ? fppPanTilt.TiltAxis.Value : 0f;
+        float targetTilt = Mathf.Clamp(startTilt, fppPitchMin, fppPitchMax);
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float eased = Mathf.SmoothStep(0f, 1f, t);
+
+            if (direction == TransitionDirection.ToTPP && orbitalFollow != null)
+            {
+                InputAxis yaw = orbitalFollow.HorizontalAxis;
+                InputAxis pitch = orbitalFollow.VerticalAxis;
+                yaw.Value = Mathf.Lerp(startYaw, targetYaw, eased);
+                pitch.Value = Mathf.Lerp(startPitch, targetPitch, eased);
+                orbitalFollow.HorizontalAxis = yaw;
+                orbitalFollow.VerticalAxis = pitch;
+            }
+
+            if (direction == TransitionDirection.ToFPP && fppPanTilt != null)
+            {
+                InputAxis tilt = fppPanTilt.TiltAxis;
+                tilt.Value = Mathf.Lerp(startTilt, targetTilt, eased);
+                fppPanTilt.TiltAxis = tilt;
+            }
+
+            yield return null;
+        }
+
+        transitionRoutine = null;
+    }
+
+    private enum TransitionDirection
+    {
+        ToFPP,
+        ToTPP
     }
 
     void SetPlayerRenderersVisible(bool visible)
