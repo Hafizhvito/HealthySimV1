@@ -70,10 +70,17 @@ public class SpawnPlayerManager : MonoBehaviour
             }
         }
 
+        Transform fallbackSpawn = null;
         if (targetSpawn == null)
         {
-            Debug.LogWarning($"[Spawn] SpawnPoint '{TargetSpawnID}' tidak ditemukan!");
-            return;
+            GameObject fallbackObj = GameObject.FindWithTag("SpawnPoint");
+            fallbackSpawn = fallbackObj != null ? fallbackObj.transform : null;
+
+            if (fallbackSpawn == null)
+            {
+                Debug.LogWarning($"[Spawn] SpawnPoint '{TargetSpawnID}' tidak ditemukan dan fallback tag 'SpawnPoint' kosong!");
+                return;
+            }
         }
 
         // Cari player
@@ -89,12 +96,14 @@ public class SpawnPlayerManager : MonoBehaviour
         if (cc != null) cc.enabled = false;
 
         // Teleport player
-        player.transform.position = targetSpawn.transform.position;
-        player.transform.rotation = targetSpawn.transform.rotation;
+        Transform spawnTransform = targetSpawn != null ? targetSpawn.transform : fallbackSpawn;
+        player.transform.position = spawnTransform.position;
+        player.transform.rotation = spawnTransform.rotation;
 
         if (cc != null) cc.enabled = true;
 
-        Debug.Log($"[Spawn] ✅ Player di-spawn di '{TargetSpawnID}' → {targetSpawn.transform.position}");
+        string spawnLabel = targetSpawn != null ? targetSpawn.ID : "SpawnPoint";
+        Debug.Log($"[Spawn] ✅ Player di-spawn di '{spawnLabel}' → {spawnTransform.position}");
 
         // Reset setelah dipakai
         TargetSpawnID = "";

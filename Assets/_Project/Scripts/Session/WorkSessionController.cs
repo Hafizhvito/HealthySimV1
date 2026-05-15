@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class WorkSessionController : MonoBehaviour
 {
@@ -30,8 +31,7 @@ public class WorkSessionController : MonoBehaviour
     {
         if (WorkSessionManager.Instance == null || WorkSessionManager.Instance.PendingSession == null)
         {
-            if (FadeManager.Instance != null)
-                FadeManager.Instance.FadeToBlackAndLoad(_mainSceneName, 0.5f);
+            ReturnToMainScene();
             yield break;
         }
 
@@ -43,8 +43,7 @@ public class WorkSessionController : MonoBehaviour
 
         if (!ResolveSceneDependencies())
         {
-            if (FadeManager.Instance != null)
-                FadeManager.Instance.FadeToBlackAndLoad(_mainSceneName, 0.5f);
+            ReturnToMainScene();
             yield break;
         }
 
@@ -53,8 +52,7 @@ public class WorkSessionController : MonoBehaviour
         yield return StartCoroutine(PlayDialogueAndWait(preWorkDialogue, () => preWorkDone = true));
         if (!preWorkDone)
         {
-            if (FadeManager.Instance != null)
-                FadeManager.Instance.FadeToBlackAndLoad(_mainSceneName, 0.5f);
+            ReturnToMainScene();
             yield break;
         }
 
@@ -72,8 +70,21 @@ public class WorkSessionController : MonoBehaviour
         DialogueGraphData postDialogue = BuildPostWorkDialogueForResult();
         yield return StartCoroutine(PlayDialogueAndWait(postDialogue, null));
 
+        ReturnToMainScene();
+    }
+
+    private void ReturnToMainScene()
+    {
+        SpawnPlayerManager.TargetSpawnID = "default";
+
         if (FadeManager.Instance != null)
+        {
             FadeManager.Instance.FadeToBlackAndLoad(_mainSceneName, 0.5f);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_mainSceneName))
+            SceneManager.LoadScene(_mainSceneName);
     }
 
     private bool ResolveSceneDependencies()

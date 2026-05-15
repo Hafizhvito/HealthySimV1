@@ -167,6 +167,8 @@ public class GymSessionController : MonoBehaviour
     {
         SetGymSessionLock(false);
 
+        SpawnPlayerManager.TargetSpawnID = "default";
+
         if (FadeManager.Instance != null)
         {
             FadeManager.Instance.FadeToBlackAndLoad(mainSceneName, 0.5f);

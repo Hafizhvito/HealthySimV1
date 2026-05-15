@@ -8,6 +8,7 @@ TagManager:
   - Interactable
   - Player
   - NPCTrainer
+  - SpawnPoint
   layers:
   - Default
   - TransparentFX

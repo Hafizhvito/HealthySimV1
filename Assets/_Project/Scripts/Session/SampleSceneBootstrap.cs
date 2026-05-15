@@ -16,7 +16,7 @@ public class SampleSceneBootstrap : MonoBehaviour
     private const string FallbackLogPrefix = "[SwapContract/Fallback]";
 
     [Header("Intro Cutscene")]
-    [SerializeField] private bool forceIntroEveryPlay = true;
+    [SerializeField] private bool forceIntroEveryPlay = false;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoBootstrapAfterSceneLoad()
@@ -78,11 +78,22 @@ public class SampleSceneBootstrap : MonoBehaviour
 
     private void EnsureCoreManagers()
     {
-        GameObject manager = GameObject.Find("GameManager");
+        // Cek DDOL dulu biar ga duplikat
+        GameObject manager = null;
+        foreach (var obj in Resources.FindObjectsOfTypeAll<GameObject>())
+        {
+            if (obj.name == "GameManager")
+            {
+                manager = obj;
+                break;
+            }
+        }
+
         if (manager == null)
         {
             manager = new GameObject("GameManager");
-            Debug.LogWarning($"{FallbackLogPrefix} Created GameManager at runtime. Prefer authored scene object to keep swap contract stable.");
+            DontDestroyOnLoad(manager);
+            Debug.LogWarning($"{FallbackLogPrefix} Created GameManager at runtime.");
         }
 
         EnsureComponent<SessionSeedManager>(manager);

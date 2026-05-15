@@ -77,17 +77,20 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
         }
 
         TimeManager.TimePeriod period = timeManager.CurrentPeriod;
+        bool hasTrained = progression.HasTrainedToday;
+        bool canTrain = progression.CanTrain(energy, period);
 
-        if (progression.HasTrainedToday)
+        Debug.Log($"[GymDoor] hour={hour:F2} energy={energy:F2} hasTrained={hasTrained} canTrain={canTrain}");
+
+        if (hasTrained)
         {
-            ShowFloatingText(alreadyTrainedText, 2f);
+            ShowFloatingText("Kamu sudah berlatih hari ini. Istirahat dulu!", 2f);
             return;
         }
 
-        if (!progression.CanTrain(energy, period))
+        if (!canTrain)
         {
-            string reason = blockedEnergyText;
-            ShowFloatingText(reason, 2f);
+            ShowFloatingText("Energimu terlalu rendah untuk berlatih.", 2f);
             return;
         }
 
@@ -104,7 +107,8 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
             return;
         }
 
-        fadeManager.FadeToBlackAndLoad(gymSceneName, 0.5f);
+        SpawnPlayerManager.TargetSpawnID = "default";
+fadeManager.FadeToBlackAndLoad(gymSceneName, 0.5f);
     }
 
     private GymProgressionSystem ResolveGymProgression()
@@ -117,7 +121,10 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
         GameObject managerObj = GameObject.Find("GameManager");
         if (managerObj == null)
-            return null;
+        {
+            managerObj = new GameObject("GameManager");
+            Debug.LogWarning("[GymDoorInteractable] GameManager tidak ditemukan. Membuat fallback runtime.");
+        }
 
         GymProgressionSystem existing = managerObj.GetComponent<GymProgressionSystem>();
         return existing != null ? existing : managerObj.AddComponent<GymProgressionSystem>();

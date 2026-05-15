@@ -153,6 +153,8 @@ public class WorkSessionManager : MonoBehaviour
 
     public bool CanWork(float energyNormalized)
     {
+        if (HasWorkedToday) return false;
+        
         float energy = Mathf.Clamp01(energyNormalized);
         if (energy < MinEnergyToWork)
             return false;

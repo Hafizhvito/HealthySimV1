@@ -419,7 +419,6 @@ Temp/bin/Debug/Tripolygon.UModelerX.Runtime.PureCode.dll
  Unity.Properties.SourceGenerator.dll
  Unity.SourceGenerators.dll
  Unity.UIToolkit.SourceGenerator.dll
-../../../.vscode/extensions/visualstudiotoolsforunity.vstuc-1.2.2/Analyzers/Microsoft.Unity.Analyzers.dll
 
 [analyzerConfigFiles]
 Temp/obj/Tripolygon.UModelerX.PureCode.Editor/Tripolygon.UModelerX.PureCode.Editor.GeneratedMSBuildEditorConfig.editorconfig
