@@ -67,8 +67,16 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
             return;
         }
 
-        TimeManager.TimePeriod period = timeManager.CurrentPeriod;
+        float hour = timeManager.CurrentHour;
         float energy = playerStats.EnergyPercent;
+
+        if (hour < 6f || hour >= 22f)
+        {
+            ShowFloatingText("Gym sudah tutup. Jam operasional 06.00 - 22.00.", 2f);
+            return;
+        }
+
+        TimeManager.TimePeriod period = timeManager.CurrentPeriod;
 
         if (progression.HasTrainedToday)
         {
@@ -78,7 +86,7 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
         if (!progression.CanTrain(energy, period))
         {
-            string reason = period == TimeManager.TimePeriod.Night ? blockedNightText : blockedEnergyText;
+            string reason = blockedEnergyText;
             ShowFloatingText(reason, 2f);
             return;
         }

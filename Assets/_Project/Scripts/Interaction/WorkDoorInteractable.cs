@@ -110,12 +110,20 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
             return;
         }
 
-        TimeManager.TimePeriod period = timeManager.CurrentPeriod;
+        float hour = timeManager.CurrentHour;
         float energy = playerStats.EnergyPercent;
+
+        if (hour < 7f || hour >= 15f)
+        {
+            ShowFloatingText("Kantor sudah tutup. Jam kerja 07.00 - 15.00.", 2f);
+            return;
+        }
+
+        TimeManager.TimePeriod period = timeManager.CurrentPeriod;
 
         if (!workSessionManager.CanWork(energy))
         {
-            string reason = period == TimeManager.TimePeriod.Night ? _nightText : _blockedText;
+            string reason = _blockedText;
             ShowFloatingText(reason, 2f);
             return;
         }

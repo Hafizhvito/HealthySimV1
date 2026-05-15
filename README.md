@@ -170,7 +170,8 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Movement energy drain rebalanced for 3m50s loop pacing
   - Sprint drain now ramps up over time (no instant full-drain spike)
   - Camera toggle and dialogue zoom behavior
-  - Mobile touch controls are available via runtime-built UI (left move joystick, right look joystick, top-right interact button) for Android and Editor force-test mode
+  - FPP camera uses direct input without spin (Minecraft-style feel)
+  - Mobile touch controls use prefab joystick under HUD_Canvas (left move joystick, right look swipe, top-right interact button) for Android and Editor force-test mode
 - Input and modal safety:
   - Source-counted input locks in PlayerController
   - Central modal authority via ModalStateManager
@@ -201,7 +202,7 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Street and restaurant NPC routes wired via IDs/catalog
   - Cinematic dialogue UI with choice cards
 - Work flow:
-  - Work door eligibility checks (time + energy)
+  - Work door eligibility checks (hour 07.00-15.00 + energy)
   - Office session flow with pre/post dialogue and payout logic
   - Partial/fail outcomes for low-energy runs
   - Safe migration note: WorkDoorInteractable now supports optional serialized manager references while preserving existing GameManager fallback behavior
@@ -219,8 +220,12 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Work reminder now appears only after cutscene and sequential tutorial have both finished
   - Sequential tutorial first-show flow now uses a single pending request path with short startup visual lock to prevent initial flicker
 - Sleep loop and day transition:
-  - In-game day duration is fixed to 230 seconds (3 minutes 50 seconds) and split proportionally across morning/afternoon/evening/night
+  - In-game day duration is configurable via `totalGameDuration` (default 230 seconds) and split proportionally across morning/afternoon/evening/night
+  - CurrentHour maps to 6.00-24.00 and time display uses HH.mm
   - Sleep is night-gated and uses a confirmation step before transition
+  - Sleep reminder appears at 22.00 and re-prompts if dismissed
+  - Forced sleep triggers at 24.00 with a short fade + message
+  - Begadang penalty applies after forced sleep (energy 60% + movement drain 1.3x for that day)
   - Sleep transition uses fade plus clock time-skip animation
   - Sleep quality can be disturbed probabilistically based on recent work and food behavior
   - Wake message summarizes day change and relevant warnings
@@ -235,6 +240,8 @@ Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unit
   - Bazaar interactable opens food menu with discounted prices
   - Bazaar menu selects 10 foods + 3 drinks (no duplicates) from configured pool
   - Bazaar object is a scene prefab for designer-friendly swapping
+  - SpawnPoint moved to (-71.42, 0.5, -50) in front of the blue house
+  - CameraSwitcher warning fixed in SampleScene
 
 ## Character Variants
 

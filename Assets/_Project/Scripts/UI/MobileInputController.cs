@@ -39,12 +39,15 @@ public class MobileInputController : MonoBehaviour
     private PlayerController playerController;
     private CameraSystem cameraSystem;
     private Transform cameraSystemTransform;
+    private Camera cachedCamera;
 
     private GameObject uiRoot;
     private Canvas uiCanvas;
     private MobileJoystick moveJoystick;
     private MobileSwipeLookZone lookSwipeZone;
     private TextMeshProUGUI perspectiveToggleLabel;
+    [SerializeField] private RectTransform joystickOuter;
+    [SerializeField] private RectTransform joystickKnob;
     private bool lastPerspectiveFirstPerson;
     private bool hasPerspectiveState;
 
@@ -68,9 +71,11 @@ public class MobileInputController : MonoBehaviour
         Instance = this;
         EnsureEventSystemSetup();
         isTouchUiEnabled = ShouldEnableTouchUi();
+        cachedCamera = Camera.main;
 
         ResolveSceneReferences();
         TryBindExistingUi();
+        InitializePrefabJoystick();
 
         if (isTouchUiEnabled)
             BuildUi();
@@ -173,6 +178,9 @@ public class MobileInputController : MonoBehaviour
         if (cameraSystem == null)
             cameraSystem = FindFirstObjectByType<CameraSystem>();
 
+        if (cachedCamera == null)
+            cachedCamera = Camera.main;
+
         if (cameraSystemTransform == null)
         {
             GameObject cameraSystemObject = GameObject.Find("CameraSystem");
@@ -198,13 +206,70 @@ public class MobileInputController : MonoBehaviour
 
         Transform existingRoot = transform.Find("MobileInputCanvas");
         if (existingRoot == null)
+        {
+            GameObject hudCanvasObj = GameObject.Find("HUD_Canvas");
+            if (hudCanvasObj != null)
+                existingRoot = hudCanvasObj.transform.Find("MobileInputCanvas");
+        }
+        if (existingRoot == null)
             return;
 
         uiRoot = existingRoot.gameObject;
+        EnsureUiRootIsPanel(uiRoot);
         uiCanvas = uiRoot.GetComponent<Canvas>();
         moveJoystick = uiRoot.GetComponentInChildren<MobileJoystick>(true);
         lookSwipeZone = uiRoot.GetComponentInChildren<MobileSwipeLookZone>(true);
         perspectiveToggleLabel = uiRoot.GetComponentInChildren<TextMeshProUGUI>(true);
+
+        if (joystickOuter == null)
+            joystickOuter = uiRoot.transform.Find("MoveJoystickOuter")?.GetComponent<RectTransform>();
+
+        if (joystickKnob == null && joystickOuter != null)
+            joystickKnob = joystickOuter.Find("MoveJoystickKnob")?.GetComponent<RectTransform>();
+    }
+
+    private void EnsureUiRootIsPanel(GameObject root)
+    {
+        if (root == null)
+            return;
+
+        RectTransform rect = root.GetComponent<RectTransform>();
+        if (rect == null)
+            rect = root.AddComponent<RectTransform>();
+
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Canvas rootCanvas = root.GetComponent<Canvas>();
+        CanvasScaler rootScaler = root.GetComponent<CanvasScaler>();
+        GraphicRaycaster rootRaycaster = root.GetComponent<GraphicRaycaster>();
+        Canvas parentCanvas = root.transform.parent != null ? root.transform.parent.GetComponentInParent<Canvas>() : null;
+
+        if (rootCanvas != null && parentCanvas != null && parentCanvas != rootCanvas)
+        {
+            Destroy(rootCanvas);
+            if (rootScaler != null)
+                Destroy(rootScaler);
+            if (rootRaycaster != null)
+                Destroy(rootRaycaster);
+        }
+    }
+
+    private void InitializePrefabJoystick()
+    {
+        if (joystickOuter == null || joystickKnob == null)
+            return;
+
+        ConfigureJoystickCircleImages(joystickOuter);
+
+        moveJoystick = joystickOuter.GetComponent<MobileJoystick>();
+        if (moveJoystick == null)
+            moveJoystick = joystickOuter.gameObject.AddComponent<MobileJoystick>();
+
+        moveJoystick.Initialize(this, joystickKnob, JoystickRadius, JoystickDeadZone);
     }
 
 #if UNITY_EDITOR
@@ -240,46 +305,15 @@ public class MobileInputController : MonoBehaviour
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         scaler.matchWidthOrHeight = 0.5f;
 
-        RectTransform moveOuter = CreateControlCircle(
-            "MoveJoystickOuter",
-            uiRoot.transform,
-            MoveJoystickAnchor,
-            MoveJoystickAnchor,
-            MoveJoystickPivot,
-            MoveJoystickPosition,
-            MoveJoystickSize,
-            new Color(1f, 1f, 1f, 0.12f),
-            true,
-            true);
+        if (joystickOuter != null && joystickKnob != null)
+        {
+            ConfigureJoystickCircleImages(joystickOuter);
+            moveJoystick = joystickOuter.GetComponent<MobileJoystick>();
+            if (moveJoystick == null)
+                moveJoystick = joystickOuter.gameObject.AddComponent<MobileJoystick>();
 
-        RectTransform moveBorder = CreateControlCircle(
-            "MoveJoystickOuterBorder",
-            moveOuter,
-            new Vector2(0.5f, 0.5f),
-            new Vector2(0.5f, 0.5f),
-            new Vector2(0.5f, 0.5f),
-            Vector2.zero,
-            MoveJoystickSize,
-            new Color(1f, 1f, 1f, 0.22f),
-            true,
-            false);
-        moveBorder.SetAsFirstSibling();
-        moveBorder.localScale = new Vector3(1.04f, 1.04f, 1f);
-
-        RectTransform moveKnob = CreateControlCircle(
-            "MoveJoystickKnob",
-            moveOuter,
-            new Vector2(0.5f, 0.5f),
-            new Vector2(0.5f, 0.5f),
-            new Vector2(0.5f, 0.5f),
-            Vector2.zero,
-            MoveKnobSize,
-            new Color(1f, 1f, 1f, 0.3f),
-            true,
-            false);
-
-        moveJoystick = moveOuter.gameObject.AddComponent<MobileJoystick>();
-        moveJoystick.Initialize(this, moveKnob, JoystickRadius, JoystickDeadZone);
+            moveJoystick.Initialize(this, joystickKnob, JoystickRadius, JoystickDeadZone);
+        }
 
         RectTransform swipeZoneRect = CreateTouchZone(
             "LookSwipeZone",
@@ -371,6 +405,30 @@ public class MobileInputController : MonoBehaviour
         }
 
         return rect;
+    }
+
+    private static void ConfigureJoystickCircleImages(RectTransform outerRect)
+    {
+        if (outerRect == null)
+            return;
+
+        Sprite circleSprite = GetOrCreateRuntimeCircleSprite();
+        ApplyCircleSprite(outerRect.GetComponent<Image>(), circleSprite);
+
+        RectTransform borderRect = outerRect.Find("MoveJoystickOuterBorder") as RectTransform;
+        ApplyCircleSprite(borderRect != null ? borderRect.GetComponent<Image>() : null, circleSprite);
+
+        RectTransform knobRect = outerRect.Find("MoveJoystickKnob") as RectTransform;
+        ApplyCircleSprite(knobRect != null ? knobRect.GetComponent<Image>() : null, circleSprite);
+    }
+
+    private static void ApplyCircleSprite(Image image, Sprite circleSprite)
+    {
+        if (image == null || circleSprite == null)
+            return;
+
+        image.sprite = circleSprite;
+        image.type = Image.Type.Simple;
     }
 
     private static RectTransform CreateTouchZone(
@@ -669,7 +727,7 @@ public class MobileInputController : MonoBehaviour
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 baseRect,
                 eventData.position,
-                eventData.pressEventCamera,
+                GetPointerEventCamera(eventData),
                 out pressLocalOrigin);
 
             if (knobRect != null)
@@ -722,7 +780,7 @@ public class MobileInputController : MonoBehaviour
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 baseRect,
                 eventData.position,
-                eventData.pressEventCamera,
+                GetPointerEventCamera(eventData),
                 out Vector2 localDragPoint);
 
             Vector2 delta = localDragPoint - pressLocalOrigin;
@@ -742,6 +800,21 @@ public class MobileInputController : MonoBehaviour
 
             float curvedMagnitude = Mathf.Pow(magnitude, ResponseExponent);
             rawOutput = normalized.normalized * curvedMagnitude;
+        }
+
+        private Camera GetPointerEventCamera(PointerEventData eventData)
+        {
+            if (eventData != null && eventData.pressEventCamera != null)
+                return eventData.pressEventCamera;
+
+            if (owner == null)
+                return null;
+
+            Canvas ownerCanvas = owner.uiCanvas;
+            if (ownerCanvas != null && ownerCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                return ownerCanvas.worldCamera != null ? ownerCanvas.worldCamera : owner.cachedCamera;
+
+            return null;
         }
     }
 

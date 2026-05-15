@@ -53,9 +53,13 @@ Ringkasan (ID): Onboarding tim disederhanakan ke alur clone -> open -> compile -
   - Work reminder can only appear after cutscene and sequential tutorial release
   - Sequential tutorial first-show uses a single pending-request gate plus short startup visual lock to avoid startup flicker
 - Sleep flow is period-gated and behavior-aware:
-  - TimeManager day duration is fixed at 230 seconds (3m50s) with proportional quarter splits across morning/afternoon/evening/night
+  - TimeManager day duration remains configurable via `totalGameDuration` (default 230 seconds) with proportional quarter splits across morning/afternoon/evening/night
+  - CurrentHour is mapped to 6.00-24.00 using TimePercent for scalable hour display and checks
   - Sleep interaction is night-only by default
   - Sleep uses confirm-before-transition UX
+  - Soft sleep reminder appears at 22.00 and re-prompts if dismissed
+  - Forced sleep triggers at 24.00 with a short fade + message
+  - Begadang penalty applies when forced sleep occurs (energy starts at 60% and movement drain is 1.3x for that day)
   - Recovery can be reduced by disturbed sleep chance based on recent behavior
   - Aging progression updates on wake after day increment, with stage transitions at day 5 and day 10
   - Next-day movement energy sustainability is applied as hidden `movementDrainModifier` on PlayerStats (clamped 0.75-1.25)
@@ -72,11 +76,14 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
 
 - Player and core runtime:
   - PlayerController handles locomotion, strict jump, step assist, and lock integration
+  - FPP camera uses direct input without spin (Minecraft-style feel)
   - PlayerStats manages hunger/fullness/hydration/mood/stress/energy values
   - PlayerStats movement energy drain now includes global scale and sprint ramp timing controls
   - TimeManager runs day periods (morning to night)
+  - TimeManager exposes CurrentHour for explicit hour-based gates (6.00-24.00)
   - EnergySystem handles faint/recover flow
-  - MobileInputController builds touch controls entirely via code and injects movement input to PlayerController for Android and Editor force-test mode
+  - MobileInputController binds joystick from prefab under HUD_Canvas (MoveJoystickOuter, MoveJoystickOuterBorder, MoveJoystickKnob)
+  - MobileInputController auto-assigns runtime circle sprite to joystick images
 - Interaction and prompts:
   - UniversalInteractionController resolves nearest valid target with line-of-sight filtering
   - World interaction bubbles are tappable on mobile and show '?' as the cue; keyboard E remains on desktop
@@ -97,10 +104,10 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
   - NpcDialogueInteractable and NpcRestaurantInteractable route NPC dialogue triggers
 - Work and story flow:
   - WorkSessionManager orchestrates office session flow and HasWorkedToday state
-  - WorkDoorInteractable gates entry by period/energy rules
+  - WorkDoorInteractable gates entry by hour 07.00-15.00 plus energy rules
   - WorkDoorInteractable supports optional serialized references for manager wiring, while retaining existing runtime fallback paths
   - GymProgressionSystem orchestrates gym session progression and HasTrainedToday state
-  - GymDoorInteractable mirrors work-door entry contract with period/energy gating and pending gym session setup
+  - GymDoorInteractable gates entry by hour 06.00-22.00 plus energy rules and pending gym session setup
   - GymSessionController runs trainer pre/post dialogue and clock-based session animation before applying progression
   - StoryIntroManager and IntroCutsceneController expose completion events
   - BackstoryDialogueController shows a one-time character backstory dialogue box immediately after intro cutscene
@@ -109,7 +116,7 @@ Ringkasan (ID): Aturan inti gameplay sudah tegas, terutama untuk movement physic
 - UI and onboarding:
   - HUDAutoSetup builds runtime HUD and enforces 1920x1080 landscape scaler in its generated canvas
   - HUDManager updates stat bars and energy visuals
-  - MobileInputController creates a runtime overlay touch canvas (sort order 10) with movement joystick, look swipe zone, and perspective toggle; interaction uses world bubble tap
+  - MobileInputController uses prefab joystick under HUD_Canvas plus runtime-built look swipe zone and perspective toggle
   - TutorialSequentialUI handles step-by-step onboarding panel
   - TutorialContextualUI handles queued one-time contextual hints
   - TutorialSequentialUI and TutorialContextualUI are gated by intro cutscene active state
@@ -205,10 +212,13 @@ Ringkasan (ID): Kontrak swap sekarang didokumentasikan sebagai checklist operasi
   - Placeholder healthy vs less-healthy food catalog generation for rapid restaurant iteration
   - Food placeholder cleanup hardening: duplicate food pickup removal and legacy cube auto-cleanup when scene already has restaurant + home setup
   - Mobile touch control baseline added (movement joystick, look joystick, interact button, modal/cutscene-aware visibility)
+  - Mobile joystick migrated to prefab under HUD_Canvas
   - Movement energy drain tuning pass (reduced immediate depletion feel during run)
   - Phase-1 swap safety hardening: warning-only contract validator + fallback telemetry in critical runtime paths
   - Gameplay modifier per fase & gender (PlayerStats: Gender enum, ApplyPhaseModifiers(), PhaseModifierData struct, 6-variant switch expression)
   - AgingNotificationPanel added to HUD_Canvas Hierarchy via Editor script
+  - SpawnPoint moved to (-71.42, 0.5, -50) in front of the blue house
+  - CameraSwitcher warning resolved in SampleScene
   - 6 CharacterData assets created (Char_Male/Female_Kurus/Normal/Gemuk)
 - In progress:
   - UI consistency unification between IMGUI-era menus and modern runtime canvas screens

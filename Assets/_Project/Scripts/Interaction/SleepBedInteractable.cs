@@ -130,7 +130,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private float blockedWindowStartTime = -999f;
     private int blockedClickCount;
     private float confirmExpiresAt = -999f;
+    private bool wasForced;
+    private bool forceSleepTriggered;
     private const string AgingNotificationModalKey = "aging_panel";
+    private const string ForcedSleepMessage = "Kamu terlalu lelah dan tertidur...";
 
     private void Awake()
     {
@@ -149,6 +152,11 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private void OnDisable()
     {
         InteractableRegistry.Unregister(this);
+    }
+
+    private void Update()
+    {
+        TryForceSleep();
     }
 
     public string GetInteractionText()
@@ -186,10 +194,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         }
 
         ResetSleepConfirm();
-        sleepRoutine = StartCoroutine(SleepRoutine(interactor));
+        sleepRoutine = StartCoroutine(SleepRoutine(interactor, false));
     }
 
-    private IEnumerator SleepRoutine(GameObject interactor)
+    private IEnumerator SleepRoutine(GameObject interactor, bool forcedSleep)
     {
         TimeManager         timeManager         = ResolveTimeManager();
         PlayerStats         playerStats         = ResolvePlayerStats();
@@ -207,7 +215,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         }
 
         TimeManager.TimePeriod periodBeforeSleep = timeManager.CurrentPeriod;
-        if (requireNightToSleep && periodBeforeSleep != TimeManager.TimePeriod.Night)
+        if (!forcedSleep && requireNightToSleep && periodBeforeSleep != TimeManager.TimePeriod.Night)
         {
             ShowWakeMessage(blockedBeforeNightText, 1.8f);
             sleepRoutine = null;
@@ -232,13 +240,26 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         float lateWakeChance        = CalculateLateWakeChance(workSessionManager, gymProgressionSystem, playerStats, energyBeforeSleep);
         bool  lateWakePenaltyTriggered = enableLateWakePenalty && UnityEngine.Random.value < lateWakeChance;
 
+        if (forcedSleep)
+            wasForced = true;
+
         if (playerController != null)
             playerController.LockInput(sleepLockSource);
 
-        if (enablePreSleepCinematic)
+        bool alreadyFaded = false;
+        if (forcedSleep && fadeManager != null)
+        {
+            ShowWakeMessage(ForcedSleepMessage, Mathf.Max(1f, fadeDuration + 0.4f));
+            bool fadeToBlackDone = false;
+            fadeManager.FadeToBlack(fadeDuration, () => fadeToBlackDone = true);
+            yield return new WaitUntil(() => fadeToBlackDone);
+            alreadyFaded = true;
+        }
+
+        if (!forcedSleep && enablePreSleepCinematic)
             yield return StartCoroutine(PlayPreSleepCinematic());
 
-        if (fadeManager != null)
+        if (fadeManager != null && !alreadyFaded)
         {
             bool fadeToBlackDone = false;
             fadeManager.FadeToBlack(fadeDuration, () => fadeToBlackDone = true);
@@ -279,7 +300,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (gymProgressionSystem != null)
             gymProgressionSystem.NotifyDayResetFromSleep();
 
-        ApplyNextDayMovementDrainModifier(playerStats, trainedYesterday, adaptationBeforeSleep, fatigueBeforeSleep);
+        float baseDrainModifier = ApplyNextDayMovementDrainModifier(playerStats, trainedYesterday, adaptationBeforeSleep, fatigueBeforeSleep);
+
+        if (wasForced)
+            ApplyBegadangPenalty(playerStats, baseDrainModifier);
 
         if (lateWakePenaltyTriggered)
             ApplyLateWakePenalty(playerStats);
@@ -332,6 +356,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (EndingManager.Instance != null)
             EndingManager.Instance.NotifySleepCompleted(timeManager.CurrentDayNumber);
 
+        forceSleepTriggered = false;
         sleepRoutine = null;
     }
 
@@ -470,10 +495,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             stats.AdjustWeight(delta, reason.Trim());
     }
 
-    private void ApplyNextDayMovementDrainModifier(PlayerStats stats, bool trainedYesterday, float adaptationBeforeSleep, float fatigueBeforeSleep)
+    private float ApplyNextDayMovementDrainModifier(PlayerStats stats, bool trainedYesterday, float adaptationBeforeSleep, float fatigueBeforeSleep)
     {
         if (stats == null)
-            return;
+            return 1f;
 
         float nextModifier = 1f;
         if (trainedYesterday)
@@ -489,6 +514,40 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         }
 
         stats.SetMovementDrainModifier(nextModifier);
+        return nextModifier;
+    }
+
+    private void ApplyBegadangPenalty(PlayerStats stats, float baseDrainModifier)
+    {
+        if (stats == null)
+            return;
+
+        float targetEnergy = stats.MaxEnergy * 0.6f;
+        float delta = targetEnergy - stats.CurrentEnergy;
+        if (Mathf.Abs(delta) > 0.01f)
+            stats.AddFood(delta, 0f, 0f);
+
+        stats.SetMovementDrainModifier(baseDrainModifier * 1.3f);
+        Debug.Log("[Sleep] Begadang penalty applied");
+        wasForced = false;
+    }
+
+    private void TryForceSleep()
+    {
+        if (forceSleepTriggered || sleepRoutine != null)
+            return;
+
+        TimeManager timeManager = ResolveTimeManager();
+        if (timeManager == null)
+            return;
+
+        if (timeManager.CurrentHour < 24f)
+            return;
+
+        PlayerController playerController = FindFirstObjectByType<PlayerController>();
+        GameObject interactor = playerController != null ? playerController.gameObject : null;
+        forceSleepTriggered = true;
+        sleepRoutine = StartCoroutine(SleepRoutine(interactor, true));
     }
 
     private void MoveInteractorToBedSpawn(GameObject interactor)
