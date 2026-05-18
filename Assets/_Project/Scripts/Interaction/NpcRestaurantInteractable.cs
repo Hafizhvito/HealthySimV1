@@ -127,7 +127,7 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
             return;
 
         if (PlayerStats.Instance != null)
-            PlayerStats.Instance.AddFood(consequence.energyDelta, consequence.calorieDelta, consequence.moodDelta);
+            PlayerStats.Instance.AddFood(consequence.energyDelta, consequence.calorieDelta, consequence.moodDelta, 0f, 0f);
 
         trustScore = Mathf.Clamp(trustScore + consequence.trustDelta, 0f, 100f);
 
@@ -434,7 +434,7 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
             return;
 
         nextSocialRewardTime = Time.unscaledTime + Mathf.Max(3f, socialEnergyCooldown);
-        PlayerStats.Instance.AddFood(Mathf.Max(0f, socialEnergyGain), 0f, Mathf.Max(0f, socialMoodGain));
+        PlayerStats.Instance.AddFood(Mathf.Max(0f, socialEnergyGain), 0f, Mathf.Max(0f, socialMoodGain), 0f, 0f);
     }
 
     private void TrySubscribeMenuClose()

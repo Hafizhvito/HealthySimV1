@@ -1,6 +1,5 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class GymSessionController : MonoBehaviour
 {
@@ -172,11 +171,7 @@ public class GymSessionController : MonoBehaviour
         if (FadeManager.Instance != null)
         {
             FadeManager.Instance.FadeToBlackAndLoad(mainSceneName, 0.5f);
-            return;
         }
-
-        if (!string.IsNullOrWhiteSpace(mainSceneName))
-            SceneManager.LoadScene(mainSceneName);
     }
 
     private void SetGymSessionLock(bool locked)

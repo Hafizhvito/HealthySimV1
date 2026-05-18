@@ -88,7 +88,7 @@ public class EnergySystem : MonoBehaviour
 
         // Restore some energy
         if (stats != null)
-            stats.AddFood(faintRecoveryEnergy, 0f, -10f);
+            stats.AddFood(faintRecoveryEnergy, 0f, -10f, 0f, 0f);
 
         // Re-enable player input
         if (playerController != null)

@@ -21,6 +21,7 @@ public class FoodData : ScriptableObject
     public float Fat => fat;
     public float Carbohydrate => carbohydrate;
     public float Sugar => sugar;
+    public bool IsJunkFood => !isHealthy || category == FoodCategory.FastFood;
 
     [Header("Classification")]
     public FoodCategory category;

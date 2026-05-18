@@ -64,6 +64,14 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Color fatigueWarningColor = new Color(1f, 0.85f, 0.2f, 1f);
     [SerializeField] private Color fatigueCriticalColor = new Color(1f, 0.28f, 0.22f, 1f);
 
+    [Header("Health Warning Indicator")]
+    [SerializeField] private bool showHealthIndicator = true;
+    [SerializeField] private float healthIndicatorHeight = 2.55f;
+    [SerializeField] private float healthWarningThreshold = 40f;
+    [SerializeField] private float healthIndicatorPulseSpeed = 2.1f;
+    [SerializeField] [Range(0.2f, 1f)] private float healthIndicatorMinAlpha = 0.5f;
+    [SerializeField] private Color healthIndicatorColor = new Color(0.75f, 0.25f, 1f, 1f);
+
     private Rigidbody rb;
     private CapsuleCollider col;
     private Animator animator;
@@ -72,6 +80,8 @@ public class PlayerController : MonoBehaviour
     private CinemachineBrain cachedBrain;
     private TextMeshPro fatigueIndicatorText;
     private Transform fatigueIndicatorTransform;
+    private TextMeshPro healthIndicatorText;
+    private Transform healthIndicatorTransform;
     private PhysicsMaterial runtimeLowFrictionMaterial;
 
     private Vector3 moveDir;
@@ -134,6 +144,7 @@ public class PlayerController : MonoBehaviour
         lastStepAssistTime = -999f;
 
         EnsureFatigueIndicatorBuilt();
+        EnsureHealthIndicatorBuilt();
     }
 
     // ---------------------------------------------------------------
@@ -148,6 +159,7 @@ public class PlayerController : MonoBehaviour
         }
 
         UpdateFatigueIndicator();
+        UpdateHealthIndicator();
 
         if (IsInputLocked)
         {
@@ -592,6 +604,94 @@ public class PlayerController : MonoBehaviour
             fatigueIndicatorTransform.gameObject.SetActive(visible);
     }
 
+    private void EnsureHealthIndicatorBuilt()
+    {
+        if (healthIndicatorText != null && healthIndicatorTransform != null)
+            return;
+
+        GameObject indicatorObj = new GameObject("HealthIndicator", typeof(TextMeshPro));
+        indicatorObj.transform.SetParent(transform, false);
+        indicatorObj.transform.localPosition = new Vector3(0f, healthIndicatorHeight, 0f);
+        indicatorObj.transform.localScale = Vector3.one * 0.2f;
+
+        healthIndicatorTransform = indicatorObj.transform;
+        healthIndicatorText = indicatorObj.GetComponent<TextMeshPro>();
+        healthIndicatorText.text = "!!!";
+        healthIndicatorText.fontSize = 12f;
+        healthIndicatorText.alignment = TextAlignmentOptions.Center;
+        healthIndicatorText.color = healthIndicatorColor;
+        healthIndicatorText.outlineWidth = 0.14f;
+        healthIndicatorText.outlineColor = new Color(0f, 0f, 0f, 0.9f);
+
+        indicatorObj.SetActive(false);
+    }
+
+    private void UpdateHealthIndicator()
+    {
+        if (!showHealthIndicator)
+        {
+            SetHealthIndicatorVisible(false);
+            return;
+        }
+
+        if (playerStats == null)
+            playerStats = PlayerStats.Instance;
+
+        if (playerStats == null)
+        {
+            SetHealthIndicatorVisible(false);
+            return;
+        }
+
+        EnsureHealthIndicatorBuilt();
+        if (healthIndicatorText == null || healthIndicatorTransform == null)
+            return;
+
+        if (ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen)
+        {
+            SetHealthIndicatorVisible(false);
+            return;
+        }
+
+        bool shouldShow = playerStats.HealthScoreThisPhase < healthWarningThreshold
+            && !playerStats.VisitedHospitalToday;
+        if (!shouldShow)
+        {
+            SetHealthIndicatorVisible(false);
+            return;
+        }
+
+        SetHealthIndicatorVisible(true);
+
+        healthIndicatorTransform.position = transform.position + Vector3.up * healthIndicatorHeight;
+
+        Camera cam = Camera.main;
+        if (cam != null)
+        {
+            Vector3 lookDir = healthIndicatorTransform.position - cam.transform.position;
+            if (lookDir.sqrMagnitude > 0.0001f)
+                healthIndicatorTransform.rotation = Quaternion.LookRotation(lookDir);
+        }
+
+        float pulse = 1f + Mathf.Sin(Time.unscaledTime * healthIndicatorPulseSpeed) * 0.16f;
+        float scale = 0.2f * Mathf.Max(0.7f, pulse);
+        healthIndicatorTransform.localScale = new Vector3(scale, scale, scale);
+
+        float alphaPulse = Mathf.Abs(Mathf.Sin(Time.unscaledTime * healthIndicatorPulseSpeed));
+        Color tint = healthIndicatorColor;
+        tint.a = Mathf.Lerp(healthIndicatorMinAlpha, 1f, alphaPulse);
+        healthIndicatorText.color = tint;
+    }
+
+    private void SetHealthIndicatorVisible(bool visible)
+    {
+        if (healthIndicatorTransform == null)
+            return;
+
+        if (healthIndicatorTransform.gameObject.activeSelf != visible)
+            healthIndicatorTransform.gameObject.SetActive(visible);
+    }
+
     private void EnsureLowFrictionColliderMaterial()
     {
         if (!autoAssignLowFrictionMaterial || col == null)
@@ -719,6 +819,7 @@ public class PlayerController : MonoBehaviour
     {
         jumpRequest = false;
         SetFatigueIndicatorVisible(false);
+        SetHealthIndicatorVisible(false);
     }
 
     public void InjectMobileInput(Vector2 moveInput)

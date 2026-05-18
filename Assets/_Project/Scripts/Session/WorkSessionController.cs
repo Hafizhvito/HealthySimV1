@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class WorkSessionController : MonoBehaviour
 {
@@ -80,11 +79,7 @@ public class WorkSessionController : MonoBehaviour
         if (FadeManager.Instance != null)
         {
             FadeManager.Instance.FadeToBlackAndLoad(_mainSceneName, 0.5f);
-            return;
         }
-
-        if (!string.IsNullOrWhiteSpace(_mainSceneName))
-            SceneManager.LoadScene(_mainSceneName);
     }
 
     private bool ResolveSceneDependencies()

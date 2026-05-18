@@ -75,7 +75,7 @@ public class SessionFoodStash : MonoBehaviour
         savedFoods.RemoveAt(index);
         OnStashChanged?.Invoke();
 
-        PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect);
+        PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect, food.protein, food.fat);
 
         if (StoryManager.Instance != null)
             StoryManager.Instance.OnFoodEaten(food);

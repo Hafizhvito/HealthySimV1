@@ -381,7 +381,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         float targetEnergy = stats.MaxEnergy * targetNormalized;
         float recovery     = Mathf.Max(0f, targetEnergy - stats.CurrentEnergy);
         if (recovery > 0.01f)
-            stats.AddFood(recovery, 0f, 0f);
+            stats.AddFood(recovery, 0f, 0f, 0f, 0f);
 
         // 2. Evaluasi harian dengan snapshot — bukan baca langsung dari manager
         evalResult = DailyHealthEvaluator.Evaluate(
@@ -525,7 +525,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         float targetEnergy = stats.MaxEnergy * 0.6f;
         float delta = targetEnergy - stats.CurrentEnergy;
         if (Mathf.Abs(delta) > 0.01f)
-            stats.AddFood(delta, 0f, 0f);
+            stats.AddFood(delta, 0f, 0f, 0f, 0f);
 
         stats.SetMovementDrainModifier(baseDrainModifier * 1.3f);
         Debug.Log("[Sleep] Begadang penalty applied");
@@ -788,7 +788,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (stats == null) return;
         float penalty = Mathf.Max(0f, lateWakePenaltyAmount);
         if (penalty <= 0f) return;
-        stats.AddFood(-penalty, 0f, 0f);
+        stats.AddFood(-penalty, 0f, 0f, 0f, 0f);
     }
 
     // ── Wake message ─────────────────────────────────────────

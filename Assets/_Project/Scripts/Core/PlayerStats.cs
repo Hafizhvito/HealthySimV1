@@ -17,6 +17,8 @@ public class PlayerStats : MonoBehaviour
     [Header("Calories")]
     [SerializeField] private float totalCaloriesConsumed = 0f;
     [SerializeField] private float dailyCalorieTarget = 2000f;
+    [SerializeField] private float dailyProtein = 0f;
+    [SerializeField] private float dailyFat = 0f;
 
     [Header("Mood")]
     [SerializeField] private float maxMood = 100f;
@@ -50,6 +52,7 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] [HideInInspector] private int skippedGymDays = 0;
     [SerializeField] [HideInInspector] private int skippedWorkDays = 0;
     [SerializeField] [HideInInspector] private int overworkedDays = 0;
+    [SerializeField] [HideInInspector] private bool _visitedHospitalToday = false;
 
     [Header("Streak Counters (Hidden)")]
     [SerializeField] [HideInInspector] private int gymSkipStreak  = 0;
@@ -83,6 +86,8 @@ public class PlayerStats : MonoBehaviour
     public float MoodPercent         => currentMood / maxMood;
     public float TotalCalories       => totalCaloriesConsumed;
     public float DailyCalorieTarget  => dailyCalorieTarget;
+    public float DailyProtein        => dailyProtein;
+    public float DailyFat            => dailyFat;
     public EnergyState CurrentEnergyState => currentEnergyState;
     public string PlayerName         => playerName;
     public float PlayerBMI           => playerBMI;
@@ -106,6 +111,7 @@ public class PlayerStats : MonoBehaviour
     public int SkippedGymDays       => skippedGymDays;
     public int SkippedWorkDays      => skippedWorkDays;
     public int OverworkedDays       => overworkedDays;
+    public bool VisitedHospitalToday => _visitedHospitalToday;
 
     // ── Streak getters ───────────────────────────────────────
     public int GymSkipStreak         => gymSkipStreak;
@@ -179,18 +185,29 @@ public class PlayerStats : MonoBehaviour
         ModifyEnergy(-(scaledDrain * deltaTime));
     }
 
-    public void AddFood(float energyAmount, float calories, float moodEffect)
+    public void AddFood(float energyAmount, float calories, float moodEffect, float protein, float fat)
     {
         ModifyEnergy(energyAmount);
         totalCaloriesConsumed += calories;
+        dailyProtein += protein;
+        dailyFat += fat;
         ModifyMood(moodEffect);
         OnCaloriesChanged?.Invoke(totalCaloriesConsumed);
+        Debug.Log($"[Nutrition] Calories={totalCaloriesConsumed:0.#}, Protein={dailyProtein:0.#}, Fat={dailyFat:0.#}");
     }
 
     public void ResetDailyCalories()
     {
         totalCaloriesConsumed = 0f;
+        dailyProtein = 0f;
+        dailyFat = 0f;
+        _visitedHospitalToday = false;
         OnCaloriesChanged?.Invoke(totalCaloriesConsumed);
+    }
+
+    public void SetVisitedHospital()
+    {
+        _visitedHospitalToday = true;
     }
 
     /// <summary>Reduces current energy by normalised amount [0..1] of max energy.</summary>

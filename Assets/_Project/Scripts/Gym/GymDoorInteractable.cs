@@ -1,9 +1,12 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GymDoorInteractable : MonoBehaviour, IInteractable
 {
+    private const float FaintEnergyThreshold = 0.20f;
+
     [SerializeField] private string gymSceneName = "GymScene";
     [SerializeField] private string promptText = "Masuk Gym";
     [SerializeField] private string blockedEnergyText = "Energi terlalu rendah untuk latihan.";
@@ -14,6 +17,7 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
     private Collider cachedCollider;
     private Coroutine floatingTextRoutine;
+    private Canvas faintDialogCanvas;
 
     private void Awake()
     {
@@ -90,7 +94,14 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
         if (!canTrain)
         {
-            ShowFloatingText("Energimu terlalu rendah untuk berlatih.", 2f);
+            if (energy < FaintEnergyThreshold)
+            {
+                ShowFaintWarningDialog();
+            }
+            else
+            {
+                ShowFloatingText("Energimu terlalu rendah untuk berlatih.", 2f);
+            }
             return;
         }
 
@@ -108,7 +119,7 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
         }
 
         SpawnPlayerManager.TargetSpawnID = "default";
-fadeManager.FadeToBlackAndLoad(gymSceneName, 0.5f);
+        fadeManager.FadeToBlackAndLoad(gymSceneName, 0.5f);
     }
 
     private GymProgressionSystem ResolveGymProgression()
@@ -189,5 +200,148 @@ fadeManager.FadeToBlackAndLoad(gymSceneName, 0.5f);
 
         Destroy(textObj);
         floatingTextRoutine = null;
+    }
+
+    private void ShowFaintWarningDialog()
+    {
+        if (faintDialogCanvas != null)
+            return;
+
+        GameObject canvasObj = new GameObject("GymFaintWarningCanvas");
+        faintDialogCanvas = canvasObj.AddComponent<Canvas>();
+        faintDialogCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        faintDialogCanvas.sortingOrder = 1000;
+        canvasObj.AddComponent<GraphicRaycaster>();
+
+        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+
+        GameObject backdropObj = new GameObject("Backdrop", typeof(RectTransform), typeof(Image));
+        backdropObj.transform.SetParent(canvasObj.transform, false);
+        RectTransform backdropRect = backdropObj.GetComponent<RectTransform>();
+        backdropRect.anchorMin = Vector2.zero;
+        backdropRect.anchorMax = Vector2.one;
+        backdropRect.offsetMin = Vector2.zero;
+        backdropRect.offsetMax = Vector2.zero;
+        Image backdropImage = backdropObj.GetComponent<Image>();
+        backdropImage.color = new Color(0f, 0f, 0f, 0.72f);
+
+        GameObject panelObj = new GameObject("DialogPanel", typeof(RectTransform), typeof(Image));
+        panelObj.transform.SetParent(backdropObj.transform, false);
+        RectTransform panelRect = panelObj.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+        panelRect.sizeDelta = new Vector2(980f, 420f);
+        panelRect.anchoredPosition = Vector2.zero;
+        Image panelImage = panelObj.GetComponent<Image>();
+        panelImage.color = new Color(0.12f, 0.12f, 0.12f, 0.95f);
+
+        GameObject messageObj = new GameObject("Message", typeof(RectTransform), typeof(TextMeshProUGUI));
+        messageObj.transform.SetParent(panelObj.transform, false);
+        RectTransform messageRect = messageObj.GetComponent<RectTransform>();
+        messageRect.anchorMin = new Vector2(0.5f, 1f);
+        messageRect.anchorMax = new Vector2(0.5f, 1f);
+        messageRect.pivot = new Vector2(0.5f, 1f);
+        messageRect.anchoredPosition = new Vector2(0f, -40f);
+        messageRect.sizeDelta = new Vector2(900f, 200f);
+        TextMeshProUGUI messageText = messageObj.GetComponent<TextMeshProUGUI>();
+        messageText.text = "Tubuhmu sangat lemah.\nMemaksakan latihan bisa berbahaya.\nTetap masuk gym?";
+        messageText.fontSize = 36f;
+        messageText.alignment = TextAlignmentOptions.Center;
+        messageText.color = Color.white;
+
+        CreateDialogButton(panelObj.transform, "Tetap Masuk", new Vector2(-160f, -140f), new Vector2(240f, 90f),
+            new Color(0.86f, 0.34f, 0.28f, 1f), OnConfirmFaint);
+        CreateDialogButton(panelObj.transform, "Batalkan", new Vector2(160f, -140f), new Vector2(240f, 90f),
+            new Color(0.25f, 0.25f, 0.25f, 1f), CloseFaintDialog);
+    }
+
+    private void CreateDialogButton(Transform parent, string label, Vector2 anchoredPos, Vector2 size, Color color, System.Action onClick)
+    {
+        GameObject buttonObj = new GameObject(label + "Button", typeof(RectTransform), typeof(Image), typeof(Button));
+        buttonObj.transform.SetParent(parent, false);
+        RectTransform rect = buttonObj.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = size;
+        rect.anchoredPosition = anchoredPos;
+
+        Image image = buttonObj.GetComponent<Image>();
+        image.color = color;
+
+        Button button = buttonObj.GetComponent<Button>();
+        button.onClick.AddListener(() => onClick?.Invoke());
+
+        GameObject textObj = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObj.transform.SetParent(buttonObj.transform, false);
+        RectTransform textRect = textObj.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+        TextMeshProUGUI text = textObj.GetComponent<TextMeshProUGUI>();
+        text.text = label;
+        text.fontSize = 32f;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = Color.white;
+    }
+
+    private void OnConfirmFaint()
+    {
+        CloseFaintDialog();
+        StartCoroutine(FaintSequence());
+    }
+
+    private void CloseFaintDialog()
+    {
+        if (faintDialogCanvas == null)
+            return;
+
+        Destroy(faintDialogCanvas.gameObject);
+        faintDialogCanvas = null;
+    }
+
+    private IEnumerator FaintSequence()
+    {
+        FadeManager fadeManager = FadeManager.Instance;
+        if (fadeManager == null)
+            yield break;
+
+        bool fadedOut = false;
+        fadeManager.FadeToBlack(0.5f, () => fadedOut = true);
+        while (!fadedOut)
+            yield return null;
+
+        GameObject messageCanvasObj = new GameObject("GymFaintMessageCanvas");
+        Canvas messageCanvas = messageCanvasObj.AddComponent<Canvas>();
+        messageCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        messageCanvas.sortingOrder = 1001;
+        messageCanvasObj.AddComponent<GraphicRaycaster>();
+        CanvasScaler scaler = messageCanvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+
+        GameObject messageObj = new GameObject("FaintMessage", typeof(RectTransform), typeof(TextMeshProUGUI));
+        messageObj.transform.SetParent(messageCanvasObj.transform, false);
+        RectTransform messageRect = messageObj.GetComponent<RectTransform>();
+        messageRect.anchorMin = new Vector2(0.5f, 0.5f);
+        messageRect.anchorMax = new Vector2(0.5f, 0.5f);
+        messageRect.sizeDelta = new Vector2(1200f, 240f);
+        messageRect.anchoredPosition = Vector2.zero;
+        TextMeshProUGUI messageText = messageObj.GetComponent<TextMeshProUGUI>();
+        messageText.text = "Kamu pingsan karena kelelahan...\nIstirahatlah dulu.";
+        messageText.fontSize = 42f;
+        messageText.alignment = TextAlignmentOptions.Center;
+        messageText.color = Color.white;
+
+        yield return new WaitForSecondsRealtime(2f);
+
+        bool fadedIn = false;
+        fadeManager.FadeFromBlack(0.5f, () => fadedIn = true);
+        while (!fadedIn)
+            yield return null;
+
+        Destroy(messageCanvasObj);
     }
 }

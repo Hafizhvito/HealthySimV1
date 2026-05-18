@@ -110,6 +110,7 @@ Assets/
   Interaction/
    DialogueCatalogProvider.cs
    DialogueGraphData.cs
+   DoctorSriDialogueController.cs
    FoodCatalogProvider.cs
    FoodChoiceMenuController.cs
    FoodListItemView.cs
@@ -117,6 +118,7 @@ Assets/
    FoodStashMenuController.cs
    HomeFoodStationInteractable.cs
    HomeFoodStationPlaceholderBootstrap.cs
+   HospitalDoorInteractable.cs
    IDialogueActor.cs
    IInteractable.cs
    InteractableRegistry.cs

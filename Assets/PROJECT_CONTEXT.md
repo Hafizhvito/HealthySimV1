@@ -226,6 +226,15 @@ Ringkasan (ID): Kontrak swap sekarang didokumentasikan sebagai checklist operasi
 - Pending:
   - Automated PlayMode smoke/regression tests
   - Cleanup of legacy duplicate scene objects
+- Daily nutrition tracking: protein/fat/calorie accumulation per day via AddFood(), reset on new day
+  - DailyHealthEvaluator extended with protein/fat penalty thresholds
+  - IsJunkFood computed property on FoodData (no SO changes required)
+  - Gym faint warning dialog added in GymDoorInteractable (energy < 20% gate with confirm/cancel)
+  - Health warning indicator '!!!' added in PlayerController (purple, triggers at healthScore < 35)
+  - HospitalDoorInteractable + DoctorSriDialogueController: runtime dr. Sri dialogue via existing NpcDialogueMenuController
+  - VisitedHospitalToday flag added to PlayerStats with daily reset
+  - Scene transition fix: FadeManager now waits for SpawnPlayerManager.OnSpawnComplete before fade-in
+  - Duplicate LoadScene fallbacks removed from WorkSessionController and GymSessionController
 
 Ringkasan (ID): Status proyek dominan selesai di fitur gameplay utama, tetapi standardisasi UI dan automated test masih berjalan.
 

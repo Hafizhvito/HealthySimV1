@@ -169,7 +169,7 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
 
         float energyGain = Mathf.Max(0f, socialEnergyGain);
         float moodGain = Mathf.Max(0f, socialMoodGain);
-        PlayerStats.Instance.AddFood(energyGain, 0f, moodGain);
+        PlayerStats.Instance.AddFood(energyGain, 0f, moodGain, 0f, 0f);
 
         if (energyGain > 0f && !string.IsNullOrWhiteSpace(socialEnergyHintTemplate))
             ShowHint(string.Format(socialEnergyHintTemplate, energyGain));
@@ -206,7 +206,7 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
             return;
 
         if (PlayerStats.Instance != null)
-            PlayerStats.Instance.AddFood(consequence.energyDelta, consequence.calorieDelta, consequence.moodDelta);
+            PlayerStats.Instance.AddFood(consequence.energyDelta, consequence.calorieDelta, consequence.moodDelta, 0f, 0f);
 
         trustScore = Mathf.Clamp(trustScore + consequence.trustDelta, 0f, 100f);
 

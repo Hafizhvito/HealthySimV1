@@ -1,10 +1,13 @@
+using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Collections;
 
 public class SpawnPlayerManager : MonoBehaviour
 {
     public static SpawnPlayerManager _Instance { get; private set; }
+
+    public static event Action OnSpawnComplete;
 
     // ID spawn yang akan dipakai saat scene berikutnya di-load
     public static string TargetSpawnID { get; set; } = "";
@@ -107,6 +110,7 @@ public class SpawnPlayerManager : MonoBehaviour
 
         // Reset setelah dipakai
         TargetSpawnID = "";
+        OnSpawnComplete?.Invoke();
     }
 
     // ── Dev Tool ──────────────────────────────────────────────

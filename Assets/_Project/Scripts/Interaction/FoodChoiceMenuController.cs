@@ -255,7 +255,7 @@ public class FoodChoiceMenuController : MonoBehaviour
     
         if (PlayerStats.Instance != null)
         {
-            PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect);
+            PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect, food.protein, food.fat);
             // DIHAPUS: PlayerStats.Instance?.RegisterHealthScore(currentFood.isHealthy ? 5f : -5f);
         }
     
@@ -349,7 +349,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         if (price > 0)
             PlayerStats.Instance.SpendMoney(price);
     
-        PlayerStats.Instance.AddFood(homeQuickDrinkEnergy, homeQuickDrinkCalories, homeQuickDrinkMood);
+        PlayerStats.Instance.AddFood(homeQuickDrinkEnergy, homeQuickDrinkCalories, homeQuickDrinkMood, 0f, 0f);
         // DIHAPUS: PlayerStats.Instance?.RegisterHealthScore(5f);
     
         // Track tetap ada — quick drink dianggap healthy

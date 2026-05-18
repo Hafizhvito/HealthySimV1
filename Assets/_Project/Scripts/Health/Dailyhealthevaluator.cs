@@ -14,6 +14,8 @@ public static class DailyHealthEvaluator
     private const float DietCalorieLow  = -1.0f;   // < 50% of target
     private const float DietCalorieHigh = -1.0f;   // > 130% of target
     private const float DietNoFoodPen   = -1.5f;   // tidak makan sama sekali
+    private const float DietLowProteinThreshold = 40f;
+    private const float DietHighFatThreshold = 65f;
 
     // Sleep — baseline kecil, bukan reward utama
     private const float SleepNormalBonus    =  1.0f;
@@ -133,6 +135,21 @@ public static class DailyHealthEvaluator
             {
                 score += DietCalorieHigh;
                 result.dietNote += " Asupan kalori berlebihan.";
+            }
+        }
+
+        if (stats != null)
+        {
+            if (stats.DailyProtein < DietLowProteinThreshold)
+            {
+                score -= 1.0f;
+                result.dietNote += " Asupan protein kurang.";
+            }
+
+            if (stats.DailyFat > DietHighFatThreshold)
+            {
+                score -= 1.0f;
+                result.dietNote += " Lemak berlebihan.";
             }
         }
 

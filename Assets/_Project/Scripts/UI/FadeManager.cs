@@ -103,6 +103,27 @@ public class FadeManager : MonoBehaviour
                 yield return null;
         }
 
+        bool shouldWaitForSpawn = !string.IsNullOrEmpty(SpawnPlayerManager.TargetSpawnID);
+        if (shouldWaitForSpawn)
+        {
+            bool spawnComplete = false;
+            Action onSpawnComplete = () => spawnComplete = true;
+            SpawnPlayerManager.OnSpawnComplete += onSpawnComplete;
+
+            float elapsed = 0f;
+            const float timeout = 2f;
+            const float tick = 0.05f;
+            WaitForSecondsRealtime wait = new WaitForSecondsRealtime(tick);
+
+            while (!spawnComplete && elapsed < timeout)
+            {
+                yield return wait;
+                elapsed += tick;
+            }
+
+            SpawnPlayerManager.OnSpawnComplete -= onSpawnComplete;
+        }
+
         yield return FadeRoutine(0f, fadeDuration, null);
     }
 
