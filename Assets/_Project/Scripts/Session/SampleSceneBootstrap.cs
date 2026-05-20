@@ -114,6 +114,7 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsureComponent<FadeManager>(manager);
         EnsureComponent<MobileInputController>(manager);
         EnsureComponent<BazaarManager>(manager);
+        EnsureComponent<EndingManager>(manager);
     }
 
     private void EnsureEventSystemSetup()
@@ -261,15 +262,64 @@ public class SampleSceneBootstrap : MonoBehaviour
             bedObj.transform.position = new Vector3(-60f, 0.4f, 27f);
             bedObj.transform.localScale = new Vector3(2.2f, 0.45f, 1.25f);
             bedObj.GetComponent<Renderer>().material.color = new Color(0.64f, 0.42f, 0.28f);
-
-            GameObject spawnObj = new GameObject("BedSpawnPoint");
-            spawnObj.transform.SetParent(bedObj.transform, false);
-            spawnObj.transform.localPosition = new Vector3(0f, 1.05f, -0.35f);
-            spawnObj.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-
             EnsureComponent<SleepBedInteractable>(bedObj);
             Debug.LogWarning($"{FallbackLogPrefix} Created placeholder Interactable_Bed at runtime.");
         }
+
+        // ── SpawnPoint: jangan pernah destroy SpawnPoint yang sudah ada di scene ──
+        // Kalau sudah ada SpawnPointID di scene, pakai yang itu — jangan buat baru, jangan destroy.
+        SpawnPointID[] existingSpawnPoints = FindObjectsByType<SpawnPointID>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        if (existingSpawnPoints.Length > 0)
+        {
+            // Pastikan semua SpawnPointID punya ID "spawnpoint" supaya SpawnPlayerManager bisa nemuin
+            foreach (SpawnPointID sp in existingSpawnPoints)
+            {
+                if (sp == null) continue;
+                FieldInfo spawnField = typeof(SpawnPointID).GetField("spawnID", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (spawnField != null)
+                {
+                    string currentId = spawnField.GetValue(sp) as string;
+                    if (string.IsNullOrWhiteSpace(currentId))
+                    {
+                        spawnField.SetValue(sp, "spawnpoint");
+                        Debug.Log($"[Bootstrap] SpawnPointID '{sp.gameObject.name}' — ID kosong, diset ke 'spawnpoint'.");
+                    }
+                    else
+                    {
+                        Debug.Log($"[Bootstrap] SpawnPointID '{sp.gameObject.name}' sudah ada dengan ID='{currentId}' di {sp.transform.position} — skip.");
+                    }
+                }
+            }
+            return;
+        }
+
+        // Tidak ada SpawnPointID sama sekali — buat fallback
+        GameObject spawnPoint = GameObject.Find("SpawnPoint") ?? GameObject.FindGameObjectWithTag("SpawnPoint");
+        if (spawnPoint == null)
+        {
+            spawnPoint = new GameObject("SpawnPoint");
+            GameObject bedObj = GameObject.Find("Interactable_Bed");
+            if (bedObj != null)
+            {
+                spawnPoint.transform.position = bedObj.transform.position + new Vector3(0f, 1.05f, -0.35f);
+                spawnPoint.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            }
+            else
+            {
+                spawnPoint.transform.position = new Vector3(0f, 1f, 0f);
+            }
+            Debug.LogWarning($"{FallbackLogPrefix} Created fallback SpawnPoint (tidak ada SpawnPointID di scene).");
+        }
+
+        SpawnPointID newSpawnId = spawnPoint.GetComponent<SpawnPointID>();
+        if (newSpawnId == null)
+            newSpawnId = spawnPoint.AddComponent<SpawnPointID>();
+
+        FieldInfo field = typeof(SpawnPointID).GetField("spawnID", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (field != null)
+            field.SetValue(newSpawnId, "spawnpoint");
     }
 
     private void WirePlaceholderDialogueAssignments()

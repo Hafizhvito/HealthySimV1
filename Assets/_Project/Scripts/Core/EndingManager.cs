@@ -11,12 +11,22 @@ public class EndingManager : MonoBehaviour
     [Header("Config")]
     [SerializeField] private int endingTriggerDay = 10;
 
+    [Header("Fonts")]
+    [SerializeField] private TMP_FontAsset titleFont;
+    [SerializeField] private TMP_FontAsset bodyFont;
+    [SerializeField] private TMP_FontAsset buttonFont;
+
     private const string ModalKey = "ending_panel";
     private RectTransform panelRoot;
     private CanvasGroup panelGroup;
     private TextMeshProUGUI titleText;
     private TextMeshProUGUI bodyText;
     private Button closeButton;
+    private RectTransform recapPanelRoot;
+    private CanvasGroup recapPanelGroup;
+    private TextMeshProUGUI recapTitleText;
+    private TextMeshProUGUI recapBodyText;
+    private Button recapCloseButton;
     private bool isShowing;
     private EndingType pendingEndingType;
     private PlayerStats.Gender pendingGender;
@@ -286,7 +296,7 @@ public class EndingManager : MonoBehaviour
         closeButton.interactable = false;
 
         // Warna aksen berbeda per ending
-        SetAccentColor(type);
+        SetAccentColor(type, panelRoot);
 
         string narrative = GetNarrative(type, gender);
         // string diseaseInfo = BuildDiseaseInfoSection(PlayerStats.Instance);
@@ -304,6 +314,7 @@ public class EndingManager : MonoBehaviour
         }
 
         bodyText.text            = narrative;
+        ForceRebuildTextLayout(bodyText);
         closeButton.interactable = true;
 
         bool closed = false;
@@ -316,6 +327,29 @@ public class EndingManager : MonoBehaviour
         panelGroup.interactable   = false;
         panelRoot.gameObject.SetActive(false);
 
+        if (recapPanelRoot != null)
+        {
+            recapPanelRoot.gameObject.SetActive(true);
+            recapPanelGroup.alpha          = 1f;
+            recapPanelGroup.blocksRaycasts = true;
+            recapPanelGroup.interactable   = true;
+            recapPanelRoot.SetAsLastSibling();
+            SetAccentColor(type, recapPanelRoot);
+            recapTitleText.text = "Rekap Perjalanan Hidupmu";
+            recapBodyText.text  = BuildRecapContent(PlayerStats.Instance);
+            ForceRebuildTextLayout(recapBodyText);
+
+            bool recapClosed = false;
+            recapCloseButton.onClick.RemoveAllListeners();
+            recapCloseButton.onClick.AddListener(() => recapClosed = true);
+            while (!recapClosed) yield return null;
+
+            recapPanelGroup.alpha          = 0f;
+            recapPanelGroup.blocksRaycasts = false;
+            recapPanelGroup.interactable   = false;
+            recapPanelRoot.gameObject.SetActive(false);
+        }
+
         if (ModalStateManager.Instance != null)
             ModalStateManager.Instance.CloseModal(ModalKey);
 
@@ -325,11 +359,12 @@ public class EndingManager : MonoBehaviour
         creditsAfterDay = TimeManager.Instance != null ? TimeManager.Instance.CurrentDayNumber : -1;
     }
 
-    private void SetAccentColor(EndingType type)
+    private void SetAccentColor(EndingType type, RectTransform targetRoot = null)
     {
         // Cari AccentBar di dalam card
-        if (panelRoot == null) return;
-        Transform card = panelRoot.Find("Card");
+        RectTransform root = targetRoot != null ? targetRoot : panelRoot;
+        if (root == null) return;
+        Transform card = root.Find("Card");
         if (card == null) return;
         Transform accent = card.Find("AccentBar");
         if (accent == null) return;
@@ -344,6 +379,23 @@ public class EndingManager : MonoBehaviour
             EndingType.Bad     => new Color32(0xF4, 0x43, 0x36, 0xFF), // merah
             _                  => new Color32(0x21, 0x96, 0xF3, 0xFF)
         };
+    }
+
+    private static void ForceRebuildTextLayout(TextMeshProUGUI text)
+    {
+        if (text == null) return;
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(text.rectTransform);
+        RectTransform parent = text.rectTransform.parent as RectTransform;
+        if (parent != null)
+            text.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, parent.rect.width);
+        text.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, text.preferredHeight);
+    }
+
+    private static void ApplyFont(TextMeshProUGUI text, TMP_FontAsset font)
+    {
+        if (text == null || font == null) return;
+        text.font = font;
     }
 
     private static string GetTitle(EndingType type) => type switch
@@ -545,15 +597,117 @@ public class EndingManager : MonoBehaviour
         return "Alasan: " + string.Join(", ", list) + ".";
     }
 
+    private string BuildRecapContent(PlayerStats stats)
+    {
+        string doctorMessage = pendingEndingType switch
+        {
+            EndingType.Good    => "Selamat! Kamu telah menjalani gaya hidup yang sehat dan seimbang.",
+            EndingType.Neutral => "Ada kemajuan, namun masih banyak ruang untuk perbaikan ke depannya.",
+            EndingType.Bad     => "Pola hidup yang buruk memberikan dampak serius. Mulailah berubah sekarang.",
+            _                  => "Tetap jaga kesehatanmu ke depan."
+        };
+
+        if (stats == null)
+            return "Data statistik belum tersedia.\n\nPesan dr. Sri: " + doctorMessage;
+
+        float[] scores = stats.CommittedPhaseScores;
+        float total = 0f;
+        int count = 0;
+        for (int i = 0; i < 3; i++)
+        {
+            if (scores != null && i < scores.Length)
+            {
+                total += scores[i];
+                count++;
+            }
+        }
+
+        float avg = count > 0 ? total / count : 50f;
+        string avgLabel = avg >= 65f ? "Baik" : avg >= 40f ? "Cukup" : "Buruk";
+
+        int warningCount = 0;
+        var sections = new System.Collections.Generic.List<string>();
+
+        var sectionA = new System.Text.StringBuilder();
+        sectionA.Append("Gizi Harian:");
+        sectionA.Append($"\n- Rata-rata kesehatan fase: {avgLabel}");
+        if (stats.HighCalorieDays > 3)
+        {
+            sectionA.Append($"\n! {stats.HighCalorieDays} hari asupan kalori berlebihan");
+            warningCount++;
+        }
+        if (stats.LowCalorieDays > 3)
+        {
+            sectionA.Append($"\n! {stats.LowCalorieDays} hari asupan kalori kurang");
+            warningCount++;
+        }
+        if (stats.PoorDietDays > 3)
+        {
+            sectionA.Append($"\n! {stats.PoorDietDays} hari pola makan buruk");
+            warningCount++;
+        }
+        if (stats.NoFoodDays > 0)
+        {
+            sectionA.Append($"\n! {stats.NoFoodDays} hari tidak makan sama sekali");
+            warningCount++;
+        }
+        sections.Add(sectionA.ToString());
+
+        var sectionB = new System.Text.StringBuilder();
+        if (stats.SkippedGymDays > 5)
+        {
+            sectionB.Append($"! Sering melewatkan gym ({stats.SkippedGymDays} hari)");
+            warningCount++;
+        }
+        if (stats.SkippedWorkDays > 3)
+        {
+            if (sectionB.Length > 0) sectionB.Append("\n");
+            sectionB.Append($"! Sering absen kerja ({stats.SkippedWorkDays} hari)");
+            warningCount++;
+        }
+        if (stats.OverworkedDays > 3)
+        {
+            if (sectionB.Length > 0) sectionB.Append("\n");
+            sectionB.Append("! Terlalu sering memaksakan diri bekerja");
+            warningCount++;
+        }
+        if (sectionB.Length > 0)
+            sections.Add("Aktivitas:\n" + sectionB.ToString());
+
+        var sectionC = new System.Text.StringBuilder();
+        if (stats.DisturbedSleepDays > 3)
+        {
+            sectionC.Append($"! {stats.DisturbedSleepDays} hari tidur terganggu");
+            warningCount++;
+        }
+        if (stats.LowEnergySleepDays > 3)
+        {
+            if (sectionC.Length > 0) sectionC.Append("\n");
+            sectionC.Append($"! {stats.LowEnergySleepDays} hari tidur dengan energi sangat rendah");
+            warningCount++;
+        }
+        if (sectionC.Length > 0)
+            sections.Add("Tidur:\n" + sectionC.ToString());
+
+        if (warningCount == 0)
+            return "Luar biasa! Tidak ada catatan negatif selama perjalananmu. Pertahankan!\n\nPesan dr. Sri: " + doctorMessage;
+
+        sections.Add("Pesan dr. Sri: " + doctorMessage);
+        return string.Join("\n\n", sections);
+    }
+
     // ── Panel builder (tidak berubah dari versi asli) ────────────────
 
     private void EnsurePanel()
     {
-        if (panelRoot != null) return;
+        if (panelRoot != null && recapPanelRoot != null) return;
 
         Transform parent = FindHudCanvas();
         if (TryBindExistingPanel(parent))
-            return;
+        {
+            if (recapPanelRoot != null)
+                return;
+        }
 
         if (parent == null)
         {
@@ -596,7 +750,7 @@ public class EndingManager : MonoBehaviour
         cardR.anchorMax          = new Vector2(0.5f, 0.5f);
         cardR.pivot              = new Vector2(0.5f, 0.5f);
         cardR.anchoredPosition   = Vector2.zero;
-        cardR.sizeDelta          = new Vector2(820f, 480f);
+        cardR.sizeDelta          = new Vector2(820f, 520f);
         card.GetComponent<Image>().color = Color.white;
 
         // Accent bar
@@ -623,6 +777,7 @@ public class EndingManager : MonoBehaviour
         titleText.color              = new Color32(0x1A, 0x1A, 0x2E, 0xFF);
         titleText.alignment          = TextAlignmentOptions.Center;
         titleText.textWrappingMode   = TextWrappingModes.Normal;
+        ApplyFont(titleText, titleFont);
 
         // Divider
         GameObject dv = new GameObject("Divider", typeof(RectTransform), typeof(Image));
@@ -634,20 +789,47 @@ public class EndingManager : MonoBehaviour
         dvR.sizeDelta       = new Vector2(700f, 2f);
         dv.GetComponent<Image>().color = new Color32(0xE0, 0xE0, 0xE0, 0xFF);
 
-        // Body
-        GameObject bGo = new GameObject("BodyText", typeof(RectTransform), typeof(TextMeshProUGUI));
-        bGo.transform.SetParent(card.transform, false);
+        // Body (ScrollRect)
+        GameObject scrollGo = new GameObject("BodyScroll", typeof(RectTransform), typeof(ScrollRect));
+        scrollGo.transform.SetParent(card.transform, false);
+        RectTransform scrollR = scrollGo.GetComponent<RectTransform>();
+        scrollR.anchorMin        = new Vector2(0.5f, 1f);
+        scrollR.anchorMax        = new Vector2(0.5f, 1f);
+        scrollR.pivot            = new Vector2(0.5f, 1f);
+        scrollR.anchoredPosition = new Vector2(0f, -126f);
+        scrollR.sizeDelta        = new Vector2(740f, 320f);
+
+        GameObject viewportGo = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
+        viewportGo.transform.SetParent(scrollGo.transform, false);
+        RectTransform viewportR = viewportGo.GetComponent<RectTransform>();
+        viewportR.anchorMin = Vector2.zero; viewportR.anchorMax = Vector2.one;
+        viewportR.offsetMin = Vector2.zero; viewportR.offsetMax = Vector2.zero;
+
+        GameObject bGo = new GameObject("BodyText", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(ContentSizeFitter));
+        bGo.transform.SetParent(viewportGo.transform, false);
         RectTransform bR    = bGo.GetComponent<RectTransform>();
-        bR.anchorMin        = new Vector2(0.5f, 1f); bR.anchorMax = new Vector2(0.5f, 1f);
+        bR.anchorMin        = new Vector2(0f, 1f); bR.anchorMax = new Vector2(1f, 1f);
         bR.pivot            = new Vector2(0.5f, 1f);
-        bR.anchoredPosition = new Vector2(0f, -126f);
-        bR.sizeDelta        = new Vector2(740f, 280f);
+        bR.anchoredPosition = Vector2.zero;
+        bR.sizeDelta        = Vector2.zero;
+        ContentSizeFitter bFit = bGo.GetComponent<ContentSizeFitter>();
+        bFit.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        bFit.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
         bodyText                   = bGo.GetComponent<TextMeshProUGUI>();
         bodyText.fontSize          = 21f;
         bodyText.color             = new Color32(0x33, 0x33, 0x33, 0xFF);
-        bodyText.alignment         = TextAlignmentOptions.Center;
+        bodyText.alignment         = TextAlignmentOptions.TopLeft;
         bodyText.textWrappingMode  = TextWrappingModes.Normal;
         bodyText.lineSpacing       = 5f;
+        bodyText.margin            = new Vector4(6f, 0f, 6f, 0f);
+        ApplyFont(bodyText, bodyFont);
+
+        ScrollRect bodyScroll = scrollGo.GetComponent<ScrollRect>();
+        bodyScroll.content    = bR;
+        bodyScroll.viewport   = viewportR;
+        bodyScroll.horizontal = false;
+        bodyScroll.vertical   = true;
+        bodyScroll.movementType = ScrollRect.MovementType.Clamped;
 
         // Button
         GameObject btnGo = new GameObject("CloseButton",
@@ -668,13 +850,156 @@ public class EndingManager : MonoBehaviour
         btnTR.anchorMin      = Vector2.zero; btnTR.anchorMax = Vector2.one;
         btnTR.offsetMin      = Vector2.zero; btnTR.offsetMax = Vector2.zero;
         TextMeshProUGUI btnTmp  = btnTGo.GetComponent<TextMeshProUGUI>();
-        btnTmp.text             = "Selesai";
+        btnTmp.text             = "Lanjut →";
         btnTmp.fontSize         = 22f;
         btnTmp.fontStyle        = FontStyles.Bold;
         btnTmp.color            = Color.white;
         btnTmp.alignment        = TextAlignmentOptions.Center;
+        ApplyFont(btnTmp, buttonFont);
 
-        root.SetActive(false);
+        // Recap panel
+        GameObject recapRoot = new GameObject("EndingRecapPanel", typeof(RectTransform), typeof(CanvasGroup), typeof(Canvas), typeof(GraphicRaycaster));
+        recapRoot.transform.SetParent(parent, false);
+        recapPanelRoot            = recapRoot.GetComponent<RectTransform>();
+        recapPanelRoot.anchorMin  = Vector2.zero;
+        recapPanelRoot.anchorMax  = Vector2.one;
+        recapPanelRoot.offsetMin  = Vector2.zero;
+        recapPanelRoot.offsetMax  = Vector2.zero;
+        recapPanelGroup           = recapRoot.GetComponent<CanvasGroup>();
+        recapPanelGroup.alpha          = 0f;
+        recapPanelGroup.blocksRaycasts = false;
+        recapPanelGroup.interactable   = false;
+
+        Canvas recapCanvas = recapRoot.GetComponent<Canvas>();
+        recapCanvas.overrideSorting = true;
+        Canvas parentCanvas = parent.GetComponent<Canvas>() ?? parent.GetComponentInParent<Canvas>();
+        recapCanvas.sortingOrder = parentCanvas != null ? parentCanvas.sortingOrder + 1 : 301;
+
+        // Overlay
+        GameObject rov = new GameObject("Overlay", typeof(RectTransform), typeof(Image));
+        rov.transform.SetParent(recapRoot.transform, false);
+        RectTransform rovR = rov.GetComponent<RectTransform>();
+        rovR.anchorMin = Vector2.zero; rovR.anchorMax = Vector2.one;
+        rovR.offsetMin = Vector2.zero; rovR.offsetMax = Vector2.zero;
+        rov.GetComponent<Image>().color = new Color(0.04f, 0.06f, 0.10f, 0.92f);
+
+        // Card
+        GameObject rcard = new GameObject("Card", typeof(RectTransform), typeof(Image));
+        rcard.transform.SetParent(recapRoot.transform, false);
+        RectTransform rcardR     = rcard.GetComponent<RectTransform>();
+        rcardR.anchorMin         = new Vector2(0.5f, 0.5f);
+        rcardR.anchorMax         = new Vector2(0.5f, 0.5f);
+        rcardR.pivot             = new Vector2(0.5f, 0.5f);
+        rcardR.anchoredPosition  = Vector2.zero;
+        rcardR.sizeDelta         = new Vector2(820f, 520f);
+        rcard.GetComponent<Image>().color = Color.white;
+
+        // Accent bar
+        GameObject racc = new GameObject("AccentBar", typeof(RectTransform), typeof(Image));
+        racc.transform.SetParent(rcard.transform, false);
+        RectTransform raccR = racc.GetComponent<RectTransform>();
+        raccR.anchorMin     = new Vector2(0f, 0f); raccR.anchorMax = new Vector2(0f, 1f);
+        raccR.pivot         = new Vector2(0f, 0.5f);
+        raccR.offsetMin     = Vector2.zero; raccR.offsetMax = new Vector2(6f, 0f);
+        raccR.sizeDelta     = new Vector2(6f, 0f);
+        racc.GetComponent<Image>().color = new Color32(0x21, 0x96, 0xF3, 0xFF);
+
+        // Title
+        GameObject rtGo = new GameObject("TitleText", typeof(RectTransform), typeof(TextMeshProUGUI));
+        rtGo.transform.SetParent(rcard.transform, false);
+        RectTransform rtR   = rtGo.GetComponent<RectTransform>();
+        rtR.anchorMin       = new Vector2(0.5f, 1f); rtR.anchorMax = new Vector2(0.5f, 1f);
+        rtR.pivot           = new Vector2(0.5f, 1f);
+        rtR.anchoredPosition = new Vector2(0f, -40f);
+        rtR.sizeDelta       = new Vector2(740f, 60f);
+        recapTitleText                   = rtGo.GetComponent<TextMeshProUGUI>();
+        recapTitleText.fontSize          = 36f;
+        recapTitleText.fontStyle         = FontStyles.Bold;
+        recapTitleText.color             = new Color32(0x1A, 0x1A, 0x2E, 0xFF);
+        recapTitleText.alignment         = TextAlignmentOptions.Center;
+        recapTitleText.textWrappingMode  = TextWrappingModes.Normal;
+        ApplyFont(recapTitleText, titleFont);
+
+        // Divider
+        GameObject rdv = new GameObject("Divider", typeof(RectTransform), typeof(Image));
+        rdv.transform.SetParent(rcard.transform, false);
+        RectTransform rdvR  = rdv.GetComponent<RectTransform>();
+        rdvR.anchorMin      = new Vector2(0.5f, 1f); rdvR.anchorMax = new Vector2(0.5f, 1f);
+        rdvR.pivot          = new Vector2(0.5f, 1f);
+        rdvR.anchoredPosition = new Vector2(0f, -108f);
+        rdvR.sizeDelta      = new Vector2(700f, 2f);
+        rdv.GetComponent<Image>().color = new Color32(0xE0, 0xE0, 0xE0, 0xFF);
+
+        // Body (ScrollRect)
+        GameObject rscrollGo = new GameObject("BodyScroll", typeof(RectTransform), typeof(ScrollRect));
+        rscrollGo.transform.SetParent(rcard.transform, false);
+        RectTransform rscrollR = rscrollGo.GetComponent<RectTransform>();
+        rscrollR.anchorMin        = new Vector2(0.5f, 1f);
+        rscrollR.anchorMax        = new Vector2(0.5f, 1f);
+        rscrollR.pivot            = new Vector2(0.5f, 1f);
+        rscrollR.anchoredPosition = new Vector2(0f, -126f);
+        rscrollR.sizeDelta        = new Vector2(740f, 320f);
+
+        GameObject rviewportGo = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
+        rviewportGo.transform.SetParent(rscrollGo.transform, false);
+        RectTransform rviewportR = rviewportGo.GetComponent<RectTransform>();
+        rviewportR.anchorMin = Vector2.zero; rviewportR.anchorMax = Vector2.one;
+        rviewportR.offsetMin = Vector2.zero; rviewportR.offsetMax = Vector2.zero;
+
+        GameObject rbGo = new GameObject("BodyText", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(ContentSizeFitter));
+        rbGo.transform.SetParent(rviewportGo.transform, false);
+        RectTransform rbR   = rbGo.GetComponent<RectTransform>();
+        rbR.anchorMin       = new Vector2(0f, 1f); rbR.anchorMax = new Vector2(1f, 1f);
+        rbR.pivot           = new Vector2(0.5f, 1f);
+        rbR.anchoredPosition = Vector2.zero;
+        rbR.sizeDelta       = Vector2.zero;
+        ContentSizeFitter rbFit = rbGo.GetComponent<ContentSizeFitter>();
+        rbFit.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        rbFit.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
+        recapBodyText                   = rbGo.GetComponent<TextMeshProUGUI>();
+        recapBodyText.fontSize          = 21f;
+        recapBodyText.color             = new Color32(0x33, 0x33, 0x33, 0xFF);
+        recapBodyText.alignment         = TextAlignmentOptions.TopLeft;
+        recapBodyText.textWrappingMode  = TextWrappingModes.Normal;
+        recapBodyText.lineSpacing       = 5f;
+        recapBodyText.margin            = new Vector4(6f, 0f, 6f, 0f);
+        ApplyFont(recapBodyText, bodyFont);
+
+        ScrollRect recapScroll = rscrollGo.GetComponent<ScrollRect>();
+        recapScroll.content    = rbR;
+        recapScroll.viewport   = rviewportR;
+        recapScroll.horizontal = false;
+        recapScroll.vertical   = true;
+        recapScroll.movementType = ScrollRect.MovementType.Clamped;
+
+        // Button
+        GameObject rbtnGo = new GameObject("CloseButton",
+            typeof(RectTransform), typeof(Image), typeof(Button));
+        rbtnGo.transform.SetParent(rcard.transform, false);
+        RectTransform rbtnR  = rbtnGo.GetComponent<RectTransform>();
+        rbtnR.anchorMin      = new Vector2(1f, 0f); rbtnR.anchorMax = new Vector2(1f, 0f);
+        rbtnR.pivot          = new Vector2(1f, 0f);
+        rbtnR.anchoredPosition = new Vector2(-32f, 32f);
+        rbtnR.sizeDelta      = new Vector2(200f, 52f);
+        rbtnGo.GetComponent<Image>().color = new Color32(0x21, 0x96, 0xF3, 0xFF);
+        recapCloseButton               = rbtnGo.GetComponent<Button>();
+        recapCloseButton.targetGraphic = rbtnGo.GetComponent<Image>();
+
+        GameObject rbtnTGo = new GameObject("ButtonText", typeof(RectTransform), typeof(TextMeshProUGUI));
+        rbtnTGo.transform.SetParent(rbtnGo.transform, false);
+        RectTransform rbtnTR = rbtnTGo.GetComponent<RectTransform>();
+        rbtnTR.anchorMin     = Vector2.zero; rbtnTR.anchorMax = Vector2.one;
+        rbtnTR.offsetMin     = Vector2.zero; rbtnTR.offsetMax = Vector2.zero;
+        TextMeshProUGUI rbtnTmp = rbtnTGo.GetComponent<TextMeshProUGUI>();
+        rbtnTmp.text            = "Selesai";
+        rbtnTmp.fontSize        = 22f;
+        rbtnTmp.fontStyle       = FontStyles.Bold;
+        rbtnTmp.color           = Color.white;
+        rbtnTmp.alignment       = TextAlignmentOptions.Center;
+        ApplyFont(rbtnTmp, buttonFont);
+
+        panelRoot.gameObject.SetActive(false);
+        recapPanelRoot.gameObject.SetActive(false);
     }
 
     private static Transform FindHudCanvas()

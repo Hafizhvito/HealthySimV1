@@ -100,8 +100,11 @@ public class SpawnPlayerManager : MonoBehaviour
 
         // Teleport player
         Transform spawnTransform = targetSpawn != null ? targetSpawn.transform : fallbackSpawn;
+        Debug.Log($"[Spawn] Target '{TargetSpawnID}' at {spawnTransform.position} (pre-teleport player at {player.transform.position}).");
         player.transform.position = spawnTransform.position;
         player.transform.rotation = spawnTransform.rotation;
+        SnapToGround(player.transform, spawnTransform.position);
+        Debug.Log($"[Spawn] Player post-teleport at {player.transform.position}.");
 
         if (cc != null) cc.enabled = true;
 
@@ -118,5 +121,35 @@ public class SpawnPlayerManager : MonoBehaviour
     public void TestSpawn()
     {
         SpawnPlayer();
+    }
+
+    private static void SnapToGround(Transform player, Vector3 spawnPosition)
+    {
+        // Raycast dari atas untuk cari ground collider
+        Vector3 rayOrigin = spawnPosition + Vector3.up * 20f;
+        if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, 100f))
+        {
+            float groundY = hit.point.y + 0.05f;
+
+            // Safety: hanya snap kalau ground ditemukan dalam jarak wajar dari SpawnPoint Y
+            // Mencegah player di-snap ke collider void / trigger jauh di bawah
+            if (Mathf.Abs(groundY - spawnPosition.y) < 10f)
+            {
+                player.position = new Vector3(spawnPosition.x, groundY, spawnPosition.z);
+                Debug.Log($"[Spawn] SnapToGround berhasil → y={groundY:F2}");
+                return;
+            }
+
+            Debug.LogWarning($"[Spawn] SnapToGround hit terlalu jauh dari SpawnPoint " +
+                             $"(spawnY={spawnPosition.y:F2}, hitY={groundY:F2}) — pakai SpawnPoint Y.");
+        }
+        else
+        {
+            Debug.LogWarning($"[Spawn] SnapToGround raycast miss di {spawnPosition} — pakai SpawnPoint Y.");
+        }
+
+        // Fallback: pakai Y dari SpawnPoint itu sendiri, tidak di-override
+        // Ini yang paling aman — SpawnPoint sudah diletakkan di posisi yang benar
+        player.position = new Vector3(spawnPosition.x, spawnPosition.y, spawnPosition.z);
     }
 }

@@ -330,21 +330,20 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (ageStageChanged)
         {
             yield return StartCoroutine(ShowAgingNotificationRoutine(newAgeStage, scoreBeforeTransition));
+        }
 
-            if (newAgeStage == PlayerStats.AgeStage.Senior)
-            {
-                int triggerDay = EndingManager.Instance != null
-                    ? EndingManager.Instance.EndingTriggerDay
-                    : 10;
+        int triggerDay = EndingManager.Instance != null
+            ? EndingManager.Instance.EndingTriggerDay
+            : 10;
+        bool allowEarlyEnding = triggerDay < 10;
+        bool seniorTransition = ageStageChanged && newAgeStage == PlayerStats.AgeStage.Senior;
 
-                if (timeManager.CurrentDayNumber >= triggerDay)
-                {
-                    if (EndingManager.Instance != null)
-                        EndingManager.Instance.TriggerEnding();
-                    else
-                        Debug.LogWarning("[SleepBedInteractable] EndingManager.Instance null — ending not triggered.");
-                }
-            }
+        if (timeManager.CurrentDayNumber >= triggerDay && (seniorTransition || allowEarlyEnding))
+        {
+            if (EndingManager.Instance != null)
+                EndingManager.Instance.TriggerEnding();
+            else
+                Debug.LogWarning("[SleepBedInteractable] EndingManager.Instance null — ending not triggered.");
         }
 
         // ── Wake message dengan hasil evaluator ──────────────

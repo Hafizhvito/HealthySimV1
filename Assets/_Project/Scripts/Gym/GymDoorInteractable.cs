@@ -118,7 +118,7 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
             return;
         }
 
-        SpawnPlayerManager.TargetSpawnID = "default";
+        SpawnPlayerManager.TargetSpawnID = "spawnpoint";
         fadeManager.FadeToBlackAndLoad(gymSceneName, 0.5f);
     }
 

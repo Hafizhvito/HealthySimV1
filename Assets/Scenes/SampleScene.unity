@@ -16586,51 +16586,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: b8ee657c6800ab849bb30b4375d02323, type: 3}
   m_PrefabInstance: {fileID: 494595506}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &496121718
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 496121719}
-  - component: {fileID: 496121720}
-  m_Layer: 0
-  m_Name: Spawn_House
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &496121719
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 496121718}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.858, y: 0.5, z: -7.742}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2130000012}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &496121720
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 496121718}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3af9d083192abfd428a5142947577f87, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpawnPointID
-  spawnID: OutsideHouse
 --- !u!1001 &501521748
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -59850,7 +59805,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3af9d083192abfd428a5142947577f87, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpawnPointID
-  spawnID: OfficeDoor
+  spawnID: officedoor
 --- !u!4 &1698898926
 Transform:
   m_ObjectHideFlags: 0
@@ -65154,6 +65109,24 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1824367693}
   m_CullTransparentMesh: 1
+--- !u!1 &1825130687 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2711577765664480074, guid: b2f3962aa02f8c64bb6dbea3f045e6e3, type: 3}
+  m_PrefabInstance: {fileID: 208199232895566378}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1825130689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1825130687}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3af9d083192abfd428a5142947577f87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpawnPointID
+  spawnID: spawnpoint
 --- !u!1001 &1826780634
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -78360,52 +78333,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 27f5513ac0f47e84d8ad38c43c23a3a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FoodCatalogProvider
---- !u!1 &2130000011
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2130000012}
-  - component: {fileID: 2130000013}
-  m_Layer: 0
-  m_Name: SpawnPoint
-  m_TagString: SpawnPoint
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2130000012
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2130000011}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -382, y: 0.5, z: 13.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 496121719}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2130000013
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2130000011}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3af9d083192abfd428a5142947577f87, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpawnPointID
-  spawnID: default
 --- !u!114 &2130000015 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 2748240770526669182, guid: 743643ecc092a0c418cc79273620d064, type: 3}
@@ -78464,7 +78391,7 @@ MonoBehaviour:
   playerController: {fileID: 237787405}
   faintRecoveryEnergy: 30
   respawnDelay: 2
-  respawnPoint: {fileID: 2130000012}
+  respawnPoint: {fileID: 0}
 --- !u!114 &2130000025 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3878313949412613930, guid: 743643ecc092a0c418cc79273620d064, type: 3}
@@ -79239,6 +79166,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2711577765664480074, guid: b2f3962aa02f8c64bb6dbea3f045e6e3, type: 3}
+      propertyPath: m_TagString
+      value: SpawnPoint
+      objectReference: {fileID: 0}
     - target: {fileID: 7401638315233159983, guid: b2f3962aa02f8c64bb6dbea3f045e6e3, type: 3}
       propertyPath: m_Name
       value: Interactable_Bed
@@ -79246,7 +79177,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2711577765664480074, guid: b2f3962aa02f8c64bb6dbea3f045e6e3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1825130689}
   m_SourcePrefab: {fileID: 100100000, guid: b2f3962aa02f8c64bb6dbea3f045e6e3, type: 3}
 --- !u!1001 &325386683062647287
 PrefabInstance:
@@ -79256,6 +79190,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 718977471335512210, guid: 743643ecc092a0c418cc79273620d064, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -382
+      objectReference: {fileID: 0}
+    - target: {fileID: 718977471335512210, guid: 743643ecc092a0c418cc79273620d064, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 718977471335512210, guid: 743643ecc092a0c418cc79273620d064, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 13.5
+      objectReference: {fileID: 0}
     - target: {fileID: 1156002833375669951, guid: 743643ecc092a0c418cc79273620d064, type: 3}
       propertyPath: m_PixelPerfect
       value: 0
@@ -79300,6 +79246,10 @@ PrefabInstance:
       propertyPath: joystickOuter
       value: 
       objectReference: {fileID: 1830107928}
+    - target: {fileID: 8394745353095753731, guid: 743643ecc092a0c418cc79273620d064, type: 3}
+      propertyPath: endingTriggerDay
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 8493567887663762261, guid: 743643ecc092a0c418cc79273620d064, type: 3}
       propertyPath: closeButton
       value: 
@@ -79684,7 +79634,6 @@ SceneRoots:
   - {fileID: 237787401}
   - {fileID: 2066638059}
   - {fileID: 325386683062647287}
-  - {fileID: 2130000012}
   - {fileID: 2135868700}
   - {fileID: 1754755643}
   - {fileID: 617932180408263066}
