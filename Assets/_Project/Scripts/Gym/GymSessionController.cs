@@ -166,7 +166,7 @@ public class GymSessionController : MonoBehaviour
     {
         SetGymSessionLock(false);
 
-        SpawnPlayerManager.TargetSpawnID = "spawnpoint";
+        SpawnPlayerManager.TargetSpawnID = "gymdoor";
 
         if (FadeManager.Instance != null)
         {

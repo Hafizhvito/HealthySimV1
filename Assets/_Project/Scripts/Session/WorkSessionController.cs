@@ -74,7 +74,7 @@ public class WorkSessionController : MonoBehaviour
 
     private void ReturnToMainScene()
     {
-        SpawnPlayerManager.TargetSpawnID = "spawnpoint";
+        SpawnPlayerManager.TargetSpawnID = "officedoor";
 
         if (FadeManager.Instance != null)
         {
