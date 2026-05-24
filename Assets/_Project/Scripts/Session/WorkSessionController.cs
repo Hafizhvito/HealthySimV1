@@ -11,7 +11,7 @@ public class WorkSessionController : MonoBehaviour
     [Header("Optional Scene References")]
     [SerializeField] private NpcDialogueInteractable _bossInteractableOverride;
     [SerializeField] private Transform _playerSpawnPointOverride;
-    [SerializeField] private GameObject _playerOverride;
+    [SerializeField] private GameObject playerOverride;
 
     [Header("Flow Timings")]
     [SerializeField] private float _postLoadDelay = 0.5f;
@@ -355,31 +355,19 @@ public class WorkSessionController : MonoBehaviour
 
     private void MovePlayerToSpawnPoint()
     {
-        Transform spawnTransform = _playerSpawnPointOverride;
-        if (spawnTransform == null)
-        {
-            GameObject spawn = GameObject.Find("PlayerSpawnPoint");
-            if (spawn != null)
-                spawnTransform = spawn.transform;
-        }
-
-        if (spawnTransform == null)
-        {
-            Debug.LogWarning($"{FallbackLogPrefix} Missing PlayerSpawnPoint in OfficeScene.");
-            return;
-        }
-
-        GameObject player = _playerOverride;
+        // Skip - player akan di-hide saja, posisi dihandle SpawnPlayerManager
+        GameObject player = playerOverride;
         if (player == null)
             player = GameObject.FindWithTag("Player");
 
         if (player == null)
         {
-            Debug.LogWarning($"{FallbackLogPrefix} Missing Player in OfficeScene when moving to spawn point.");
-            return;
+            PlayerController pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+            if (pc != null) player = pc.gameObject;
         }
 
-        player.transform.position = spawnTransform.position;
-        player.transform.rotation = spawnTransform.rotation;
+        if (player == null) return;
+
+        player.SetActive(false);
     }
 }

@@ -56,6 +56,7 @@ public class SpawnPlayerManager : MonoBehaviour
 
     private void SpawnPlayer()
     {
+        Debug.Log($"[Spawn DEBUG] TargetSpawnID saat SpawnPlayer() = '{TargetSpawnID}'");
         if (string.IsNullOrEmpty(TargetSpawnID)) return;
 
         // Cari SpawnPoint
@@ -86,13 +87,21 @@ public class SpawnPlayerManager : MonoBehaviour
             }
         }
 
-        // Cari player
+        
+        // Cari player (termasuk inactive karena bisa di-hide di scene sebelumnya)
         GameObject player = GameObject.FindWithTag("Player");
+        if (player == null)
+        {
+            // Fallback: cari termasuk inactive
+            PlayerController pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+            if (pc != null) player = pc.gameObject;
+        }
         if (player == null)
         {
             Debug.LogWarning("[Spawn] Player tidak ditemukan!");
             return;
         }
+        player.SetActive(true);
 
         // Disable CharacterController sementara
         CharacterController cc = player.GetComponent<CharacterController>();
@@ -103,7 +112,8 @@ public class SpawnPlayerManager : MonoBehaviour
         Debug.Log($"[Spawn] Target '{TargetSpawnID}' at {spawnTransform.position} (pre-teleport player at {player.transform.position}).");
         player.transform.position = spawnTransform.position;
         player.transform.rotation = spawnTransform.rotation;
-        SnapToGround(player.transform, spawnTransform.position);
+        if (spawnTransform.position.y < 1f)
+            SnapToGround(player.transform, spawnTransform.position);
         Debug.Log($"[Spawn] Player post-teleport at {player.transform.position}.");
 
         if (cc != null) cc.enabled = true;
@@ -114,6 +124,20 @@ public class SpawnPlayerManager : MonoBehaviour
         // Reset setelah dipakai
         TargetSpawnID = "";
         OnSpawnComplete?.Invoke();
+        StartCoroutine(WatchPlayerPosition());
+    }
+
+     private IEnumerator WatchPlayerPosition()
+    {
+        GameObject player = GameObject.FindWithTag("Player");
+        if (player == null) yield break;
+        
+        for (int i = 0; i < 10; i++)
+        {
+            yield return new WaitForSeconds(0.1f);
+            if (player == null) yield break;
+            Debug.Log($"[SpawnWatch] t={i * 0.1f:F1}s player pos = {player.transform.position}");
+        }
     }
 
     // ── Dev Tool ──────────────────────────────────────────────
@@ -148,8 +172,7 @@ public class SpawnPlayerManager : MonoBehaviour
             Debug.LogWarning($"[Spawn] SnapToGround raycast miss di {spawnPosition} — pakai SpawnPoint Y.");
         }
 
-        // Fallback: pakai Y dari SpawnPoint itu sendiri, tidak di-override
-        // Ini yang paling aman — SpawnPoint sudah diletakkan di posisi yang benar
-        player.position = new Vector3(spawnPosition.x, spawnPosition.y, spawnPosition.z);
+        // Fallback: pakai Y dari SpawnPoint dengan sedikit offset agar tidak nabrak collider bawah.
+        player.position = new Vector3(spawnPosition.x, spawnPosition.y + 0.1f, spawnPosition.z);
     }
 }

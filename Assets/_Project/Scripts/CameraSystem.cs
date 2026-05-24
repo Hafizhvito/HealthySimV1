@@ -108,8 +108,16 @@ public class CameraSystem : MonoBehaviour
         if (playerRoot == null)
         {
             GameObject player = GameObject.FindWithTag("Player");
+            if (player == null)
+            {
+                PlayerController pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+                if (pc != null) player = pc.gameObject;
+            }
             if (player != null)
+            {
+                player.SetActive(true);
                 playerRoot = player.transform;
+            }
         }
 
         ApplyBrainUpdateMode();
@@ -119,10 +127,37 @@ public class CameraSystem : MonoBehaviour
             StartStartupCinematic();
     }
 
+
+
+    private void OnEnable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
     private void OnDisable()
     {
         StopDialogueDrift();
         StopStartupCinematic();
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        if (scene.name != "SampleScene") return;
+        StartCoroutine(ReassignPlayerAfterLoad());
+    }
+
+    private IEnumerator ReassignPlayerAfterLoad()
+    {
+        yield return new WaitForSeconds(0.5f);
+        PlayerController pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+        if (pc != null)
+        {
+            pc.gameObject.SetActive(true);
+            playerRoot = pc.transform;
+            playerRenderers = pc.GetComponentsInChildren<Renderer>();
+            SetTPP();
+        }
     }
 
     void Update()

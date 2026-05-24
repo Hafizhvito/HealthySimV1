@@ -141,7 +141,7 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
             return;
         }
 
-        SpawnPlayerManager.TargetSpawnID = "spawnpoint";
+        SpawnPlayerManager.TargetSpawnID = "officedoor";
         fadeManager.FadeToBlackAndLoad(_officeSceneName, 0.5f);
     }
 

@@ -11,7 +11,7 @@ public class HospitalDoorInteractable : MonoBehaviour, IInteractable, IDialogueA
     [SerializeField] private GameObject hospitalDoorModel;
     [SerializeField] private Sprite doctorPortraitSprite;
     [SerializeField] private AudioClip doorOpenSound;
-
+    [SerializeField] private GameObject hospitalOverlay;
     private Collider cachedCollider;
     private Coroutine floatingTextRoutine;
     private bool isMenuCloseSubscribed;
@@ -106,6 +106,7 @@ public class HospitalDoorInteractable : MonoBehaviour, IInteractable, IDialogueA
         if (opened)
         {
             awaitingConsultationClose = true;
+            if (hospitalOverlay != null) hospitalOverlay.SetActive(true);
         }
         else
         {
@@ -145,6 +146,7 @@ public class HospitalDoorInteractable : MonoBehaviour, IInteractable, IDialogueA
 
         if (PlayerStats.Instance != null)
             PlayerStats.Instance.SetVisitedHospital();
+        if (hospitalOverlay != null) hospitalOverlay.SetActive(false); // ← tambah ini
     }
 
     public List<DialogueChoiceData> GetAvailableChoices(DialogueNodeData node)

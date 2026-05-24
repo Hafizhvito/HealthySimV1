@@ -213,31 +213,19 @@ public class GymSessionController : MonoBehaviour
 
     private void MovePlayerToSpawnPoint()
     {
-        Transform spawnTransform = playerSpawnPointOverride;
-        if (spawnTransform == null)
-        {
-            GameObject spawn = GameObject.Find("PlayerSpawnPoint");
-            if (spawn != null)
-                spawnTransform = spawn.transform;
-        }
-
-        if (spawnTransform == null)
-        {
-            Debug.LogWarning(FallbackLogPrefix + " Missing PlayerSpawnPoint in Gym scene.");
-            return;
-        }
-
+        // Skip - player akan di-hide saja, posisi dihandle SpawnPlayerManager
         GameObject player = playerOverride;
         if (player == null)
             player = GameObject.FindWithTag("Player");
 
         if (player == null)
         {
-            Debug.LogWarning(FallbackLogPrefix + " Missing Player in Gym scene when moving to spawn point.");
-            return;
+            PlayerController pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+            if (pc != null) player = pc.gameObject;
         }
 
-        player.transform.position = spawnTransform.position;
-        player.transform.rotation = spawnTransform.rotation;
+        if (player == null) return;
+
+        player.SetActive(false);
     }
 }

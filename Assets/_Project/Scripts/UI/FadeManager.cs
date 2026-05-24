@@ -45,6 +45,10 @@ public class FadeManager : MonoBehaviour
         if (string.IsNullOrWhiteSpace(sceneName))
             return;
 
+        // Instant black satu frame dulu biar tidak ada gap
+        _canvasGroup.alpha = 0.5f;
+        _canvasGroup.blocksRaycasts = true;
+
         FadeToBlack(fadeDuration, () =>
         {
             if (_fadeRoutine != null)
