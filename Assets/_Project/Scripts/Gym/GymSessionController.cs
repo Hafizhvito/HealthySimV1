@@ -18,6 +18,8 @@ public class GymSessionController : MonoBehaviour
     [SerializeField] private float postLoadDelay = 0.5f;
     [SerializeField] private float dialoguePollInterval = 0.05f;
     [SerializeField] private float trainingAnimationDuration = 3.2f;
+    [SerializeField] private float faintTimeSkipDuration = 1.2f;
+    [SerializeField] private int faintSkipHours = 1;
 
     private GymSessionData activeSession;
     private NpcDialogueInteractable trainerInteractable;
@@ -61,6 +63,12 @@ public class GymSessionController : MonoBehaviour
             yield break;
         }
 
+        if (activeSession.forceFaint)
+        {
+            yield return StartCoroutine(RunFaintFlow(progression));
+            yield break;
+        }
+
         SetGymSessionLock(true);
 
         DialogueGraphData preDialogue = trainerDialogueController.BuildPreTrainingDialogue(activeSession);
@@ -83,6 +91,28 @@ public class GymSessionController : MonoBehaviour
         DialogueGraphData postDialogue = trainerDialogueController.BuildPostTrainingDialogue(activeSession);
         yield return StartCoroutine(PlayDialogueAndWait(postDialogue));
 
+        ExitToMainScene();
+    }
+
+    private IEnumerator RunFaintFlow(GymProgressionSystem progression)
+    {
+        SetGymSessionLock(true);
+
+        bool animationDone = false;
+        int startHour = activeSession.startHour;
+        int endHour = startHour + Mathf.Max(1, faintSkipHours);
+
+        clockUI.PlayTimeSkipAnimation(
+            "Pingsan saat latihan",
+            startHour,
+            endHour,
+            faintTimeSkipDuration,
+            () => animationDone = true);
+
+        while (!animationDone)
+            yield return null;
+
+        progression.CompleteFaintSession(activeSession);
         ExitToMainScene();
     }
 

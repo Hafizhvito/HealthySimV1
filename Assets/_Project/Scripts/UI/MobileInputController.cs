@@ -2,6 +2,7 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 #if ENABLE_INPUT_SYSTEM
@@ -15,6 +16,7 @@ public class MobileInputController : MonoBehaviour
 
     [SerializeField] private bool forceMobileUI = true;
     [SerializeField] [Range(0.01f, 0.3f)] private float lookSensitivity = 0.06f;
+    [SerializeField] private string[] hideInScenes = { "OfficeScene", "GymScene" };
 
     public Vector2 MoveInput { get; private set; }
     public Vector2 LookDelta { get; private set; }
@@ -138,6 +140,7 @@ public class MobileInputController : MonoBehaviour
         if (!isTouchUiEnabled)
             return;
 
+
         if (playerController == null || cameraSystemTransform == null)
             ResolveSceneReferences();
 
@@ -163,6 +166,7 @@ public class MobileInputController : MonoBehaviour
 
         ApplyLookInput(LookDelta);
     }
+
 
     private bool ShouldEnableTouchUi()
     {

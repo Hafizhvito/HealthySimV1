@@ -33,6 +33,18 @@ public class HospitalDoorInteractable : MonoBehaviour, IInteractable, IDialogueA
         TrySubscribeMenuClose();
     }
 
+    private void Update()
+    {
+        if (!awaitingConsultationClose)
+            return;
+
+        if (NpcDialogueMenuController.Instance == null)
+            return;
+
+        if (!NpcDialogueMenuController.Instance.IsOpen)
+            HandleDialogueClosed();
+    }
+
     private void OnDisable()
     {
         TryUnsubscribeMenuClose();
@@ -105,6 +117,7 @@ public class HospitalDoorInteractable : MonoBehaviour, IInteractable, IDialogueA
         bool opened = NpcDialogueMenuController.Instance.OpenDialogue(this, graph);
         if (opened)
         {
+            TrySubscribeMenuClose();
             awaitingConsultationClose = true;
             if (hospitalOverlay != null) hospitalOverlay.SetActive(true);
         }

@@ -23,6 +23,7 @@ public class GymSessionData
     public int endHour;
     public float energyAtStart;
     public GymTier tierAtStart;
+    public bool forceFaint;
 
     public float adaptationBefore;
     public float fatigueBefore;
@@ -107,11 +108,51 @@ public class GymProgressionSystem : MonoBehaviour
             tierAtStart = EvaluateTier(adaptation, fatigue),
             adaptationBefore = adaptation,
             fatigueBefore = fatigue,
-            result = GymSessionResult.Failed
+            result = GymSessionResult.Failed,
+            forceFaint = false
         };
 
         PendingSession = data;
         return data;
+    }
+
+    public GymSessionData BuildFaintSession(TimeManager.TimePeriod period, float energyNormalized)
+    {
+        if (HasTrainedToday)
+            return null;
+
+        if (period == TimeManager.TimePeriod.Night)
+            return null;
+
+        PlayerStats stats = ResolvePlayerStats();
+        float adaptation = stats != null ? stats.TrainingAdaptation : 0f;
+        float fatigue = stats != null ? stats.FatigueDebt : 0f;
+
+        GymSessionData data = new GymSessionData
+        {
+            period = period,
+            startHour = ResolveStartHour(period),
+            endHour = ResolveEndHour(period),
+            energyAtStart = Mathf.Clamp01(energyNormalized),
+            tierAtStart = EvaluateTier(adaptation, fatigue),
+            adaptationBefore = adaptation,
+            fatigueBefore = fatigue,
+            result = GymSessionResult.Failed,
+            forceFaint = true
+        };
+
+        PendingSession = data;
+        return data;
+    }
+
+    public void CompleteFaintSession(GymSessionData data)
+    {
+        if (data == null)
+            return;
+
+        PendingSession = null;
+        LastSession = data;
+        HasTrainedToday = true;
     }
 
     public void ApplyResult(GymSessionData data)

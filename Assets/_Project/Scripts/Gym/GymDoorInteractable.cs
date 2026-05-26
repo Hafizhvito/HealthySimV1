@@ -17,7 +17,11 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
     private Collider cachedCollider;
     private Coroutine floatingTextRoutine;
+    private GameObject floatingTextObject;
     private Canvas faintDialogCanvas;
+    private bool pendingFaintConfirm;
+    private TimeManager.TimePeriod pendingPeriod;
+    private float pendingEnergy;
 
     private void Awake()
     {
@@ -92,16 +96,15 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
             return;
         }
 
+        if (energy < FaintEnergyThreshold)
+        {
+            ShowFaintWarningDialog(period, energy);
+            return;
+        }
+
         if (!canTrain)
         {
-            if (energy < FaintEnergyThreshold)
-            {
-                ShowFaintWarningDialog();
-            }
-            else
-            {
-                ShowFloatingText("Energimu terlalu rendah untuk berlatih.", 2f);
-            }
+            ShowFloatingText("Energimu terlalu rendah untuk berlatih.", 2f);
             return;
         }
 
@@ -118,7 +121,7 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
             return;
         }
 
-        SpawnPlayerManager.TargetSpawnID = "spawnpoint";
+        SpawnPlayerManager.TargetSpawnID = "gymdoor";
         fadeManager.FadeToBlackAndLoad(gymSceneName, 0.5f);
     }
 
@@ -162,12 +165,19 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
         if (floatingTextRoutine != null)
             StopCoroutine(floatingTextRoutine);
 
+        if (floatingTextObject != null)
+        {
+            Destroy(floatingTextObject);
+            floatingTextObject = null;
+        }
+
         floatingTextRoutine = StartCoroutine(FloatingTextRoutine(text, duration));
     }
 
     private IEnumerator FloatingTextRoutine(string text, float duration)
     {
         GameObject textObj = new GameObject("GymDoorFloatingText");
+        floatingTextObject = textObj;
 
         TextMeshPro tmp = textObj.AddComponent<TextMeshPro>();
         tmp.text = text;
@@ -198,14 +208,21 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
             yield return null;
         }
 
-        Destroy(textObj);
+        if (textObj != null)
+            Destroy(textObj);
+
+        floatingTextObject = null;
         floatingTextRoutine = null;
     }
 
-    private void ShowFaintWarningDialog()
+    private void ShowFaintWarningDialog(TimeManager.TimePeriod period, float energy)
     {
         if (faintDialogCanvas != null)
             return;
+
+        pendingFaintConfirm = true;
+        pendingPeriod = period;
+        pendingEnergy = energy;
 
         GameObject canvasObj = new GameObject("GymFaintWarningCanvas");
         faintDialogCanvas = canvasObj.AddComponent<Canvas>();
@@ -290,7 +307,11 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
     private void OnConfirmFaint()
     {
         CloseFaintDialog();
-        StartCoroutine(FaintSequence());
+        if (!pendingFaintConfirm)
+            return;
+
+        pendingFaintConfirm = false;
+        StartGymFaintSession(pendingPeriod, pendingEnergy);
     }
 
     private void CloseFaintDialog()
@@ -300,6 +321,34 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
         Destroy(faintDialogCanvas.gameObject);
         faintDialogCanvas = null;
+    }
+
+    private void StartGymFaintSession(TimeManager.TimePeriod period, float energy)
+    {
+        GymProgressionSystem progression = ResolveGymProgression();
+        FadeManager fadeManager = ResolveFadeManager();
+
+        if (progression == null)
+        {
+            ShowFloatingText("Sistem gym belum siap.", 2f);
+            return;
+        }
+
+        GymSessionData session = progression.BuildFaintSession(period, energy);
+        if (session == null)
+        {
+            ShowFloatingText(blockedEnergyText, 2f);
+            return;
+        }
+
+        if (fadeManager == null)
+        {
+            ShowFloatingText("Transisi belum siap.", 2f);
+            return;
+        }
+
+        SpawnPlayerManager.TargetSpawnID = "gymdoor";
+        fadeManager.FadeToBlackAndLoad(gymSceneName, 0.5f);
     }
 
     private IEnumerator FaintSequence()
