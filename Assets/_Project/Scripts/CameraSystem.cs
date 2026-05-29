@@ -120,11 +120,44 @@ public class CameraSystem : MonoBehaviour
             }
         }
 
+        ConfigureCameraTargets();
+
         ApplyBrainUpdateMode();
         SetTPP();
+        StartCoroutine(ResetInitialPitchNextFrame());
 
         if (playStartupCinematic)
             StartStartupCinematic();
+    }
+
+    private IEnumerator ResetInitialPitchNextFrame()
+    {
+        yield return null;
+        yield return null;
+        ResetInitialPitch();
+    }
+
+    private void ResetInitialPitch()
+    {
+        if (orbitalFollow != null)
+        {
+            InputAxis pitch = orbitalFollow.VerticalAxis;
+            pitch.Value = -10f;
+            orbitalFollow.VerticalAxis = pitch;
+            lastTppPitch = pitch.Value;
+        }
+        else if (tppCamera != null)
+        {
+            Vector3 euler = tppCamera.transform.localEulerAngles;
+            tppCamera.transform.localEulerAngles = new Vector3(0f, euler.y, euler.z);
+        }
+
+        if (fppPanTilt != null)
+        {
+            InputAxis tilt = fppPanTilt.TiltAxis;
+            tilt.Value = 0f;
+            fppPanTilt.TiltAxis = tilt;
+        }
     }
 
 
@@ -156,7 +189,41 @@ public class CameraSystem : MonoBehaviour
             pc.gameObject.SetActive(true);
             playerRoot = pc.transform;
             playerRenderers = pc.GetComponentsInChildren<Renderer>();
+            ConfigureCameraTargets();
             SetTPP();
+        }
+    }
+
+    private void ConfigureCameraTargets()
+    {
+        if (playerRoot == null)
+            return;
+
+        Transform anchor = playerRoot.Find("FPP_Anchor")
+            ?? playerRoot.Find("CameraTarget")
+            ?? playerRoot;
+
+        if (tppCamera != null)
+        {
+            var target = tppCamera.Target;
+            target.TrackingTarget = anchor;
+            target.LookAtTarget = anchor;
+            tppCamera.Target = target;
+        }
+
+        if (fppCamera != null)
+        {
+            var target = fppCamera.Target;
+            target.TrackingTarget = anchor;
+            target.LookAtTarget = anchor;
+            fppCamera.Target = target;
+        }
+
+        if (orbitalFollow != null && anchor == playerRoot)
+        {
+            Vector3 offset = orbitalFollow.TargetOffset;
+            offset.y = Mathf.Max(offset.y, 1.6f);
+            orbitalFollow.TargetOffset = offset;
         }
     }
 
@@ -280,6 +347,7 @@ public class CameraSystem : MonoBehaviour
 
     private void HandleDesktopMouseLook()
     {
+#if !UNITY_ANDROID || UNITY_EDITOR
         if (Cursor.lockState != CursorLockMode.Locked && !Input.GetMouseButton(1))
             return;
 
@@ -291,6 +359,7 @@ public class CameraSystem : MonoBehaviour
 
         Vector2 lookDelta = new Vector2(mouseX, mouseY) * mouseLookSensitivity;
         AddLookInput(lookDelta, 1f);
+#endif
     }
 
     private bool IsTouchInputActive()
@@ -564,6 +633,14 @@ public class CameraSystem : MonoBehaviour
         SetFollowDistance(startDistance);
         SetFollowSide(startSide);
         SetCameraFov(tppCamera, startFov);
+
+        if (orbitalFollow != null)
+        {
+            InputAxis pitch = orbitalFollow.VerticalAxis;
+            pitch.Value = 0f;
+            orbitalFollow.VerticalAxis = pitch;
+            lastTppPitch = pitch.Value;
+        }
 
         float elapsed = 0f;
         while (elapsed < duration)
