@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -58,6 +59,16 @@ public class MobileInputController : MonoBehaviour
     private float fallbackPitch;
     private int leftTouchId = int.MinValue;
     private int rightTouchId = int.MinValue;
+
+    internal struct TouchSample
+    {
+        public int id;
+        public Vector2 position;
+        public Vector2 delta;
+        public TouchPhase phase;
+    }
+
+    internal static readonly List<TouchSample> TouchSamples = new List<TouchSample>(10);
 
     private static Sprite runtimeCircleSprite;
     private static Sprite runtimeRoundedRectSprite;
@@ -180,6 +191,15 @@ public class MobileInputController : MonoBehaviour
             return;
         }
 
+        GetTouchSamples(); // populate once per frame before children read it
+
+#if !UNITY_EDITOR
+        if (moveJoystick != null)
+            moveJoystick.ProcessTouches();
+        if (lookSwipeZone != null)
+            lookSwipeZone.ProcessTouches();
+#endif
+
         MoveInput = moveJoystick != null ? ApplyDeadZone(moveJoystick.Output) : Vector2.zero;
         LookDelta = lookSwipeZone != null ? lookSwipeZone.ConsumeOutput() : Vector2.zero;
 
@@ -295,7 +315,7 @@ public class MobileInputController : MonoBehaviour
         if (moveJoystick == null)
             moveJoystick = joystickOuter.gameObject.AddComponent<MobileJoystick>();
 
-        moveJoystick.Initialize(this, joystickKnob, JoystickRadius, JoystickDeadZone);
+        moveJoystick.Initialize(this, joystickOuter, joystickKnob, JoystickRadius, JoystickDeadZone);
     }
 
 #if UNITY_EDITOR
@@ -338,7 +358,7 @@ public class MobileInputController : MonoBehaviour
             if (moveJoystick == null)
                 moveJoystick = joystickOuter.gameObject.AddComponent<MobileJoystick>();
 
-            moveJoystick.Initialize(this, joystickKnob, JoystickRadius, JoystickDeadZone);
+            moveJoystick.Initialize(this, joystickOuter, joystickKnob, JoystickRadius, JoystickDeadZone);
         }
 
         RectTransform swipeZoneRect = CreateTouchZone(
@@ -647,13 +667,23 @@ public class MobileInputController : MonoBehaviour
         return input.magnitude < JoystickDeadZone ? Vector2.zero : Vector2.ClampMagnitude(input, 1f);
     }
 
-    private static float GetScreenHalfX()
+    internal static float GetScreenHalfX()
     {
-        return Screen.width * 0.5f;
+        return Screen.width * Mathf.Clamp01(SwipeZoneAnchorMin.x);
     }
 
-    private static bool IsLeftSideTouch(Vector2 screenPosition)
+    private bool IsLeftSideTouch(Vector2 screenPosition)
     {
+        if (joystickOuter != null)
+        {
+            Camera eventCamera = null;
+            if (uiCanvas != null && uiCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                eventCamera = uiCanvas.worldCamera != null ? uiCanvas.worldCamera : cachedCamera;
+
+            if (RectTransformUtility.RectangleContainsScreenPoint(joystickOuter, screenPosition, eventCamera))
+                return true;
+        }
+
         return screenPosition.x < GetScreenHalfX();
     }
 
@@ -676,21 +706,27 @@ public class MobileInputController : MonoBehaviour
         }
     }
 
-    private bool TryClaimLeftTouch(int pointerId)
+    private bool TryClaimLeftTouch(int touchId)
     {
-        if (leftTouchId != int.MinValue && leftTouchId != pointerId)
+        if (rightTouchId != int.MinValue && rightTouchId == touchId)
             return false;
 
-        leftTouchId = pointerId;
+        if (leftTouchId != int.MinValue && leftTouchId != touchId)
+            return false;
+
+        leftTouchId = touchId;
         return true;
     }
 
-    private bool TryClaimRightTouch(int pointerId)
+    private bool TryClaimRightTouch(int touchId)
     {
-        if (rightTouchId != int.MinValue && rightTouchId != pointerId)
+        if (leftTouchId != int.MinValue && leftTouchId == touchId)
             return false;
 
-        rightTouchId = pointerId;
+        if (rightTouchId != int.MinValue && rightTouchId != touchId)
+            return false;
+
+        rightTouchId = touchId;
         return true;
     }
 
@@ -705,6 +741,72 @@ public class MobileInputController : MonoBehaviour
         if (rightTouchId == pointerId)
             rightTouchId = int.MinValue;
     }
+
+    private bool IsLeftTouchId(int touchId)
+    {
+        return leftTouchId == touchId;
+    }
+
+    private List<TouchSample> GetTouchSamples()
+    {
+        TouchSamples.Clear();
+
+#if ENABLE_INPUT_SYSTEM
+        if (UnityEngine.InputSystem.EnhancedTouch.EnhancedTouchSupport.enabled)
+        {
+            var touches = UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches;
+            for (int i = 0; i < touches.Count; i++)
+            {
+                var touch = touches[i];
+                TouchSamples.Add(new TouchSample
+                {
+                    id = touch.touchId,
+                    position = touch.screenPosition,
+                    delta = touch.delta,
+                    phase = ConvertEnhancedPhase(touch.phase)
+                });
+            }
+
+            return TouchSamples;
+        }
+#endif
+
+        Touch[] legacyTouches = Input.touches;
+        for (int i = 0; i < legacyTouches.Length; i++)
+        {
+            Touch touch = legacyTouches[i];
+            TouchSamples.Add(new TouchSample
+            {
+                id = touch.fingerId,
+                position = touch.position,
+                delta = touch.deltaPosition,
+                phase = touch.phase
+            });
+        }
+
+        return TouchSamples;
+    }
+
+#if ENABLE_INPUT_SYSTEM
+    private static TouchPhase ConvertEnhancedPhase(UnityEngine.InputSystem.TouchPhase phase)
+    {
+        switch (phase)
+        {
+            case UnityEngine.InputSystem.TouchPhase.Began:
+                return TouchPhase.Began;
+            case UnityEngine.InputSystem.TouchPhase.Moved:
+                return TouchPhase.Moved;
+            case UnityEngine.InputSystem.TouchPhase.Stationary:
+                return TouchPhase.Stationary;
+            case UnityEngine.InputSystem.TouchPhase.Ended:
+                return TouchPhase.Ended;
+            case UnityEngine.InputSystem.TouchPhase.Canceled:
+                return TouchPhase.Canceled;
+            default:
+                return TouchPhase.Canceled;
+        }
+    }
+#endif
 
     internal void SetMoveOutput(Vector2 value)
     {
@@ -750,10 +852,12 @@ public class MobileInputController : MonoBehaviour
     {
         private MobileInputController owner;
         private RectTransform baseRect;
+        private RectTransform joystickOuterRect;
         private RectTransform knobRect;
         private float maxRadius;
         private int activePointerId = int.MinValue;
         private Vector2 pressLocalOrigin;
+        private Vector2 joystickDefaultAnchoredPos;
 
         private const float ActiveSmoothingSpeed = 22f;
         private const float ReleaseSmoothingSpeed = 32f;
@@ -768,16 +872,21 @@ public class MobileInputController : MonoBehaviour
 
         public void Initialize(
             MobileInputController ownerController,
+            RectTransform outerRect,
             RectTransform knob,
             float dragRadius,
             float deadZone)
         {
             owner = ownerController;
             baseRect = transform as RectTransform;
+            joystickOuterRect = outerRect;
             knobRect = knob;
             maxRadius = Mathf.Max(1f, dragRadius);
             rawOutput = Vector2.zero;
             smoothedOutput = Vector2.zero;
+
+            if (joystickOuterRect != null)
+                joystickDefaultAnchoredPos = joystickOuterRect.anchoredPosition;
 
             if (knobRect != null)
                 knobRect.anchoredPosition = Vector2.zero;
@@ -801,9 +910,60 @@ public class MobileInputController : MonoBehaviour
                 owner.SetMoveOutput(smoothedOutput);
         }
 
+    public void ProcessTouches()
+        {
+            bool foundActiveFinger = false;
+            List<TouchSample> touches = MobileInputController.TouchSamples;
+
+            for (int i = 0; i < touches.Count; i++)
+            {
+                TouchSample touch = touches[i];
+                if (touch.id == activePointerId)
+                {
+                    foundActiveFinger = true;
+                }
+                else
+                {
+                    if (owner == null || !owner.IsLeftSideTouch(touch.position))
+                        continue;
+                }
+
+                if (activePointerId == int.MinValue
+                    && (touch.phase == TouchPhase.Began
+                        || touch.phase == TouchPhase.Moved
+                        || touch.phase == TouchPhase.Stationary))
+                {
+                    if (owner != null && owner.TryClaimLeftTouch(touch.id))
+                    {
+                        activePointerId = touch.id;
+                        foundActiveFinger = true;
+                        SetPressOrigin(touch.position);
+                    }
+
+                    continue;
+                }
+
+                if (touch.id != activePointerId)
+                    continue;
+
+                if (touch.phase == TouchPhase.Began)
+                    SetPressOrigin(touch.position);
+                else if (touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary)
+                    UpdateFromScreenPosition(touch.position);
+                else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
+                    ForceReset();
+            }
+
+            if (activePointerId != int.MinValue && !foundActiveFinger)
+                ForceReset();
+        }
+
         public void OnPointerDown(PointerEventData eventData)
         {
-            if (!IsLeftSideTouch(eventData.position))
+#if !UNITY_EDITOR
+            return;
+#endif
+            if (owner == null || !owner.IsLeftSideTouch(eventData.position))
                 return;
 
             if (owner != null && !owner.TryClaimLeftTouch(eventData.pointerId))
@@ -829,6 +989,9 @@ public class MobileInputController : MonoBehaviour
 
         public void OnDrag(PointerEventData eventData)
         {
+#if !UNITY_EDITOR
+            return;
+#endif
             if (eventData.pointerId != activePointerId)
                 return;
 
@@ -837,6 +1000,9 @@ public class MobileInputController : MonoBehaviour
 
         public void OnPointerUp(PointerEventData eventData)
         {
+#if !UNITY_EDITOR
+            return;
+#endif
             if (eventData.pointerId != activePointerId)
                 return;
 
@@ -858,6 +1024,9 @@ public class MobileInputController : MonoBehaviour
             if (knobRect != null)
                 knobRect.anchoredPosition = Vector2.zero;
 
+            if (joystickOuterRect != null)
+                joystickOuterRect.anchoredPosition = joystickDefaultAnchoredPos;
+
             if (owner == null)
                 return;
 
@@ -865,6 +1034,47 @@ public class MobileInputController : MonoBehaviour
                 owner.ReleaseLeftTouch(previousPointerId);
 
             owner.SetMoveOutput(Vector2.zero);
+        }
+
+        private void SetPressOrigin(Vector2 screenPosition)
+        {
+            if (baseRect == null)
+                return;
+
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                baseRect,
+                screenPosition,
+                GetEventCamera(),
+                out pressLocalOrigin);
+
+            if (joystickOuterRect != null && owner?.uiCanvas != null)
+            {
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    owner.uiCanvas.transform as RectTransform,
+                    screenPosition,
+                    owner.uiCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : owner.cachedCamera,
+                    out Vector2 canvasLocal);
+                joystickOuterRect.anchoredPosition = canvasLocal;
+            }
+
+            if (knobRect != null)
+                knobRect.anchoredPosition = Vector2.zero;
+
+            rawOutput = Vector2.zero;
+        }
+
+        private void UpdateFromScreenPosition(Vector2 screenPosition)
+        {
+            if (baseRect == null)
+                return;
+
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                baseRect,
+                screenPosition,
+                GetEventCamera(),
+                out Vector2 localDragPoint);
+
+            ApplyDragDelta(localDragPoint - pressLocalOrigin);
         }
 
         private void UpdatePointerState(PointerEventData eventData)
@@ -878,7 +1088,11 @@ public class MobileInputController : MonoBehaviour
                 GetPointerEventCamera(eventData),
                 out Vector2 localDragPoint);
 
-            Vector2 delta = localDragPoint - pressLocalOrigin;
+            ApplyDragDelta(localDragPoint - pressLocalOrigin);
+        }
+
+        private void ApplyDragDelta(Vector2 delta)
+        {
             Vector2 clamped = Vector2.ClampMagnitude(delta, maxRadius);
 
             if (knobRect != null)
@@ -895,6 +1109,32 @@ public class MobileInputController : MonoBehaviour
 
             float curvedMagnitude = Mathf.Pow(magnitude, ResponseExponent);
             rawOutput = normalized.normalized * curvedMagnitude;
+        }
+
+        private bool IsWithinJoystickRadius(Vector2 screenPosition)
+        {
+            if (baseRect == null)
+                return false;
+
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                baseRect,
+                screenPosition,
+                GetEventCamera(),
+                out Vector2 localPoint);
+
+            return localPoint.sqrMagnitude <= (maxRadius * maxRadius);
+        }
+
+        private Camera GetEventCamera()
+        {
+            if (owner == null)
+                return null;
+
+            Canvas ownerCanvas = owner.uiCanvas;
+            if (ownerCanvas != null && ownerCanvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                return ownerCanvas.worldCamera != null ? ownerCanvas.worldCamera : owner.cachedCamera;
+
+            return null;
         }
 
         private Camera GetPointerEventCamera(PointerEventData eventData)
@@ -940,56 +1180,62 @@ public class MobileInputController : MonoBehaviour
         {
             if (owner == null)
                 return;
+        }
 
-#if !UNITY_EDITOR
+        public void ProcessTouches()
+        {
+            if (owner == null)
+                return;
+
             float screenW = Mathf.Max(1f, Screen.width);
             float screenH = Mathf.Max(1f, Screen.height);
-            bool foundSwipePointer = false;
+            List<TouchSample> touches = MobileInputController.TouchSamples;
 
-            Touch[] touches = Input.touches;
-            for (int i = 0; i < touches.Length; i++)
+            // Check if active swipe finger still exists
+            if (swipePointerId != int.MinValue)
             {
-                Touch touch = touches[i];
-                if (IsLeftSideTouch(touch.position))
-                    continue;
-
-                if (touch.fingerId == swipePointerId)
-                    foundSwipePointer = true;
-
-                if (swipePointerId == int.MinValue
-                    && (touch.phase == TouchPhase.Began
-                        || touch.phase == TouchPhase.Moved
-                        || touch.phase == TouchPhase.Stationary))
+                bool stillAlive = false;
+                for (int i = 0; i < touches.Count; i++)
                 {
-                    if (owner.TryClaimRightTouch(touch.fingerId))
+                    if (touches[i].id != swipePointerId)
+                        continue;
+                    stillAlive = true;
+                    TouchSample t = touches[i];
+                    if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
                     {
-                        swipePointerId = touch.fingerId;
-                        pendingLookDelta = Vector2.zero;
-                        owner.SetLookOutput(Vector2.zero);
+                        ForceReset();
+                        return;
                     }
-
-                    continue;
+                    if (t.phase == TouchPhase.Moved)
+                    {
+                        Vector2 lookDelta = new Vector2(t.delta.x / screenW, -(t.delta.y / screenH));
+                        pendingLookDelta = lookDelta;
+                        owner.SetLookOutput(lookDelta);
+                    }
+                    break;
                 }
-
-                if (touch.fingerId != swipePointerId)
-                    continue;
-
-                if (touch.phase == TouchPhase.Moved)
-                {
-                    Vector2 delta = touch.deltaPosition;
-                    Vector2 lookDelta = new Vector2(delta.x / screenW, -(delta.y / screenH));
-                    pendingLookDelta = lookDelta;
-                    owner.SetLookOutput(lookDelta);
-                }
-                else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
-                {
+                if (!stillAlive)
                     ForceReset();
-                }
+                return;
             }
 
-            if (swipePointerId != int.MinValue && !foundSwipePointer)
-                ForceReset();
-#endif
+            // Try claim a new right-side touch
+            for (int i = 0; i < touches.Count; i++)
+            {
+                TouchSample touch = touches[i];
+                if (touch.phase != TouchPhase.Began)
+                    continue;
+                if (owner.IsLeftTouchId(touch.id))
+                    continue;
+                if (touch.position.x < MobileInputController.GetScreenHalfX())
+                    continue;
+                if (!owner.TryClaimRightTouch(touch.id))
+                    continue;
+                swipePointerId = touch.id;
+                pendingLookDelta = Vector2.zero;
+                owner.SetLookOutput(Vector2.zero);
+                break;
+            }
         }
 
         public void OnPointerDown(PointerEventData eventData)
@@ -997,7 +1243,7 @@ public class MobileInputController : MonoBehaviour
 #if !UNITY_EDITOR
             return;
 #endif
-            if (IsLeftSideTouch(eventData.position))
+            if (owner != null && owner.IsLeftSideTouch(eventData.position))
                 return;
 
             if (owner != null && !owner.TryClaimRightTouch(eventData.pointerId))
