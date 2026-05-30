@@ -152,7 +152,12 @@ public class PlayerController : MonoBehaviour
     // ---------------------------------------------------------------
     void Update()
     {
+#if ENABLE_INPUT_SYSTEM
+        var keyboard = Keyboard.current;
+        if (keyboard != null && keyboard.f8Key.wasPressedThisFrame)
+#else
         if (Input.GetKeyDown(KeyCode.F8))
+#endif
         {
             inputLocks.Clear();
             Debug.LogWarning("F8: Input locks cleared.");
@@ -176,9 +181,25 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
+#if ENABLE_INPUT_SYSTEM
+        float h = 0f;
+        float v = 0f;
+        if (keyboard != null)
+        {
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
+                h -= 1f;
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
+                h += 1f;
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
+                v += 1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
+                v -= 1f;
+        }
+#else
         // Baca keyboard axis
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
+#endif
         if (Mathf.Abs(h) < inputDeadZone) h = 0f; 
         if (Mathf.Abs(v) < inputDeadZone) v = 0f;
         keyboardInput = new Vector2(h, v);
@@ -191,8 +212,13 @@ public class PlayerController : MonoBehaviour
             rawInput = keyboardInput;
 
         // Running flag (raw, difinalisasi di ProcessMoveDir)
-        isRunningRaw = Input.GetKey(KeyCode.LeftShift)
-            || (hasMobileInput && mobileRunRequest);
+    #if ENABLE_INPUT_SYSTEM
+        bool shiftHeld = keyboard != null
+            && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
+    #else
+        bool shiftHeld = Input.GetKey(KeyCode.LeftShift);
+    #endif
+        isRunningRaw = shiftHeld || (hasMobileInput && mobileRunRequest);
 
         // Cache camera basis di Update agar sinkron dengan update kamera.
         Transform cam = Camera.main != null
@@ -209,11 +235,11 @@ public class PlayerController : MonoBehaviour
         cachedCameraRight = Vector3.Cross(Vector3.up, cachedCameraForward).normalized;
 
         // Jump — harus di Update karena GetButtonDown frame-sensitive
+#if ENABLE_INPUT_SYSTEM
+        bool jumpPressed = keyboard != null && keyboard.spaceKey.wasPressedThisFrame;
+#else
         bool jumpPressed = Input.GetButtonDown("Jump")
             || Input.GetKeyDown(KeyCode.Space);
-#if ENABLE_INPUT_SYSTEM
-        if (Keyboard.current != null)
-            jumpPressed |= Keyboard.current.spaceKey.wasPressedThisFrame;
 #endif
         if (jumpPressed)
             jumpRequest = true;

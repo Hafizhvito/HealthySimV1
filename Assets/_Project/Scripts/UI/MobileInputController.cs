@@ -723,9 +723,6 @@ public class MobileInputController : MonoBehaviour
         if (leftTouchId != int.MinValue && leftTouchId == touchId)
             return false;
 
-        if (rightTouchId != int.MinValue && rightTouchId != touchId)
-            return false;
-
         rightTouchId = touchId;
         return true;
     }
@@ -738,8 +735,7 @@ public class MobileInputController : MonoBehaviour
 
     private void ReleaseRightTouch(int pointerId)
     {
-        if (rightTouchId == pointerId)
-            rightTouchId = int.MinValue;
+        rightTouchId = int.MinValue;
     }
 
     private bool IsLeftTouchId(int touchId)
@@ -751,7 +747,7 @@ public class MobileInputController : MonoBehaviour
     {
         TouchSamples.Clear();
 
-#if ENABLE_INPUT_SYSTEM
+    #if ENABLE_INPUT_SYSTEM
         if (UnityEngine.InputSystem.EnhancedTouch.EnhancedTouchSupport.enabled)
         {
             var touches = UnityEngine.InputSystem.EnhancedTouch.Touch.activeTouches;
@@ -766,10 +762,9 @@ public class MobileInputController : MonoBehaviour
                     phase = ConvertEnhancedPhase(touch.phase)
                 });
             }
-
             return TouchSamples;
         }
-#endif
+    #endif
 
         Touch[] legacyTouches = Input.touches;
         for (int i = 0; i < legacyTouches.Length; i++)
@@ -783,7 +778,6 @@ public class MobileInputController : MonoBehaviour
                 phase = touch.phase
             });
         }
-
         return TouchSamples;
     }
 
@@ -1227,7 +1221,7 @@ public class MobileInputController : MonoBehaviour
                     continue;
                 if (owner.IsLeftTouchId(touch.id))
                     continue;
-                if (touch.position.x < MobileInputController.GetScreenHalfX())
+                if (touch.position.x <= Screen.width * 0.45f)
                     continue;
                 if (!owner.TryClaimRightTouch(touch.id))
                     continue;

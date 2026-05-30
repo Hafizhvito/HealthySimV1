@@ -2,6 +2,10 @@ using UnityEngine;
 using Unity.Cinemachine;
 using System.Collections;
 
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
+
 public class CameraSystem : MonoBehaviour
 {
     [Header("Virtual Cameras")]
@@ -229,10 +233,20 @@ public class CameraSystem : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.V))
+#if ENABLE_INPUT_SYSTEM
+        var keyboard = Keyboard.current;
+        bool togglePressed = keyboard != null
+            && (keyboard.fKey.wasPressedThisFrame || keyboard.vKey.wasPressedThisFrame);
+        bool escapePressed = keyboard != null && keyboard.escapeKey.wasPressedThisFrame;
+#else
+        bool togglePressed = Input.GetKeyDown(KeyCode.F) || Input.GetKeyDown(KeyCode.V);
+        bool escapePressed = Input.GetKeyDown(KeyCode.Escape);
+#endif
+
+        if (togglePressed)
             ToggleCamera();
 
-        if (Input.GetKeyDown(KeyCode.Escape) && !isFirstPerson)
+        if (escapePressed && !isFirstPerson)
             UnlockCursor();
 
         if (enableDesktopMouseLook && !IsTouchInputActive())
@@ -348,11 +362,24 @@ public class CameraSystem : MonoBehaviour
     private void HandleDesktopMouseLook()
     {
 #if !UNITY_ANDROID || UNITY_EDITOR
+#if ENABLE_INPUT_SYSTEM
+        var mouse = Mouse.current;
+        if (mouse == null)
+            return;
+
+        if (Cursor.lockState != CursorLockMode.Locked && !mouse.rightButton.isPressed)
+            return;
+
+        Vector2 delta = mouse.delta.ReadValue();
+        float mouseX = delta.x;
+        float mouseY = delta.y;
+#else
         if (Cursor.lockState != CursorLockMode.Locked && !Input.GetMouseButton(1))
             return;
 
         float mouseX = Input.GetAxis("Mouse X");
         float mouseY = Input.GetAxis("Mouse Y");
+#endif
 
         if (Mathf.Abs(mouseX) < 0.0001f && Mathf.Abs(mouseY) < 0.0001f)
             return;
@@ -368,7 +395,11 @@ public class CameraSystem : MonoBehaviour
             return true;
 
         if (MobileInputController.Instance != null && MobileInputController.Instance.IsTouchUiEnabled)
+#if ENABLE_INPUT_SYSTEM
+            return Touchscreen.current != null && Touchscreen.current.touches.Count > 0;
+#else
             return Input.touchCount > 0;
+#endif
 
         return false;
     }
