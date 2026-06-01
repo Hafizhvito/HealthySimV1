@@ -14,9 +14,10 @@ public class IntroCutsceneController : MonoBehaviour
     [Header("Phase Timings")]
     [SerializeField] private float phase0LetterboxDuration = 0.8f;
     [SerializeField] private float phase0FadeDuration = 1.2f;
-    [SerializeField] private float topDownShotDuration = 3.5f;
-    [SerializeField] private float playerShotDuration = 3.0f;
-    [SerializeField] private float hotspotShotDuration = 3.0f;
+    [SerializeField] private float topDownShotDuration = 4.2f;
+    [SerializeField] private float playerShotDuration = 4.0f;
+    [SerializeField] private float hotspotShotDuration = 3.6f;
+    [SerializeField] private float shotCrossfadeDuration = 1.6f;
     [SerializeField] private float narrationFadeInDuration = 0.6f;
     [SerializeField] private float narrationFadeOutDuration = 0.5f;
     [SerializeField] private float titleFadeToBlackDuration = 0.8f;
@@ -34,6 +35,14 @@ public class IntroCutsceneController : MonoBehaviour
 
     [Header("Camera Motion")]
     [SerializeField] private float cutShakeAmplitude = 0.03f;
+
+    [Header("Street-Level Tour")]
+    [SerializeField] private float streetShotHeight = 1.7f;
+    [SerializeField] private float streetShotDistance = 8f;
+    [SerializeField] private float streetShotDollySpeed = 1f;
+    [SerializeField] private float sweepRadius = 6f;
+    [SerializeField] private float sweepHeight = 1.8f;
+    [SerializeField] private float arrivalDistance = 3f;
 
     [Header("Environmental Cue")]
     [SerializeField] private bool pulseMainLight = true;
@@ -68,7 +77,14 @@ public class IntroCutsceneController : MonoBehaviour
     private CanvasGroup introTextGroup;
     private CanvasGroup titleTextGroup;
     private CanvasGroup subtitleTextGroup;
+    private CanvasGroup vignetteGroup;
     private float letterboxHeight;
+
+    private static float EaseInOutCubic(float t)
+    {
+        t = Mathf.Clamp01(t);
+        return t < 0.5f ? 4f * t * t * t : 1f - Mathf.Pow(-2f * t + 2f, 3f) / 2f;
+    }
 
     void Start()
     {
@@ -121,31 +137,27 @@ public class IntroCutsceneController : MonoBehaviour
         if (letterboxIn != null)
             yield return letterboxIn;
 
-        // Phase 1 - Aerial top-down shot.
+        SetVignetteActive(true);
+
+        // Phase 1 - Aerial descent (city overview descending toward player).
+        float shot1Duration = Mathf.Max(0.01f, topDownShotDuration + playerShotDuration);
         ActivateIntroCamera(introTopDownCamera);
-        Coroutine shotOne = StartCoroutine(PlayTopDownShot(player, Mathf.Max(0.01f, topDownShotDuration)));
-        yield return StartCoroutine(PlayNarrationLine(lines[0], Mathf.Max(0.01f, topDownShotDuration)));
+        Coroutine shotOne = StartCoroutine(PlayAerialDescentShot(player, shot1Duration));
+        string combinedNarration = lines[0] + "\n" + lines[1];
+        yield return StartCoroutine(PlayNarrationLine(combinedNarration, shot1Duration));
         if (shotOne != null)
             yield return shotOne;
 
-        // Phase 2 - Hard cut with one-frame micro-shake.
-        ActivateIntroCamera(introPlayerCamera);
-        yield return StartCoroutine(ApplySingleFrameCutShake(introPlayerCamera, cutShakeAmplitude));
+        yield return PlayShotCrossfade();
 
-        // Phase 3 - Player tracking shot.
-        Coroutine shotTwo = StartCoroutine(PlayPlayerTrackingShot(player, Mathf.Max(0.01f, playerShotDuration)));
-        yield return StartCoroutine(PlayNarrationLine(lines[1], Mathf.Max(0.01f, playerShotDuration)));
+        // Phase 2 - Arrive at player.
+        ActivateIntroCamera(introHotspotCamera);
+        Coroutine shotTwo = StartCoroutine(PlayHotspotRevealShot(hotspot, Mathf.Max(0.01f, hotspotShotDuration)));
+        yield return StartCoroutine(PlayNarrationLine(lines[2], Mathf.Max(0.01f, hotspotShotDuration)));
         if (shotTwo != null)
             yield return shotTwo;
 
-        // Phase 4 - Hotspot reveal shot.
-        ActivateIntroCamera(introHotspotCamera);
-        Coroutine shotThree = StartCoroutine(PlayHotspotRevealShot(hotspot, Mathf.Max(0.01f, hotspotShotDuration)));
-        yield return StartCoroutine(PlayNarrationLine(lines[2], Mathf.Max(0.01f, hotspotShotDuration)));
-        if (shotThree != null)
-            yield return shotThree;
-
-        // Phase 5 - Title card.
+        // Title card.
         yield return StartCoroutine(PlayTitleCard(template));
 
         // Phase 6 - Fade to scene + letterbox close + resume gameplay.
@@ -154,10 +166,27 @@ public class IntroCutsceneController : MonoBehaviour
         if (letterboxOut != null)
             yield return letterboxOut;
 
+        SetVignetteActive(false);
         HideTextElements();
         ApplyEnvironmentalCue(false);
         RestoreGameplayState();
         CompleteCutscene();
+    }
+
+    private IEnumerator PlayShotCrossfade()
+    {
+        if (fullscreenFadeGroup == null)
+            yield break;
+
+        float half = Mathf.Max(0.01f, shotCrossfadeDuration * 0.5f);
+        yield return FadeCanvasGroup(fullscreenFadeGroup, fullscreenFadeGroup.alpha, 0.3f, half);
+        yield return FadeCanvasGroup(fullscreenFadeGroup, 0.3f, 0f, half);
+    }
+
+    private void SetVignetteActive(bool active)
+    {
+        if (vignetteGroup != null)
+            vignetteGroup.alpha = active ? 0.42f : 0f;
     }
 
     private void OnDisable()
@@ -230,7 +259,8 @@ public class IntroCutsceneController : MonoBehaviour
             && letterboxBottomRect != null
             && introText != null
             && titleText != null
-            && subtitleText != null)
+            && subtitleText != null
+            && vignetteGroup != null)
             return;
 
         GameObject canvasObj = GameObject.Find("CinematicCanvas");
@@ -288,6 +318,17 @@ public class IntroCutsceneController : MonoBehaviour
         introTextGroup = introText.gameObject.AddComponent<CanvasGroup>();
         titleTextGroup = titleText.gameObject.AddComponent<CanvasGroup>();
         subtitleTextGroup = subtitleText.gameObject.AddComponent<CanvasGroup>();
+
+        GameObject vignetteObj = new GameObject("vignette", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+        vignetteObj.transform.SetParent(canvasObj.transform, false);
+        RectTransform vignetteRect = vignetteObj.GetComponent<RectTransform>();
+        StretchFull(vignetteRect);
+        Image vignetteImage = vignetteObj.GetComponent<Image>();
+        vignetteImage.color = new Color(0f, 0f, 0f, 1f);
+        vignetteImage.raycastTarget = false;
+        vignetteGroup = vignetteObj.GetComponent<CanvasGroup>();
+        vignetteGroup.alpha = 0f;
+        vignetteGroup.blocksRaycasts = false;
 
         PrepareUiForIntroStart();
         SetLetterboxInstant(inside: false);
@@ -362,8 +403,8 @@ public class IntroCutsceneController : MonoBehaviour
         float t = 0f;
         while (t < 1f)
         {
-            t += Time.deltaTime / duration;
-            float eased = Mathf.SmoothStep(0f, 1f, t);
+            t += Time.unscaledDeltaTime / duration;
+            float eased = EaseInOutCubic(t);
             letterboxTopRect.anchoredPosition = new Vector2(0f, Mathf.Lerp(topFrom, topTo, eased));
             letterboxBottomRect.anchoredPosition = new Vector2(0f, Mathf.Lerp(bottomFrom, bottomTo, eased));
             yield return null;
@@ -377,7 +418,7 @@ public class IntroCutsceneController : MonoBehaviour
     {
         if (introText == null || introTextGroup == null)
         {
-            yield return new WaitForSeconds(shotDuration);
+            yield return new WaitForSecondsRealtime(shotDuration);
             yield break;
         }
 
@@ -391,7 +432,7 @@ public class IntroCutsceneController : MonoBehaviour
         yield return FadeCanvasGroup(introTextGroup, 0f, 1f, fadeIn);
 
         if (hold > 0f)
-            yield return new WaitForSeconds(hold);
+            yield return new WaitForSecondsRealtime(hold);
 
         yield return FadeCanvasGroup(introTextGroup, 1f, 0f, fadeOut);
     }
@@ -400,24 +441,75 @@ public class IntroCutsceneController : MonoBehaviour
     {
         if (introTopDownCamera == null || player == null)
         {
-            yield return new WaitForSeconds(duration);
+            yield return new WaitForSecondsRealtime(duration);
             yield break;
         }
+
+        Vector3 streetDir = player.forward;
+        if (streetDir.sqrMagnitude < 0.01f)
+            streetDir = Vector3.forward;
+        streetDir.y = 0f;
+        streetDir.Normalize();
+
+        Vector3 startPos = player.position - streetDir * streetShotDistance + Vector3.up * streetShotHeight;
+        Vector3 endPos = player.position - streetDir * (streetShotDistance * 0.35f) + Vector3.up * streetShotHeight;
+        Vector3 sideOffset = Vector3.Cross(Vector3.up, streetDir);
 
         float t = 0f;
         while (t < 1f)
         {
-            t += Time.deltaTime / duration;
-            float eased = Mathf.SmoothStep(0f, 1f, t);
+            t += Time.unscaledDeltaTime / duration * streetShotDollySpeed;
+            float eased = EaseInOutCubic(Mathf.Clamp01(t));
 
-            Vector3 basePos = player.position;
-            Vector3 startPos = new Vector3(basePos.x, basePos.y + 28f, basePos.z);
-            Vector3 endPos = new Vector3(basePos.x, basePos.y + 18f, basePos.z);
-            Quaternion startRot = Quaternion.Euler(75f, 0f, 0f);
-            Quaternion endRot = Quaternion.Euler(82f, 0f, 0f);
+            float sideDrift = Mathf.Sin(eased * Mathf.PI) * 1.8f;
+            Vector3 pos = Vector3.Lerp(startPos, endPos, eased) + sideOffset * sideDrift;
 
-            introTopDownCamera.transform.position = Vector3.Lerp(startPos, endPos, eased);
-            introTopDownCamera.transform.rotation = Quaternion.Slerp(startRot, endRot, eased);
+            Vector3 lookTarget = player.position + Vector3.up * 1.4f + streetDir * 3f;
+            lookTarget = Vector3.Lerp(pos + streetDir * 5f, lookTarget, eased);
+
+            introTopDownCamera.transform.position = pos;
+            introTopDownCamera.transform.rotation = Quaternion.LookRotation((lookTarget - pos).normalized, Vector3.up);
+            yield return null;
+        }
+    }
+
+    private IEnumerator PlayAerialDescentShot(Transform player, float duration)
+    {
+        if (introTopDownCamera == null || player == null)
+        {
+            yield return new WaitForSecondsRealtime(duration);
+            yield break;
+        }
+
+        Vector3 playerFwd = player.forward;
+        playerFwd.y = 0f;
+        if (playerFwd.sqrMagnitude < 0.01f) playerFwd = Vector3.forward;
+        playerFwd.Normalize();
+
+        Vector3 sideDir = Vector3.Cross(Vector3.up, playerFwd);
+        float startHeight = 25f;
+        float endHeight = streetShotHeight + 0.5f;
+        float startDist = streetShotDistance * 1.5f;
+        float endDist = arrivalDistance * 1.2f;
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime / duration;
+            float eased = EaseInOutCubic(Mathf.Clamp01(t));
+
+            float height = Mathf.Lerp(startHeight, endHeight, eased);
+            float dist = Mathf.Lerp(startDist, endDist, eased);
+            float sideDrift = Mathf.Sin(eased * Mathf.PI * 0.7f) * 3f;
+            float yawSweep = Mathf.Lerp(-15f, 10f, eased);
+
+            Vector3 offset = Quaternion.Euler(0f, yawSweep, 0f) * (-playerFwd) * dist;
+            offset.y = height;
+            Vector3 camPos = player.position + offset + sideDir * sideDrift;
+
+            Vector3 lookTarget = player.position + Vector3.up * Mathf.Lerp(5f, 1.4f, eased);
+            introTopDownCamera.transform.position = camPos;
+            introTopDownCamera.transform.rotation = Quaternion.LookRotation((lookTarget - camPos).normalized, Vector3.up);
             yield return null;
         }
     }
@@ -426,24 +518,32 @@ public class IntroCutsceneController : MonoBehaviour
     {
         if (introPlayerCamera == null || player == null)
         {
-            yield return new WaitForSeconds(duration);
+            yield return new WaitForSecondsRealtime(duration);
             yield break;
         }
 
-        Vector3 baseOffset = new Vector3(-0.8f, 1.8f, -3.5f);
+        float startYaw = player.eulerAngles.y + 90f;
+
         float t = 0f;
         while (t < 1f)
         {
-            t += Time.deltaTime / duration;
-            float eased = Mathf.SmoothStep(0f, 1f, t);
-            float orbitYaw = Mathf.Lerp(0f, 25f, eased);
+            t += Time.unscaledDeltaTime / duration;
+            float eased = EaseInOutCubic(t);
 
-            Vector3 orbitOffset = Quaternion.Euler(0f, orbitYaw, 0f) * baseOffset;
-            Vector3 targetPos = player.position + orbitOffset;
-            Vector3 lookTarget = player.position + Vector3.up * 1.2f;
+            float yaw = startYaw + eased * 120f;
+            float radius = Mathf.Lerp(sweepRadius, sweepRadius * 0.7f, eased);
+            float height = Mathf.Lerp(sweepHeight, sweepHeight * 0.85f, eased);
 
-            introPlayerCamera.transform.position = targetPos;
-            introPlayerCamera.transform.rotation = Quaternion.LookRotation((lookTarget - targetPos).normalized, Vector3.up);
+            Vector3 offset = Quaternion.Euler(0f, yaw, 0f) * new Vector3(0f, 0f, -radius);
+            offset.y = height;
+            Vector3 camPos = player.position + offset;
+
+            Vector3 lookCenter = player.position + Vector3.up * 1.5f;
+            Vector3 envBias = Quaternion.Euler(0f, yaw + 30f, 0f) * Vector3.forward * 4f;
+            Vector3 lookTarget = Vector3.Lerp(lookCenter + envBias, lookCenter, eased);
+
+            introPlayerCamera.transform.position = camPos;
+            introPlayerCamera.transform.rotation = Quaternion.LookRotation((lookTarget - camPos).normalized, Vector3.up);
             yield return null;
         }
     }
@@ -452,23 +552,34 @@ public class IntroCutsceneController : MonoBehaviour
     {
         if (introHotspotCamera == null || hotspot == null)
         {
-            yield return new WaitForSeconds(duration);
+            yield return new WaitForSecondsRealtime(duration);
             yield break;
         }
+
+        Transform player = playerController != null ? playerController.transform : hotspot;
+        Vector3 playerFwd = player.forward;
+        playerFwd.y = 0f;
+        if (playerFwd.sqrMagnitude < 0.01f)
+            playerFwd = Vector3.forward;
+        playerFwd.Normalize();
+
+        Vector3 startPos = player.position
+            + Quaternion.Euler(0f, -40f, 0f) * (-playerFwd) * arrivalDistance * 2f
+            + Vector3.up * sweepHeight;
+
+        Vector3 endPos = player.position - playerFwd * arrivalDistance + Vector3.up * 1.6f;
 
         float t = 0f;
         while (t < 1f)
         {
-            t += Time.deltaTime / duration;
-            float eased = Mathf.SmoothStep(0f, 1f, t);
+            t += Time.unscaledDeltaTime / duration;
+            float eased = EaseInOutCubic(t);
 
-            float distance = Mathf.Lerp(4.5f, 2.8f, eased);
-            float tiltX = Mathf.Lerp(8f, 2f, eased);
-            float yaw = hotspot.eulerAngles.y;
+            Vector3 camPos = Vector3.Lerp(startPos, endPos, eased);
+            Vector3 lookTarget = player.position + Vector3.up * 1.35f;
 
-            Vector3 offset = Quaternion.Euler(0f, yaw, 0f) * new Vector3(0f, 1.2f, -distance);
-            introHotspotCamera.transform.position = hotspot.position + offset;
-            introHotspotCamera.transform.rotation = Quaternion.Euler(tiltX, yaw, 0f);
+            introHotspotCamera.transform.position = camPos;
+            introHotspotCamera.transform.rotation = Quaternion.LookRotation((lookTarget - camPos).normalized, Vector3.up);
             yield return null;
         }
     }
@@ -508,7 +619,7 @@ public class IntroCutsceneController : MonoBehaviour
             ? StartCoroutine(FadeCanvasGroup(titleTextGroup, 0f, 1f, Mathf.Max(0.01f, titleFadeInDuration)))
             : null;
 
-        yield return new WaitForSeconds(0.4f);
+        yield return new WaitForSecondsRealtime(0.4f);
 
         Coroutine subtitleFadeIn = subtitleTextGroup != null
             ? StartCoroutine(FadeCanvasGroup(subtitleTextGroup, 0f, 1f, Mathf.Max(0.01f, subtitleFadeInDuration)))
@@ -520,7 +631,7 @@ public class IntroCutsceneController : MonoBehaviour
         if (subtitleFadeIn != null)
             yield return subtitleFadeIn;
 
-        yield return new WaitForSeconds(Mathf.Max(0f, titleHoldDuration));
+        yield return new WaitForSecondsRealtime(Mathf.Max(0f, titleHoldDuration));
 
         Coroutine titleFadeOut = titleTextGroup != null
             ? StartCoroutine(FadeCanvasGroup(titleTextGroup, titleTextGroup.alpha, 0f, Mathf.Max(0.01f, titleFadeOutDuration)))
@@ -646,16 +757,24 @@ public class IntroCutsceneController : MonoBehaviour
         introPlayerCamera = EnsureShotCamera("CM_Intro_Player");
         introHotspotCamera = EnsureShotCamera("CM_Intro_Hotspot");
 
-        introTopDownCamera.transform.position = player.position + new Vector3(0f, 28f, 0f);
-        introTopDownCamera.transform.rotation = Quaternion.Euler(75f, 0f, 0f);
+        Vector3 playerFwd = player.forward;
+        playerFwd.y = 0f;
+        if (playerFwd.sqrMagnitude < 0.01f) playerFwd = Vector3.forward;
+        playerFwd.Normalize();
 
-        introPlayerCamera.transform.position = player.position + new Vector3(-0.8f, 1.8f, -3.5f);
-        introPlayerCamera.transform.LookAt(player.position + Vector3.up * 1.2f);
+        introTopDownCamera.transform.position = player.position - playerFwd * streetShotDistance + Vector3.up * streetShotHeight;
+        introTopDownCamera.transform.LookAt(player.position + Vector3.up * streetShotHeight);
 
-        float hotspotYaw = hotspot.eulerAngles.y;
-        Vector3 hotspotOffset = Quaternion.Euler(0f, hotspotYaw, 0f) * new Vector3(0f, 1.2f, -4.5f);
-        introHotspotCamera.transform.position = hotspot.position + hotspotOffset;
-        introHotspotCamera.transform.rotation = Quaternion.Euler(8f, hotspotYaw, 0f);
+        float sweepStartYaw = player.eulerAngles.y + 90f;
+        Vector3 sweepOffset = Quaternion.Euler(0f, sweepStartYaw, 0f) * new Vector3(0f, sweepHeight, -sweepRadius);
+        introPlayerCamera.transform.position = player.position + sweepOffset;
+        introPlayerCamera.transform.LookAt(player.position + Vector3.up * 1.5f);
+
+        Vector3 arrivalStart = player.position
+            + Quaternion.Euler(0f, -40f, 0f) * (-playerFwd) * arrivalDistance * 2f
+            + Vector3.up * sweepHeight;
+        introHotspotCamera.transform.position = arrivalStart;
+        introHotspotCamera.transform.LookAt(player.position + Vector3.up * 1.35f);
     }
 
     private CinemachineCamera EnsureShotCamera(string name)
@@ -746,8 +865,8 @@ public class IntroCutsceneController : MonoBehaviour
         cg.alpha = from;
         while (t < 1f)
         {
-            t += Time.deltaTime / duration;
-            cg.alpha = Mathf.Lerp(from, to, Mathf.SmoothStep(0f, 1f, t));
+            t += Time.unscaledDeltaTime / duration;
+            cg.alpha = Mathf.Lerp(from, to, EaseInOutCubic(t));
             yield return null;
         }
         cg.alpha = to;

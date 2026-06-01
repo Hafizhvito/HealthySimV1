@@ -22,6 +22,10 @@ public class CameraSystem : MonoBehaviour
     [SerializeField] private CinemachineBrain.UpdateMethods brainUpdateMethod = CinemachineBrain.UpdateMethods.SmartUpdate;
     [SerializeField] private CinemachineBrain.BrainUpdateMethods blendUpdateMethod = CinemachineBrain.BrainUpdateMethods.LateUpdate;
 
+    [Header("TPP Camera Position")]
+    [SerializeField] private float tppTargetOffsetY = 1.2f;
+    [SerializeField] private float tppInitialPitch = -5f;
+
     [Header("Look Input")]
     [SerializeField] private bool enableDesktopMouseLook = true;
     [SerializeField] [Range(0.1f, 6f)] private float mouseLookSensitivity = 1f;
@@ -146,7 +150,7 @@ public class CameraSystem : MonoBehaviour
         if (orbitalFollow != null)
         {
             InputAxis pitch = orbitalFollow.VerticalAxis;
-            pitch.Value = -10f;
+            pitch.Value = tppInitialPitch;
             orbitalFollow.VerticalAxis = pitch;
             lastTppPitch = pitch.Value;
         }
@@ -226,7 +230,7 @@ public class CameraSystem : MonoBehaviour
         if (orbitalFollow != null && anchor == playerRoot)
         {
             Vector3 offset = orbitalFollow.TargetOffset;
-            offset.y = Mathf.Max(offset.y, 1.6f);
+            offset.y = Mathf.Max(offset.y, tppTargetOffsetY);
             orbitalFollow.TargetOffset = offset;
         }
     }
@@ -291,6 +295,18 @@ public class CameraSystem : MonoBehaviour
         StartTransition(TransitionDirection.ToTPP);
     }
 
+    public bool TryGetTppOrbitYaw(out float yawDegrees)
+    {
+        if (orbitalFollow == null)
+        {
+            yawDegrees = 0f;
+            return false;
+        }
+
+        yawDegrees = orbitalFollow.HorizontalAxis.Value;
+        return true;
+    }
+
     void SetFPP()
     {
         tppCamera.Priority = inactivePriority;
@@ -316,12 +332,42 @@ public class CameraSystem : MonoBehaviour
             return;
         }
 
+        if (lookDelta.sqrMagnitude <= 0.000001f)
+        {
+            smoothedLookDelta = Vector2.zero;
+            return;
+        }
+
         float dt = Time.unscaledDeltaTime;
         float scale = Mathf.Max(0.01f, sensitivity) * dt;
         Vector2 scaledTpp = lookDelta * scale;
         float t = lookSmoothing <= 0f ? 1f : 1f - Mathf.Exp(-lookSmoothing * dt);
         smoothedLookDelta = Vector2.Lerp(smoothedLookDelta, scaledTpp, t);
         ApplyTppLookInput(smoothedLookDelta.x, smoothedLookDelta.y);
+    }
+
+    /// <summary>
+    /// TPP dual-touch look. Delta is screen-normalized per frame (y already flipped by swipe zone).
+    /// </summary>
+    public void AddMobileTppLookInput(Vector2 normalizedScreenDelta, float sensitivity, float gainMultiplier)
+    {
+        if (isFirstPerson || orbitalFollow == null)
+            return;
+
+        if (normalizedScreenDelta.sqrMagnitude <= 0.0000001f)
+            return;
+
+        float gain = 360f * Mathf.Max(0.25f, gainMultiplier) * Mathf.Max(0.01f, sensitivity);
+        float yawDegrees = normalizedScreenDelta.x * gain;
+        float pitchDegrees = normalizedScreenDelta.y * gain;
+
+        ApplyTppLookInput(yawDegrees, pitchDegrees);
+    }
+
+    public void SetTppInputControllerEnabled(bool enabled)
+    {
+        if (tppInputController != null)
+            tppInputController.enabled = enabled;
     }
 
     private void ApplyFppLookInput(float yawDelta, float pitchDelta)
@@ -350,7 +396,7 @@ public class CameraSystem : MonoBehaviour
         InputAxis pitch = orbitalFollow.VerticalAxis;
 
         yaw.Value += yawDelta;
-        pitch.Value += -pitchDelta;
+        pitch.Value = Mathf.Clamp(pitch.Value + -pitchDelta, pitch.Range.x, pitch.Range.y);
 
         orbitalFollow.HorizontalAxis = yaw;
         orbitalFollow.VerticalAxis = pitch;

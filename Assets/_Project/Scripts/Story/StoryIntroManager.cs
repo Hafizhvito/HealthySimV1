@@ -7,6 +7,8 @@ public class StoryIntroManager : MonoBehaviour
     public static StoryIntroManager Instance { get; private set; }
 
     private const string INTRO_PLAYED_KEY = "StoryIntroPlayed";
+    private const string INTRO_VERSION_KEY = "StoryIntroVersion";
+    private const int CurrentIntroVersion = 2;
 
     public event System.Action OnIntroFlowCompleted;
 
@@ -35,8 +37,9 @@ public class StoryIntroManager : MonoBehaviour
     public IEnumerator StartIntroFlow()
     {
         bool alreadyPlayed = PlayerPrefs.GetInt(INTRO_PLAYED_KEY, 0) == 1;
+        bool needsVersionReplay = PlayerPrefs.GetInt(INTRO_VERSION_KEY, 0) < CurrentIntroVersion;
 
-        if (alreadyPlayed && !forcePlayIntro)
+        if (alreadyPlayed && !needsVersionReplay && !forcePlayIntro)
         {
             Debug.Log("[StoryIntro] Intro sudah pernah dimainkan — skip.");
             OnIntroFlowCompleted?.Invoke();
@@ -49,9 +52,6 @@ public class StoryIntroManager : MonoBehaviour
             yield break;
         }
 
-        PlayerPrefs.SetInt(INTRO_PLAYED_KEY, 1);
-        PlayerPrefs.Save();
-
         int index = SessionSeedManager.Instance != null
             ? SessionSeedManager.Instance.NextInt(0, templates.Length)
             : Random.Range(0, templates.Length);
@@ -60,9 +60,15 @@ public class StoryIntroManager : MonoBehaviour
 
         Debug.Log($"[StoryIntro] Template terpilih: {ActiveTemplate.title}");
 
-        var cutscene = FindFirstObjectByType<IntroCutsceneController>();
+        IntroCutsceneController cutscene = ResolveIntroCutsceneController();
         if (cutscene != null)
             yield return cutscene.PlayIntro(ActiveTemplate);
+        else
+            Debug.LogWarning("[StoryIntro] IntroCutsceneController tidak ditemukan — intro dilewati.");
+
+        PlayerPrefs.SetInt(INTRO_PLAYED_KEY, 1);
+        PlayerPrefs.SetInt(INTRO_VERSION_KEY, CurrentIntroVersion);
+        PlayerPrefs.Save();
 
         if (backstoryDialogue == null)
             backstoryDialogue = ResolveBackstoryDialogueController();
@@ -85,7 +91,27 @@ public class StoryIntroManager : MonoBehaviour
     public void ResetIntroFlag()
     {
         PlayerPrefs.DeleteKey(INTRO_PLAYED_KEY);
+        PlayerPrefs.DeleteKey(INTRO_VERSION_KEY);
         Debug.Log("[StoryIntro] Intro flag di-reset — akan muncul lagi saat Play.");
+    }
+
+    private IntroCutsceneController ResolveIntroCutsceneController()
+    {
+        if (TryGetComponent(out IntroCutsceneController onSelf))
+            return onSelf;
+
+        IntroCutsceneController[] controllers = FindObjectsByType<IntroCutsceneController>(FindObjectsSortMode.None);
+        if (controllers == null || controllers.Length == 0)
+            return null;
+
+        for (int i = 0; i < controllers.Length; i++)
+        {
+            IntroCutsceneController candidate = controllers[i];
+            if (candidate != null && candidate.gameObject.name == "GameManager")
+                return candidate;
+        }
+
+        return controllers[0];
     }
 
     private BackstoryDialogueController ResolveBackstoryDialogueController()

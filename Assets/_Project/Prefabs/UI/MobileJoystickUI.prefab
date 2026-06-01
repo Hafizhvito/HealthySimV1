@@ -500,6 +500,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MobileInputController
   forceMobileUI: 1
   lookSensitivity: 0.08
+  debugDualTouchLogging: 0
+  debugDualTouchOverlay: 1
 --- !u!114 &5414542885225591436
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -926,7 +928,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0.12}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -951,9 +953,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 5354382735773980495}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 2e87948f03224845b4e0f53ddde941ea, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MobileInputController/MobileJoystick
+  m_EditorClassIdentifier: Assembly-CSharp::MobileMoveStickPresenter
 --- !u!1 &6448263795213762604
 GameObject:
   m_ObjectHideFlags: 0
@@ -1040,7 +1042,6 @@ GameObject:
   - component: {fileID: 8137096059211092880}
   - component: {fileID: 5882013758693411569}
   - component: {fileID: 8950201296142139949}
-  - component: {fileID: 5030949840855575152}
   m_Layer: 0
   m_Name: LookSwipeZone
   m_TagString: Untagged
@@ -1084,25 +1085,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 7464931105943076731}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 3b83d8dc3fd85244498ebef5bfcbe080, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MobileInputController/InvisibleTouchGraphic
   m_Material: {fileID: 0}
   m_Color: {r: 0, g: 0, b: 0, a: 0}
-  m_RaycastTarget: 0
+  m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
---- !u!114 &5030949840855575152
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7464931105943076731}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MobileInputController/MobileSwipeLookZone
 --- !u!1 &8350182201999978563
 GameObject:
   m_ObjectHideFlags: 0
@@ -1189,6 +1178,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 8350182201999978563}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 3b83d8dc3fd85244498ebef5bfcbe080, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MobileInputController/MobilePerspectiveButton
