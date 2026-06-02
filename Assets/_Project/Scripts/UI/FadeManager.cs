@@ -26,6 +26,39 @@ public class FadeManager : MonoBehaviour
         EnsureFadeCanvas();
 
         // Startup safety: overlay must be transparent unless a fade is actively running.
+        ReleaseInputBlock();
+    }
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Prevent a stuck full-screen fade overlay from eating touch input after sub-scenes.
+        if (scene.name == "SampleScene")
+            ReleaseInputBlock();
+    }
+
+    /// <summary>
+    /// Clears fade overlay and touch blocking (e.g. after scene load or interrupted transition).
+    /// </summary>
+    public void ReleaseInputBlock()
+    {
+        EnsureFadeCanvas();
+
+        if (_fadeRoutine != null)
+        {
+            StopCoroutine(_fadeRoutine);
+            _fadeRoutine = null;
+        }
+
         _canvasGroup.alpha = 0f;
         _canvasGroup.blocksRaycasts = false;
     }

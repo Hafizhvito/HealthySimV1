@@ -81,22 +81,18 @@ public class SampleSceneBootstrap : MonoBehaviour
 
     private void EnsureCoreManagers()
     {
-        // Cek DDOL dulu biar ga duplikat
-        GameObject manager = null;
-        foreach (var obj in Resources.FindObjectsOfTypeAll<GameObject>())
-        {
-            if (obj.name == "GameManager")
-            {
-                manager = obj;
-                break;
-            }
-        }
+        GameObject manager = FindPersistentGameManager();
 
         if (manager == null)
         {
             manager = new GameObject("GameManager");
             DontDestroyOnLoad(manager);
             Debug.LogWarning($"{FallbackLogPrefix} Created GameManager at runtime.");
+        }
+        else if (manager.scene.name != "DontDestroyOnLoad")
+        {
+            GameObject root = manager.transform.root.gameObject;
+            DontDestroyOnLoad(root);
         }
 
         EnsureComponent<SessionSeedManager>(manager);
@@ -422,6 +418,30 @@ public class SampleSceneBootstrap : MonoBehaviour
             StoryIntroManager.Instance.ResetIntroFlag();
 
         yield return StoryIntroManager.Instance.StartIntroFlow();
+    }
+
+    private static GameObject FindPersistentGameManager()
+    {
+        GameObject ddolManager = null;
+        GameObject sceneManager = null;
+
+        GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+        for (int i = 0; i < allObjects.Length; i++)
+        {
+            GameObject obj = allObjects[i];
+            if (obj == null || !string.Equals(obj.name, "GameManager", StringComparison.Ordinal))
+                continue;
+
+            if (!obj.scene.IsValid())
+                continue;
+
+            if (obj.scene.name == "DontDestroyOnLoad")
+                ddolManager = obj;
+            else if (obj.scene == SceneManager.GetActiveScene())
+                sceneManager = obj;
+        }
+
+        return ddolManager != null ? ddolManager : sceneManager;
     }
 
     private static T EnsureComponent<T>(GameObject target) where T : Component

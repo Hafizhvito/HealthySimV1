@@ -77,6 +77,7 @@ GameObject:
   - component: {fileID: 1675303281405117916}
   - component: {fileID: 8254591405889545554}
   - component: {fileID: 5414542885225591436}
+  - component: {fileID: 6016031756767880590}
   m_Layer: 0
   m_Name: MobileJoystickUI
   m_TagString: Untagged
@@ -123,6 +124,8 @@ MonoBehaviour:
   runDrainRampSeconds: 1.2
   totalCaloriesConsumed: 0
   dailyCalorieTarget: 2000
+  dailyProtein: 0
+  dailyFat: 0
   maxMood: 100
   currentMood: 50
   moodDrainRate: 0.2
@@ -149,6 +152,7 @@ MonoBehaviour:
   skippedGymDays: 0
   skippedWorkDays: 0
   overworkedDays: 0
+  _visitedHospitalToday: 0
   gymSkipStreak: 0
   workSkipStreak: 0
   progressionDayCount: 1
@@ -171,6 +175,10 @@ MonoBehaviour:
   totalGameDuration: 250
   currentDayNumber: 1
   currentDayOfWeekIndex: 0
+  sleepReminderStartHour: 22
+  sleepReminderRepeatDelay: 60
+  sleepReminderFadeDuration: 0.3
+  sleepReminderMessage: Sudah larut malam, waktunya istirahat!
 --- !u!114 &566368289333444881
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -366,6 +374,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EndingManager
   endingTriggerDay: 10
+  titleFont: {fileID: 0}
+  bodyFont: {fileID: 0}
+  buttonFont: {fileID: 0}
 --- !u!114 &3780336509764609598
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -409,6 +420,7 @@ MonoBehaviour:
   topDownShotDuration: 3.5
   playerShotDuration: 3
   hotspotShotDuration: 3
+  shotCrossfadeDuration: 0.35
   narrationFadeInDuration: 0.6
   narrationFadeOutDuration: 0.5
   titleFadeToBlackDuration: 0.8
@@ -422,6 +434,12 @@ MonoBehaviour:
   gameplayPriority: 50
   inactivePriority: 1
   cutShakeAmplitude: 0.03
+  streetShotHeight: 1.7
+  streetShotDistance: 8
+  streetShotDollySpeed: 1
+  sweepRadius: 6
+  sweepHeight: 1.8
+  arrivalDistance: 3
   pulseMainLight: 1
   introLightIntensity: 2.6
   introLightColor: {r: 1, g: 0.88, b: 0.74, a: 1}
@@ -500,8 +518,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MobileInputController
   forceMobileUI: 1
   lookSensitivity: 0.08
+  dualTouchLookGain: 7.5
+  hideInScenes:
+  - OfficeScene
+  - GymScene
+  axisDominanceThreshold: 0.25
   debugDualTouchLogging: 0
   debugDualTouchOverlay: 1
+  joystickOuter: {fileID: 8796554783506552894}
+  joystickKnob: {fileID: 212786276197158474}
 --- !u!114 &5414542885225591436
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -550,6 +575,18 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   bazaarObjectName: Interactable_Bazaar
+--- !u!114 &6016031756767880590
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1766671546783991413}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e87948f03224845b4e0f53ddde941ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MobileMoveStickPresenter
 --- !u!1 &2360713961990864055
 GameObject:
   m_ObjectHideFlags: 0
@@ -624,7 +661,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 3221225471
   m_fontColor: {r: 1, g: 1, b: 1, a: 0.75}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -637,7 +674,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -746,7 +783,7 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
   m_SortingOrder: 10
@@ -1088,10 +1125,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b83d8dc3fd85244498ebef5bfcbe080, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MobileInputController/InvisibleTouchGraphic
-  m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  forceMobileUI: 1
+  lookSensitivity: 0.06
+  dualTouchLookGain: 7.5
+  hideInScenes:
+  - OfficeScene
+  - GymScene
+  axisDominanceThreshold: 0.25
+  debugDualTouchLogging: 0
+  debugDualTouchOverlay: 0
+  joystickOuter: {fileID: 0}
+  joystickKnob: {fileID: 0}
 --- !u!1 &8350182201999978563
 GameObject:
   m_ObjectHideFlags: 0
@@ -1181,3 +1225,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b83d8dc3fd85244498ebef5bfcbe080, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MobileInputController/MobilePerspectiveButton
+  forceMobileUI: 1
+  lookSensitivity: 0.06
+  dualTouchLookGain: 7.5
+  hideInScenes:
+  - OfficeScene
+  - GymScene
+  axisDominanceThreshold: 0.25
+  debugDualTouchLogging: 0
+  debugDualTouchOverlay: 0
+  joystickOuter: {fileID: 0}
+  joystickKnob: {fileID: 0}

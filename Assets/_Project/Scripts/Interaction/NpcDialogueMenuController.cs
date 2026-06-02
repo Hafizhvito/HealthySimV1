@@ -352,10 +352,36 @@ public class NpcDialogueMenuController : MonoBehaviour
         CloseMenu();
     }
 
+    public void ForceCleanupAfterSceneLoad()
+    {
+        if (panelAnimationRoutine != null)
+        {
+            StopCoroutine(panelAnimationRoutine);
+            panelAnimationRoutine = null;
+        }
+
+        StopDialogueTextRoutine();
+        ResetDialogueRuntimeState();
+        SetMenuVisible(false);
+
+        if (gameplayPausedByDialogue)
+            ResumeGameplay();
+        else if (dialogueModalOpened && ModalStateManager.Instance != null)
+        {
+            ModalStateManager.Instance.CloseModal("NpcDialogue");
+            dialogueModalOpened = false;
+            RestoreCursorState();
+        }
+    }
+
     private void CloseMenu()
     {
         if (!IsOpen)
+        {
+            if (gameplayPausedByDialogue || dialogueModalOpened)
+                ForceCleanupAfterSceneLoad();
             return;
+        }
 
         isAwaitingFollowUpContinue = false;
         pendingNextNodeId = string.Empty;
@@ -807,6 +833,7 @@ public class NpcDialogueMenuController : MonoBehaviour
         rect.sizeDelta = new Vector2(0f, 400f);
 
         gradientOverlay.color = new Color(0f, 0f, 0f, 180f / 255f);
+        gradientOverlay.raycastTarget = false;
     }
 
     private void ConfigureLetterboxBars()

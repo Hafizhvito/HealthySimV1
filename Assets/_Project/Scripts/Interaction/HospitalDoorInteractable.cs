@@ -157,9 +157,13 @@ public class HospitalDoorInteractable : MonoBehaviour, IInteractable, IDialogueA
 
         awaitingConsultationClose = false;
 
+        if (NpcDialogueMenuController.Instance != null)
+            NpcDialogueMenuController.Instance.ForceCleanupAfterSceneLoad();
+
         if (PlayerStats.Instance != null)
             PlayerStats.Instance.SetVisitedHospital();
-        if (hospitalOverlay != null) hospitalOverlay.SetActive(false); // ← tambah ini
+        if (hospitalOverlay != null)
+            hospitalOverlay.SetActive(false);
     }
 
     public List<DialogueChoiceData> GetAvailableChoices(DialogueNodeData node)

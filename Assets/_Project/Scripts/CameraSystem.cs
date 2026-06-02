@@ -97,6 +97,7 @@ public class CameraSystem : MonoBehaviour
     private float lastManualLookTime;
 
     public bool IsFirstPerson => isFirstPerson;
+    public bool HasTppOrbit => orbitalFollow != null && tppCamera != null;
 
     public void NotifyManualLook()
     {
@@ -167,8 +168,66 @@ public class CameraSystem : MonoBehaviour
         SetTPP();
         StartCoroutine(ResetInitialPitchNextFrame());
 
-        if (playStartupCinematic)
+        bool returningFromSubScene = !string.IsNullOrEmpty(SpawnPlayerManager.TargetSpawnID);
+        if (playStartupCinematic && !returningFromSubScene)
             StartStartupCinematic();
+    }
+
+    /// <summary>
+    /// Re-cache Cinemachine components after SampleScene reload (CM_TPP / CM_FPP are new instances).
+    /// </summary>
+    public void RebindCinemachineReferences()
+    {
+        if (tppCamera == null)
+            tppCamera = FindSceneVirtualCamera("CM_TPP");
+
+        if (fppCamera == null)
+            fppCamera = FindSceneVirtualCamera("CM_FPP");
+
+        if (tppCamera != null)
+        {
+            tppFollow = tppCamera.GetComponent<CinemachineThirdPersonFollow>();
+            orbitalFollow = tppCamera.GetComponent<CinemachineOrbitalFollow>();
+            tppInputController = tppCamera.GetComponent<CinemachineInputAxisController>();
+            tppRotationComposer = tppCamera.GetComponent<CinemachineRotationComposer>();
+            tppDeoccluder = tppCamera.GetComponent<CinemachineDeoccluder>();
+        }
+
+        if (fppCamera != null)
+        {
+            fppPanTilt = fppCamera.GetComponent<CinemachinePanTilt>();
+            fppInputController = fppCamera.GetComponent<CinemachineInputAxisController>();
+        }
+
+        if (brain == null)
+        {
+            if (Camera.main != null)
+                brain = Camera.main.GetComponent<CinemachineBrain>();
+
+            if (brain == null)
+                brain = FindFirstObjectByType<CinemachineBrain>();
+        }
+
+        if (applyGenshinTppDefaultsAtRuntime)
+            ApplyGenshinTppDefaults();
+
+        ApplyBrainUpdateMode();
+    }
+
+    private static CinemachineCamera FindSceneVirtualCamera(string cameraName)
+    {
+        CinemachineCamera[] cameras = FindObjectsByType<CinemachineCamera>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < cameras.Length; i++)
+        {
+            CinemachineCamera cam = cameras[i];
+            if (cam != null && cam.name == cameraName)
+                return cam;
+        }
+
+        return null;
     }
 
     private IEnumerator ResetInitialPitchNextFrame()
@@ -231,9 +290,20 @@ public class CameraSystem : MonoBehaviour
             pc.gameObject.SetActive(true);
             playerRoot = pc.transform;
             playerRenderers = pc.GetComponentsInChildren<Renderer>();
+            RebindCinemachineReferences();
             ConfigureCameraTargets();
             SetTPP();
+            ApplyMobileTppInputPolicy();
         }
+    }
+
+    private void ApplyMobileTppInputPolicy()
+    {
+        bool useTouchLook = Application.isMobilePlatform
+            || (MobileInputController.Instance != null && MobileInputController.Instance.IsTouchUiEnabled);
+
+        if (useTouchLook && !isFirstPerson)
+            SetTppInputControllerEnabled(false);
     }
 
     private void ConfigureCameraTargets()

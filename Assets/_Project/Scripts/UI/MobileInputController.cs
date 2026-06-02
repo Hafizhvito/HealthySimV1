@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using TMPro;
@@ -83,6 +84,8 @@ public class MobileInputController : MonoBehaviour
     private float debugLastTppYaw;
     private bool debugHadTppYaw;
     private bool lastFrameCameraMoved;
+    private string boundSceneName = string.Empty;
+    private Coroutine postSceneRefreshRoutine;
 
     private static Sprite runtimeCircleSprite;
     private static Sprite runtimeRoundedRectSprite;
@@ -118,13 +121,114 @@ public class MobileInputController : MonoBehaviour
         EnsureDualTouchDebugOverlay();
     }
 
+    void OnEnable()
+    {
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    void OnDisable()
+    {
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+    }
+
     void OnDestroy()
     {
         if (Instance == this)
             Instance = null;
 
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+
         if (dualTouchOverlayRoot != null && dualTouchOverlayRoot.transform.parent == transform)
             Destroy(dualTouchOverlayRoot);
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name != "SampleScene")
+            return;
+
+        RefreshBindingsAfterSceneLoad();
+    }
+
+    private void RefreshBindingsAfterSceneLoad()
+    {
+        playerController = null;
+        cameraSystem = null;
+        cameraSystemTransform = null;
+        cachedCamera = null;
+        fallbackPitchInitialized = false;
+
+        ResolveSceneReferences();
+        EnsureEventSystemSetup();
+
+        touchRouter.Reset();
+        if (lookSwipeZone != null)
+            lookSwipeZone.ForceReset();
+
+        if (FadeManager.Instance != null)
+            FadeManager.Instance.ReleaseInputBlock();
+
+        if (ModalStateManager.Instance != null)
+            ModalStateManager.Instance.ForceResetAllModals();
+
+        if (NpcDialogueMenuController.Instance != null)
+            NpcDialogueMenuController.Instance.ForceCleanupAfterSceneLoad();
+
+        bool modalOpen = ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen;
+        bool cutscenePlaying = IntroCutsceneController.IsAnyCutscenePlaying;
+        SetUiVisible(!modalOpen && !cutscenePlaying);
+
+        EnsureMobileUiHealthy();
+
+        if (postSceneRefreshRoutine != null)
+            StopCoroutine(postSceneRefreshRoutine);
+
+        postSceneRefreshRoutine = StartCoroutine(RefreshCameraBindingNextFrame());
+    }
+
+    private IEnumerator RefreshCameraBindingNextFrame()
+    {
+        yield return null;
+        yield return null;
+
+        ResolveSceneReferences();
+        if (cameraSystem != null)
+            cameraSystem.RebindCinemachineReferences();
+
+        postSceneRefreshRoutine = null;
+    }
+
+    private void EnsureMobileUiHealthy()
+    {
+        TryBindExistingUi();
+
+        if (uiRoot == null && isTouchUiEnabled)
+            BuildUi();
+
+        EnsureLookSwipeZone();
+        RepairMoveStickPresenter();
+    }
+
+    private void RepairMoveStickPresenter()
+    {
+        if (joystickOuter == null)
+            return;
+
+        moveStickPresenter = joystickOuter.GetComponent<MobileMoveStickPresenter>();
+        if (moveStickPresenter == null)
+            moveStickPresenter = joystickOuter.gameObject.AddComponent<MobileMoveStickPresenter>();
+
+        if (moveStickPresenter == null || uiCanvas == null || joystickKnob == null)
+            return;
+
+        moveStickPresenter.Initialize(
+            touchRouter,
+            joystickOuter,
+            joystickKnob,
+            uiCanvas,
+            GetEventCamera(),
+            JoystickRadius,
+            MoveJoystickPosition);
     }
 
     private static void EnsureEventSystemSetup()
@@ -193,7 +297,7 @@ public class MobileInputController : MonoBehaviour
             return;
 
 
-        if (playerController == null || cameraSystemTransform == null)
+        if (playerController == null || cameraSystem == null || cameraSystemTransform == null)
             ResolveSceneReferences();
 
         RefreshPerspectiveToggleLabel();
@@ -221,16 +325,34 @@ public class MobileInputController : MonoBehaviour
             : touchRouter.MoveVector;
         MoveInput = ApplyDeadZone(rawMove);
 
-        Vector2 swipeNormalized = lookSwipeZone != null ? lookSwipeZone.ConsumeOutput() : Vector2.zero;
-        LookDelta = swipeNormalized;
-
         if (playerController != null)
             playerController.InjectMobileInput(MoveInput);
 
-        // Always disable Cinemachine touch input on mobile to prevent Y-sign inconsistency
-        // between Cinemachine's path and our manual path.
         if (cameraSystem != null && !cameraSystem.IsFirstPerson)
             cameraSystem.SetTppInputControllerEnabled(false);
+
+        UpdateDualTouchTestLatches(lastFrameCameraMoved);
+        ResetDualTouchTestLatchesIfIdle();
+    }
+
+    void LateUpdate()
+    {
+        if (!isTouchUiEnabled)
+            return;
+
+        if (playerController == null || cameraSystem == null || cameraSystemTransform == null)
+            ResolveSceneReferences();
+
+        bool modalOpen = ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen;
+        bool cutscenePlaying = IntroCutsceneController.IsAnyCutscenePlaying;
+        if (modalOpen || cutscenePlaying)
+        {
+            LookDelta = Vector2.zero;
+            return;
+        }
+
+        Vector2 swipeNormalized = lookSwipeZone != null ? lookSwipeZone.ConsumeOutput() : Vector2.zero;
+        LookDelta = swipeNormalized;
 
         if (cameraSystem != null && !cameraSystem.IsFirstPerson
             && swipeNormalized.sqrMagnitude > 0.0000001f)
@@ -244,7 +366,6 @@ public class MobileInputController : MonoBehaviour
             ApplyLookInput(LookDelta, lookSensitivity);
 
         UpdateDualTouchTestLatches(cameraMovedThisFrame);
-        ResetDualTouchTestLatchesIfIdle();
         UpdateDualTouchDiagnostics();
     }
 
@@ -278,22 +399,39 @@ public class MobileInputController : MonoBehaviour
 
     private void ResolveSceneReferences()
     {
+        string activeScene = SceneManager.GetActiveScene().name;
+        if (!string.Equals(activeScene, boundSceneName, StringComparison.Ordinal))
+        {
+            playerController = null;
+            cameraSystem = null;
+            cameraSystemTransform = null;
+            cachedCamera = null;
+            fallbackPitchInitialized = false;
+            boundSceneName = activeScene;
+        }
+
         if (playerController == null)
             playerController = FindFirstObjectByType<PlayerController>();
 
         if (cameraSystem == null)
             cameraSystem = FindFirstObjectByType<CameraSystem>();
 
+        if (cameraSystem != null)
+            cameraSystem.RebindCinemachineReferences();
+
         if (cachedCamera == null)
             cachedCamera = Camera.main;
 
         if (cameraSystemTransform == null)
         {
-            GameObject cameraSystemObject = GameObject.Find("CameraSystem");
-            if (cameraSystemObject != null)
-                cameraSystemTransform = cameraSystemObject.transform;
-            else if (cameraSystem != null)
+            if (cameraSystem != null)
                 cameraSystemTransform = cameraSystem.transform;
+            else
+            {
+                GameObject cameraSystemObject = GameObject.Find("CameraSystem");
+                if (cameraSystemObject != null)
+                    cameraSystemTransform = cameraSystemObject.transform;
+            }
 
             if (cameraSystemTransform != null && !fallbackPitchInitialized)
             {
@@ -301,8 +439,6 @@ public class MobileInputController : MonoBehaviour
                 fallbackPitchInitialized = true;
             }
         }
-
-        // Camera look input is handled via CameraSystem.
     }
 
     private void TryBindExistingUi()
@@ -909,6 +1045,8 @@ public class MobileInputController : MonoBehaviour
         report.Append(MoveInput.ToString("F2"));
         report.Append(" lookOut=");
         report.Append(LookDelta.ToString("F3"));
+        report.Append(" orbit=");
+        report.Append(cameraSystem != null && cameraSystem.HasTppOrbit ? "ok" : "MISSING");
         report.Append("\nswipeZone=");
         report.Append(lookSwipeZone != null && lookSwipeZone.IsDragging ? "drag" : "idle");
         bool joyHeld = touchRouter.HasMoveFinger;
