@@ -242,14 +242,7 @@ public class MobileTouchRouter
             return FingerRole.Move;
         }
 
-        // Single-finger swipe: UI zone + Cinemachine. Dual-touch: router also claims right finger as fallback.
-        if (moveFingerId >= 0)
-        {
-            if (lookFingerId >= 0)
-                return FingerRole.UiBlocked;
-            return FingerRole.Look;
-        }
-
+        // Right half: MobileSwipeLookZone owns look via EventSystem; router is move-only.
         return FingerRole.None;
     }
 
@@ -380,8 +373,7 @@ public class MobileTouchRouter
         report.Append(ActiveTouchCount);
         report.Append(" moveId=");
         report.Append(moveFingerId);
-        report.Append(" lookId=");
-        report.Append(lookFingerId);
+        report.Append(" lookId=swipeZone");
         report.Append("\nmoveVec=");
         report.Append(MoveVector.ToString("F2"));
         report.Append(" look=");

@@ -176,7 +176,6 @@ public class PlayerController : MonoBehaviour
             rawInput = Vector2.zero;
             isRunningRaw = false;
             jumpRequest = false;
-            UpdateAnimator();
             UpdateFOV();
             return;
         }
@@ -250,7 +249,6 @@ public class PlayerController : MonoBehaviour
                 isRunning,
                 Time.deltaTime);
 
-        UpdateAnimator();
         UpdateFOV();
     }
 
@@ -267,6 +265,7 @@ public class PlayerController : MonoBehaviour
             moveDir = Vector3.zero;
             isRunning = false;
             rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            UpdateAnimator();
             return;
         }
 
@@ -276,6 +275,7 @@ public class PlayerController : MonoBehaviour
         Rotate();
         ApplyJump();
         ApplyVerticalMotionTuning();
+        UpdateAnimator();
     }
 
     // ---------------------------------------------------------------
@@ -502,11 +502,14 @@ public class PlayerController : MonoBehaviour
 
     void UpdateAnimator()
     {
-        float speed = isRunning
+        bool isMoving = moveDir.sqrMagnitude > 0.01f;
+        float speed = isRunning && isMoving
             ? 1f
-            : (moveDir.magnitude > 0.1f ? 0.5f : 0f);
+            : isMoving
+                ? 0.5f
+                : 0f;
 
-        animator.SetFloat("Speed", speed, 0.1f, Time.deltaTime);
+        animator.SetFloat("Speed", speed, 0.1f, Time.fixedDeltaTime);
     }
 
     void UpdateFOV()

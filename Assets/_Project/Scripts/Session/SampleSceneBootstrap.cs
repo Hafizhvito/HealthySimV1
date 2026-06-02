@@ -66,12 +66,15 @@ public class SampleSceneBootstrap : MonoBehaviour
             float savedHeight  = PlayerData.TinggiBadan > 0 ? PlayerData.TinggiBadan : 170f;
             float savedWeight  = PlayerData.BeratBadan  > 0 ? PlayerData.BeratBadan  : 65f;
             PlayerStats.Instance.SetPlayerData(savedName, savedHeight, savedWeight);
-            Debug.Log($"[Bootstrap] PlayerData wired → name={savedName} h={savedHeight} w={savedWeight}");
+            PlayerStats.Instance.SetGender(ResolvePlayerGender(PlayerData.JenisKelamin));
+            Debug.Log($"[Bootstrap] PlayerData wired → name={savedName} h={savedHeight} w={savedWeight} gender={PlayerStats.Instance.PlayerGender}");
         }
         else
         {
             Debug.LogWarning("[Bootstrap] PlayerStats.Instance null — SetPlayerData skipped.");
         }
+
+        EnsurePlayerCharacterSwapper();
 
         StartCoroutine(RunIntroSequence());
     }
@@ -178,6 +181,28 @@ public class SampleSceneBootstrap : MonoBehaviour
         }
 
         EnsureComponent<UniversalInteractionController>(player);
+    }
+
+    private void EnsurePlayerCharacterSwapper()
+    {
+        GameObject player = GameObject.FindWithTag("Player");
+        if (player == null)
+        {
+            Debug.LogWarning("[Bootstrap] Player tidak ditemukan. CharacterModelSwapper tidak diaktifkan.");
+            return;
+        }
+
+        CharacterModelSwapper swapper = EnsureComponent<CharacterModelSwapper>(player);
+        if (PlayerStats.Instance != null)
+            swapper.InitializeModel();
+    }
+
+    private static PlayerStats.Gender ResolvePlayerGender(string jenisKelamin)
+    {
+        if (string.Equals(jenisKelamin, "Perempuan", StringComparison.OrdinalIgnoreCase))
+            return PlayerStats.Gender.Female;
+
+        return PlayerStats.Gender.Male;
     }
 
     private void EnsurePlaceholderInteractables()

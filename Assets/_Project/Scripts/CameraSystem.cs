@@ -23,8 +23,25 @@ public class CameraSystem : MonoBehaviour
     [SerializeField] private CinemachineBrain.BrainUpdateMethods blendUpdateMethod = CinemachineBrain.BrainUpdateMethods.LateUpdate;
 
     [Header("TPP Camera Position")]
-    [SerializeField] private float tppTargetOffsetY = 1.2f;
-    [SerializeField] private float tppInitialPitch = -5f;
+    [SerializeField] private float tppTargetOffsetY = 1.3f;
+    [SerializeField] private float tppInitialPitch = 12f;
+
+    [Header("Genshin Yaw Recenter")]
+    [SerializeField] private bool enableYawRecenter = true;
+    [SerializeField] private float recenterIdleDelay = 1.5f;
+    [SerializeField] private float recenterSpeedDegrees = 60f;
+    [SerializeField] private float recenterMoveSpeedThreshold = 0.8f;
+
+    [Header("Genshin TPP Runtime Tuning")]
+    [SerializeField] private bool applyGenshinTppDefaultsAtRuntime = true;
+    [SerializeField] private Vector2 tppScreenPosition = new Vector2(0f, -0.15f);
+    [SerializeField] private float tppOrbitRadius = 4.8f;
+    [SerializeField] private float tppPositionDamping = 0.35f;
+    [SerializeField] private float tppPitchMin = -20f;
+    [SerializeField] private float tppPitchMax = 35f;
+    [SerializeField] private float deoccluderMinDistance = 1f;
+    [SerializeField] private float deoccluderSmoothingTime = 0.2f;
+    [SerializeField] private float deoccluderDampingWhenOccluded = 0.4f;
 
     [Header("Look Input")]
     [SerializeField] private bool enableDesktopMouseLook = true;
@@ -61,6 +78,8 @@ public class CameraSystem : MonoBehaviour
     private CinemachinePanTilt fppPanTilt;
     private CinemachineInputAxisController tppInputController;
     private CinemachineInputAxisController fppInputController;
+    private CinemachineRotationComposer tppRotationComposer;
+    private CinemachineDeoccluder tppDeoccluder;
     private bool hasZoomState;
     private bool isDialogueZoomed;
     private float defaultTppDistance;
@@ -74,8 +93,15 @@ public class CameraSystem : MonoBehaviour
     private Coroutine dialogueDriftRoutine;
     private Coroutine startupCinematicRoutine;
     private Coroutine transitionRoutine;
+    private Rigidbody playerRigidbody;
+    private float lastManualLookTime;
 
     public bool IsFirstPerson => isFirstPerson;
+
+    public void NotifyManualLook()
+    {
+        lastManualLookTime = Time.time;
+    }
 
     void Awake()
     {
@@ -84,6 +110,8 @@ public class CameraSystem : MonoBehaviour
             tppFollow = tppCamera.GetComponent<CinemachineThirdPersonFollow>();
             orbitalFollow = tppCamera.GetComponent<CinemachineOrbitalFollow>();
             tppInputController = tppCamera.GetComponent<CinemachineInputAxisController>();
+            tppRotationComposer = tppCamera.GetComponent<CinemachineRotationComposer>();
+            tppDeoccluder = tppCamera.GetComponent<CinemachineDeoccluder>();
         }
 
         if (fppCamera != null)
@@ -98,6 +126,9 @@ public class CameraSystem : MonoBehaviour
         if (brain == null)
             brain = FindFirstObjectByType<CinemachineBrain>();
 
+        if (applyGenshinTppDefaultsAtRuntime)
+            ApplyGenshinTppDefaults();
+
         CacheDialogueZoomDefaults();
 
         ApplyBrainUpdateMode();
@@ -105,6 +136,8 @@ public class CameraSystem : MonoBehaviour
 
     void Start()
     {
+        lastManualLookTime = Time.time;
+
         // Auto-find all renderers on Player if not assigned
         if (playerRenderers == null || playerRenderers.Length == 0)
         {
@@ -151,6 +184,7 @@ public class CameraSystem : MonoBehaviour
         {
             InputAxis pitch = orbitalFollow.VerticalAxis;
             pitch.Value = tppInitialPitch;
+            pitch.Center = tppInitialPitch;
             orbitalFollow.VerticalAxis = pitch;
             lastTppPitch = pitch.Value;
         }
@@ -235,6 +269,53 @@ public class CameraSystem : MonoBehaviour
         }
     }
 
+    private void ApplyGenshinTppDefaults()
+    {
+        if (tppRotationComposer != null)
+        {
+            ScreenComposerSettings composition = tppRotationComposer.Composition;
+            composition.ScreenPosition = tppScreenPosition;
+            tppRotationComposer.Composition = composition;
+            tppRotationComposer.TargetOffset = new Vector3(0f, tppTargetOffsetY, 0f);
+        }
+
+        if (orbitalFollow != null)
+        {
+            orbitalFollow.Radius = tppOrbitRadius;
+
+            var tracker = orbitalFollow.TrackerSettings;
+            tracker.PositionDamping = new Vector3(
+                tppPositionDamping,
+                tppPositionDamping,
+                tppPositionDamping);
+            orbitalFollow.TrackerSettings = tracker;
+
+            InputAxis vertical = orbitalFollow.VerticalAxis;
+            vertical.Range = new Vector2(tppPitchMin, tppPitchMax);
+            vertical.Value = tppInitialPitch;
+            vertical.Center = tppInitialPitch;
+            orbitalFollow.VerticalAxis = vertical;
+        }
+
+        if (tppDeoccluder != null)
+        {
+            int collideMask = LayerMask.GetMask("Default", "Ground");
+            if (collideMask == 0)
+                collideMask = LayerMask.GetMask("Default");
+
+            tppDeoccluder.CollideAgainst = collideMask;
+            tppDeoccluder.IgnoreTag = "Player";
+            tppDeoccluder.MinimumDistanceFromTarget = deoccluderMinDistance;
+
+            CinemachineDeoccluder.ObstacleAvoidance avoidance = tppDeoccluder.AvoidObstacles;
+            avoidance.Enabled = true;
+            avoidance.CameraRadius = 0.3f;
+            avoidance.SmoothingTime = deoccluderSmoothingTime;
+            avoidance.DampingWhenOccluded = deoccluderDampingWhenOccluded;
+            tppDeoccluder.AvoidObstacles = avoidance;
+        }
+    }
+
     void Update()
     {
 #if ENABLE_INPUT_SYSTEM
@@ -255,6 +336,44 @@ public class CameraSystem : MonoBehaviour
 
         if (enableDesktopMouseLook && !IsTouchInputActive())
             HandleDesktopMouseLook();
+
+        ApplyYawRecenter();
+    }
+
+    private void ApplyYawRecenter()
+    {
+        if (!enableYawRecenter || isFirstPerson || orbitalFollow == null || playerRoot == null)
+            return;
+
+        if (isDialogueZoomed || startupCinematicRoutine != null || transitionRoutine != null)
+            return;
+
+        if (ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen)
+            return;
+
+        if (Time.time - lastManualLookTime < recenterIdleDelay)
+            return;
+
+        if (playerRigidbody == null)
+            playerRigidbody = playerRoot.GetComponent<Rigidbody>();
+
+        if (playerRigidbody == null)
+            return;
+
+        Vector3 horizontalVelocity = playerRigidbody.linearVelocity;
+        horizontalVelocity.y = 0f;
+        float moveThreshold = Mathf.Max(0.1f, recenterMoveSpeedThreshold);
+        if (horizontalVelocity.sqrMagnitude < moveThreshold * moveThreshold)
+            return;
+
+        float targetYaw = playerRoot.eulerAngles.y;
+        InputAxis yaw = orbitalFollow.HorizontalAxis;
+        yaw.Value = Mathf.MoveTowardsAngle(
+            yaw.Value,
+            targetYaw,
+            recenterSpeedDegrees * Time.deltaTime);
+        orbitalFollow.HorizontalAxis = yaw;
+        lastTppYaw = yaw.Value;
     }
 
     public void TogglePerspectiveFromMobile()
@@ -391,6 +510,9 @@ public class CameraSystem : MonoBehaviour
     {
         if (orbitalFollow == null)
             return;
+
+        if (Mathf.Abs(yawDelta) > 0.000001f || Mathf.Abs(pitchDelta) > 0.000001f)
+            NotifyManualLook();
 
         InputAxis yaw = orbitalFollow.HorizontalAxis;
         InputAxis pitch = orbitalFollow.VerticalAxis;

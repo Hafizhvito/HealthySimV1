@@ -355,8 +355,19 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (EndingManager.Instance != null)
             EndingManager.Instance.NotifySleepCompleted(timeManager.CurrentDayNumber);
 
+        EvaluateCharacterModelSwap(interactor);
+
         forceSleepTriggered = false;
         sleepRoutine = null;
+    }
+
+    private void EvaluateCharacterModelSwap(GameObject interactor)
+    {
+        if (interactor == null)
+            return;
+
+        CharacterModelSwapper swapper = interactor.GetComponent<CharacterModelSwapper>();
+        swapper?.EvaluateAndSwap();
     }
 
     // ── ApplyRecovery — INTI PERUBAHAN ───────────────────────

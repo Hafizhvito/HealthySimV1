@@ -1,0 +1,25 @@
+---
+description: Extra guard when any Unity scene/prefab/asset file is in context
+globs: Assets/**/*.unity,Assets/**/*.prefab,Assets/**/*.asset
+alwaysApply: false
+---
+
+# Unity serialized files — read-only for agents
+
+These files are open or in scope. Treat them as **read-only** unless the user explicitly requests editing **this specific file**.
+
+## Forbidden
+
+- `StrReplace` / `Write` / bulk regex on the file contents
+- Changing `m_IsActive`, `fileID`, `guid`, `m_RigLayers`, component lists, or prefab overrides by text
+- Piping `git show` into a `.unity` file without the user's explicit restore request
+
+## Allowed
+
+- **Read** to understand references, names, or whether something is wired
+- Direct the user to Inspector or `HealthySim/*` Editor menus
+- Implement fixes in `Assets/_Project/Scripts/**` or `Assets/_Project/Scripts/Editor/**`
+
+## SampleScene
+
+`Assets/Scenes/SampleScene.unity` — **no edits** by default. Same rule as the global HealthySim safety rule.

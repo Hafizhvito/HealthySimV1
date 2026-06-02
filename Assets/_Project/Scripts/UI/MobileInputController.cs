@@ -227,21 +227,16 @@ public class MobileInputController : MonoBehaviour
         if (playerController != null)
             playerController.InjectMobileInput(MoveInput);
 
-        bool joyHeld = touchRouter.HasMoveFinger;
-
         // Always disable Cinemachine touch input on mobile to prevent Y-sign inconsistency
         // between Cinemachine's path and our manual path.
         if (cameraSystem != null && !cameraSystem.IsFirstPerson)
             cameraSystem.SetTppInputControllerEnabled(false);
 
-        if (cameraSystem != null && !cameraSystem.IsFirstPerson)
+        if (cameraSystem != null && !cameraSystem.IsFirstPerson
+            && swipeNormalized.sqrMagnitude > 0.0000001f)
         {
-            Vector2 lookInput = swipeNormalized;
-            if (lookInput.sqrMagnitude <= 0.0000001f && joyHeld)
-                lookInput = ApplyAxisDominance(touchRouter.LookDelta, axisDominanceThreshold);
-
-            if (lookInput.sqrMagnitude > 0.0000001f)
-                cameraSystem.AddMobileTppLookInput(lookInput, lookSensitivity, dualTouchLookGain);
+            cameraSystem.NotifyManualLook();
+            cameraSystem.AddMobileTppLookInput(swipeNormalized, lookSensitivity, dualTouchLookGain);
         }
 
         bool cameraMovedThisFrame = UpdateCameraMovedLatch();

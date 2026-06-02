@@ -1,0 +1,54 @@
+---
+description: HealthySim — minimal scope, protected scenes/assets, Unity-safe edits only
+alwaysApply: true
+---
+
+# Scope & protected files (HealthySimV1)
+
+## Minimize changes
+
+- Only edit files **directly required** for the user's request.
+- Do **not** refactor, reformat, or "clean up" unrelated code, scenes, prefabs, or third-party assets.
+- If a fix can live in **one script** under `Assets/_Project/Scripts/`, prefer that over touching scenes or prefabs.
+
+## Never hand-edit Unity serialized YAML
+
+**Do not** use `StrReplace`, `Write`, or search/replace on these as text:
+
+- `Assets/Scenes/**/*.unity` (especially `SampleScene.unity`)
+- `**/*.prefab`
+- `**/*.asset` (ScriptableObjects, animator controllers, etc.)
+
+Unity scenes use internal `fileID` references. Text edits cause **Broken PPtr**, corrupted Hierarchy, and data loss.
+
+### Allowed ways to change scenes / prefabs
+
+1. **C# Editor scripts** in `Assets/_Project/Scripts/Editor/` (e.g. menu items under `HealthySim/…`)
+2. **Unity MCP** tools (`manage_scene`, `manage_gameobject`, `manage_components`, `execute_menu_item`) when the editor is connected
+3. User performs the change manually in the Unity Inspector
+
+If scene setup is needed and no editor tool exists yet, **add a small Editor script** instead of editing `.unity` directly.
+
+## SampleScene is protected by default
+
+- **`Assets/Scenes/SampleScene.unity` must not be modified** unless the user **explicitly** asks to change that scene file.
+- Do not "fix" cameras, rigs, or references in SampleScene via file edits.
+- Do not run `git restore`, `git checkout`, or overwrite SampleScene from git **unless the user explicitly asks** to restore/revert that scene.
+
+## Do not touch without strong reason
+
+- Third-party / art packs: `Assets/Animation Pack/**`, `Assets/POLYGON city pack/**`, `Assets/SimplePoly City/**`, `Assets/European Buildings/**`, `Assets/DavidJalbert/**`, `Assets/CityPeople_Free/**`, etc.
+- `ProjectSettings/**` (unless user asks)
+- `.meta` files (unless Unity/import pipeline requires it and user agreed)
+- Unrelated scenes (`InputMenu`, build settings, etc.) when the task is about gameplay scripts
+
+## Unity workflow expectations
+
+- After changing C# scripts, check compilation via Unity MCP `read_console` when available.
+- Character/camera/scene wiring for this project: prefer existing menus (`HealthySim/Setup Player Body Models`, `HealthySim/Fix Player Camera And Rig Gizmos`) or new Editor menus — not raw scene YAML.
+- Runtime behavior belongs in `Assets/_Project/Scripts/` (e.g. `CharacterModelSwapper`, `SampleSceneBootstrap`, `CameraSystem`).
+
+## When something is broken
+
+- Explain the cause briefly; propose **Editor script or Unity Editor steps**.
+- For a corrupted scene, tell the user to reload/revert in Unity or ask them before any file-level scene restore — do not silently rewrite scene files.
