@@ -33,13 +33,13 @@ public class AudioManager : MonoBehaviour
 
     private void Start()
     {
-        PlayerPrefs.DeleteKey("Music");
-        PlayerPrefs.DeleteKey("SFX");
+        // PlayerPrefs.DeleteKey("Music");
+        // PlayerPrefs.DeleteKey("SFX");
         LoadVolumeSettings();
     }
 
     // ── Volume Settings ───────────────────────────────────────
-    private void LoadVolumeSettings()
+    public void LoadVolumeSettings()
     {
         float savedMusic = PlayerPrefs.GetFloat("Music", 0.8f);
         float savedSFX = PlayerPrefs.GetFloat("SFX", 0.8f);
