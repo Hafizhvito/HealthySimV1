@@ -22,8 +22,8 @@ public class PauseMenuManager : MonoBehaviour
     [SerializeField] private Slider volumeMusic;
 
     // Audio
-    // [Header("Audio")]
-    // [SerializeField] private AudioClip gameMusic;
+    [Header("Audio")]
+    [SerializeField] private AudioClip gameMusic;
 
     void Start()
     {
@@ -39,6 +39,16 @@ public class PauseMenuManager : MonoBehaviour
 
         volumeMusic.value = savedMusic;
         volumeSFX.value = savedSFX;
+    }
+
+    public void OnSetMusic()
+    {
+        AudioManager._Instance.SetMusicVolume(volumeMusic.value);
+    }
+
+    public void OnSetSFX()
+    {
+        AudioManager._Instance.SetSFXVolume(volumeSFX.value);
     }
 
     // private void ShowPanel(UIPanelTransition nextPanel, int direction = 1)
@@ -81,7 +91,9 @@ public class PauseMenuManager : MonoBehaviour
     public void OnBackToMenuButton()
     {
         Time.timeScale = 1f;
-        SceneLoader.LoadScene(menuSceneName);
+        panelPause.SetActive(false);
+        pauseButton.gameObject.SetActive(true);
+        AudioManager._Instance?.StopMusic(() => SceneLoader.LoadScene(menuSceneName));
     }
 
     public void OnExitGameButton()
