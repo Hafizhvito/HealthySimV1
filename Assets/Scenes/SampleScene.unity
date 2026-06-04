@@ -248749,6 +248749,14 @@ PrefabInstance:
       propertyPath: m_TagString
       value: Untagged
       objectReference: {fileID: 0}
+    - target: {fileID: 6352070350382199194, guid: b2f3962aa02f8c64bb6dbea3f045e6e3, type: 3}
+      propertyPath: requireNightToSleep
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6352070350382199194, guid: b2f3962aa02f8c64bb6dbea3f045e6e3, type: 3}
+      propertyPath: requireConfirmBeforeSleep
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7401638315233159983, guid: b2f3962aa02f8c64bb6dbea3f045e6e3, type: 3}
       propertyPath: m_Name
       value: Interactable_Bed
@@ -248831,7 +248839,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8394745353095753731, guid: 743643ecc092a0c418cc79273620d064, type: 3}
       propertyPath: endingTriggerDay
-      value: 3
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 8493567887663762261, guid: 743643ecc092a0c418cc79273620d064, type: 3}
       propertyPath: closeButton

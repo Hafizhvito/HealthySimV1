@@ -30,6 +30,7 @@ public class PauseMenuManager : MonoBehaviour
         panelPause.SetActive(false);
         panelOption.SetActive(false);
         LoadOptions();
+        AudioManager._Instance?.PlayMusic(gameMusic);
     }
 
     private void LoadOptions()
