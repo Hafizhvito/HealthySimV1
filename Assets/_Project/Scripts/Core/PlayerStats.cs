@@ -422,6 +422,61 @@ public class PlayerStats : MonoBehaviour
         CalculateBMI();
     }
 
+    /// <summary>
+    /// Full gameplay reset for a new run. Profile name/height/weight/gender are reapplied after clearing session stats.
+    /// </summary>
+    public void ResetForNewSession(string name, float height, float weight, Gender gender)
+    {
+        maxEnergy = 100f;
+        currentEnergy = 100f;
+        currentEnergyState = EnergyState.Normal;
+        faintTimer = 0f;
+        runningDuration = 0f;
+
+        totalCaloriesConsumed = 0f;
+        dailyProtein = 0f;
+        dailyFat = 0f;
+
+        maxMood = 100f;
+        currentMood = 50f;
+
+        _money = 500;
+
+        trainingAdaptation = 0f;
+        fatigueDebt = 0f;
+        healthScoreThisPhase = 50f;
+        committedPhaseScores = new float[3] { 50f, 50f, 50f };
+        phaseCarryOverModifier = 1f;
+
+        totalDaysEvaluated = 0;
+        poorDietDays = 0;
+        noFoodDays = 0;
+        highCalorieDays = 0;
+        lowCalorieDays = 0;
+        disturbedSleepDays = 0;
+        lowEnergySleepDays = 0;
+        skippedGymDays = 0;
+        skippedWorkDays = 0;
+        overworkedDays = 0;
+        _visitedHospitalToday = false;
+
+        gymSkipStreak = 0;
+        workSkipStreak = 0;
+
+        progressionDayCount = 1;
+        currentAgeStage = AgeStage.Youth;
+
+        SetPlayerData(name, height, weight);
+        SetGender(gender);
+
+        OnEnergyChanged?.Invoke(currentEnergy);
+        OnMoodChanged?.Invoke(currentMood);
+        OnCaloriesChanged?.Invoke(totalCaloriesConsumed);
+        OnEnergyStateChanged?.Invoke(currentEnergyState);
+
+        Debug.Log("[PlayerStats] Session reset for new run.");
+    }
+
     public void AdjustWeight(float deltaKg, string reason)
     {
         if (Mathf.Abs(deltaKg) <= 0.0001f)

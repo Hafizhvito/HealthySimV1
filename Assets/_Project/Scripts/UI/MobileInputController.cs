@@ -38,7 +38,7 @@ public class MobileInputController : MonoBehaviour
     private static readonly Vector2 MoveKnobSize = new Vector2(90f, 90f);
 
     private static readonly Vector2 SwipeZoneAnchorMin = new Vector2(0.45f, 0f);
-    private static readonly Vector2 SwipeZoneAnchorMax = new Vector2(1f, 1f);
+    private static readonly Vector2 SwipeZoneAnchorMax = new Vector2(0.88f, 0.9f);
 
     private static readonly Vector2 PerspectiveButtonAnchor = new Vector2(1f, 0f);
     private static readonly Vector2 PerspectiveButtonPivot = new Vector2(1f, 0f);

@@ -16,7 +16,7 @@ public class StoryIntroManager : MonoBehaviour
     [SerializeField] private BackstoryDialogueController backstoryDialogue;
 
     [Header("Intro Debug")]
-    [SerializeField] private bool forcePlayIntro = false;
+    [SerializeField] private bool forcePlayIntro = true;
 
     private StoryTemplate[] templates;
 
@@ -124,44 +124,7 @@ public class StoryIntroManager : MonoBehaviour
             return backstoryDialogue;
 
         backstoryDialogue = FindFirstObjectByType<BackstoryDialogueController>(FindObjectsInactive.Include);
-        if (backstoryDialogue != null)
-            return backstoryDialogue;
-
-        backstoryDialogue = CreateRuntimeBackstoryController();
         return backstoryDialogue;
-    }
-
-    private BackstoryDialogueController CreateRuntimeBackstoryController()
-    {
-        Canvas canvas = FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
-        if (canvas == null)
-        {
-            GameObject canvasGo = new GameObject("BackstoryCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            canvas = canvasGo.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-
-            CanvasScaler scaler = canvasGo.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
-        }
-
-        GameObject panelGo = new GameObject("BackstoryPanel", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
-        panelGo.transform.SetParent(canvas.transform, false);
-
-        RectTransform rect = panelGo.GetComponent<RectTransform>();
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = Vector2.zero;
-        rect.offsetMax = Vector2.zero;
-
-        Image bg = panelGo.GetComponent<Image>();
-        bg.color = new Color(0f, 0f, 0f, 0.72f);
-
-        BackstoryDialogueController controller = panelGo.AddComponent<BackstoryDialogueController>();
-        Debug.Log("[StoryIntro] BackstoryDialogueController runtime fallback dibuat di Canvas.");
-        return controller;
     }
 
     private void BuildTemplates()

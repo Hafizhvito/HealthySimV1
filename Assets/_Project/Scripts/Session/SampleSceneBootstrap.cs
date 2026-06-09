@@ -16,15 +16,15 @@ public class SampleSceneBootstrap : MonoBehaviour
     private const string FallbackLogPrefix = "[SwapContract/Fallback]";
 
     [Header("Intro Cutscene")]
-    [SerializeField] private bool forceIntroEveryPlay = false;
+    [SerializeField] private bool forceIntroEveryPlay = true;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoBootstrapAfterSceneLoad()
     {
-        SceneManager.sceneLoaded += OnSceneLoaded; // load script di setiap scene, karena script ini langsung aktif kalo di play
+        SceneManager.sceneLoaded += HandleAutoBootstrapSceneLoaded;
     }
 
-    private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    private static void HandleAutoBootstrapSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Debug.Log($"Bootstrap check — scene loaded: {scene.name}");
 
@@ -35,23 +35,66 @@ public class SampleSceneBootstrap : MonoBehaviour
         }
 
         // hilangkan script di scene supaya tidak dipanggil lagi
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+        SceneManager.sceneLoaded -= HandleAutoBootstrapSceneLoaded;
 
-        if (FindFirstObjectByType<SampleSceneBootstrap>() != null)
+        foreach (GameObject root in scene.GetRootGameObjects())
         {
-            Debug.Log("Bootstrap sudah ada, skip.");
-            return;
+            if (root.GetComponentInChildren<SampleSceneBootstrap>(true) != null)
+            {
+                Debug.Log("Bootstrap sudah ada di scene, skip runtime spawn.");
+                return;
+            }
         }
 
-        Debug.Log("Bootstrap spawning...");
+        Debug.LogWarning($"{FallbackLogPrefix} Spawning SampleSceneBootstrap at runtime. Add it to the scene via HealthySim/Setup SampleScene Core.");
         var bootstrap = new GameObject("SampleSceneBootstrap");
         bootstrap.AddComponent<SampleSceneBootstrap>();
     }
 
+    private Coroutine _sceneEntryRoutine;
+    private bool _sceneEntryHandled;
+
+    void OnEnable()
+    {
+        SceneManager.sceneLoaded += HandleSceneEntryLoaded;
+    }
+
+    void OnDisable()
+    {
+        SceneManager.sceneLoaded -= HandleSceneEntryLoaded;
+    }
+
     void Start()
+    {
+        // Runtime-spawned bootstrap (scene already loaded) still needs one entry pass.
+        if (!_sceneEntryHandled)
+            BeginSceneEntryIfNeeded();
+    }
+
+    private void HandleSceneEntryLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name != TargetSceneName)
+            return;
+
+        _sceneEntryHandled = false;
+        BeginSceneEntryIfNeeded();
+    }
+
+    private void BeginSceneEntryIfNeeded()
     {
         if (SceneManager.GetActiveScene().name != TargetSceneName)
             return;
+
+        if (_sceneEntryRoutine != null)
+            StopCoroutine(_sceneEntryRoutine);
+
+        _sceneEntryHandled = true;
+        _sceneEntryRoutine = StartCoroutine(RunSceneEntryRoutine());
+    }
+
+    private IEnumerator RunSceneEntryRoutine()
+    {
+        AudioListenerEnforcer.EnforceSingleListener();
 
         EnsureCoreManagers();
         EnsureEventSystemSetup();
@@ -76,18 +119,19 @@ public class SampleSceneBootstrap : MonoBehaviour
 
         EnsurePlayerCharacterSwapper();
 
-        StartCoroutine(RunIntroSequence());
+        yield return RunIntroSequence();
+        _sceneEntryRoutine = null;
     }
 
     private void EnsureCoreManagers()
     {
-        GameObject manager = FindPersistentGameManager();
+        GameObject manager = FindManagerHost();
 
         if (manager == null)
         {
             manager = new GameObject("GameManager");
             DontDestroyOnLoad(manager);
-            Debug.LogWarning($"{FallbackLogPrefix} Created GameManager at runtime.");
+            Debug.LogWarning($"{FallbackLogPrefix} Created GameManager at runtime. Run HealthySim/Setup SampleScene Core in the Editor.");
         }
         else if (manager.scene.name != "DontDestroyOnLoad")
         {
@@ -114,6 +158,7 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsureComponent<MobileInputController>(manager);
         EnsureComponent<BazaarManager>(manager);
         EnsureComponent<EndingManager>(manager);
+        EnsureComponent<GameplayAudioListenerKeeper>(manager);
     }
 
     private void EnsureEventSystemSetup()
@@ -410,6 +455,7 @@ public class SampleSceneBootstrap : MonoBehaviour
     {
         // Let singleton startup settle for one frame.
         yield return null;
+        AudioListenerEnforcer.EnforceSingleListener();
 
         if (StoryIntroManager.Instance == null)
             yield break;
@@ -420,28 +466,50 @@ public class SampleSceneBootstrap : MonoBehaviour
         yield return StoryIntroManager.Instance.StartIntroFlow();
     }
 
-    private static GameObject FindPersistentGameManager()
+    private static GameObject FindManagerHost()
     {
         GameObject ddolManager = null;
         GameObject sceneManager = null;
+        GameObject ddolMobileHost = null;
+        GameObject sceneMobileHost = null;
+        Scene activeScene = SceneManager.GetActiveScene();
 
         GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
         for (int i = 0; i < allObjects.Length; i++)
         {
             GameObject obj = allObjects[i];
-            if (obj == null || !string.Equals(obj.name, "GameManager", StringComparison.Ordinal))
+            if (obj == null || !obj.scene.IsValid())
                 continue;
 
-            if (!obj.scene.IsValid())
-                continue;
-
-            if (obj.scene.name == "DontDestroyOnLoad")
-                ddolManager = obj;
-            else if (obj.scene == SceneManager.GetActiveScene())
-                sceneManager = obj;
+            if (string.Equals(obj.name, "GameManager", StringComparison.Ordinal))
+            {
+                if (obj.scene.name == "DontDestroyOnLoad")
+                    ddolManager = obj;
+                else if (obj.scene == activeScene)
+                    sceneManager = obj;
+            }
         }
 
-        return ddolManager != null ? ddolManager : sceneManager;
+        MobileInputController[] mobileHosts = Resources.FindObjectsOfTypeAll<MobileInputController>();
+        for (int i = 0; i < mobileHosts.Length; i++)
+        {
+            MobileInputController host = mobileHosts[i];
+            if (host == null || !host.gameObject.scene.IsValid())
+                continue;
+
+            if (host.gameObject.scene.name == "DontDestroyOnLoad")
+                ddolMobileHost = host.gameObject;
+            else if (host.gameObject.scene == activeScene)
+                sceneMobileHost = host.gameObject;
+        }
+
+        if (ddolManager != null)
+            return ddolManager;
+        if (sceneManager != null)
+            return sceneManager;
+        if (ddolMobileHost != null)
+            return ddolMobileHost;
+        return sceneMobileHost;
     }
 
     private static T EnsureComponent<T>(GameObject target) where T : Component

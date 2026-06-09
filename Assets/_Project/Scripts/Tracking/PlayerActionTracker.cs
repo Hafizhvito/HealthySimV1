@@ -158,6 +158,24 @@ public class PlayerActionTracker : MonoBehaviour
         Debug.Log("[PlayerActionTracker] Daily food counts direset untuk hari baru.");
     }
 
+    public void ResetSession()
+    {
+        foreach (ActionType actionType in Enum.GetValues(typeof(ActionType)))
+            counts[actionType] = 0;
+
+        foreach (TimeManager.TimePeriod period in Enum.GetValues(typeof(TimeManager.TimePeriod)))
+        {
+            positiveByPeriod[period] = 0;
+            negativeByPeriod[period] = 0;
+        }
+
+        warningEvents = 0;
+        criticalEvents = 0;
+        faintEvents = 0;
+
+        Debug.Log("[PlayerActionTracker] Full session tracker reset.");
+    }
+
     public BranchOutcome EvaluateBranchOutcome()
     {
         int positive = GetCount(ActionType.HealthyFoodTaken) + GetCount(ActionType.PositiveNpcTalk);

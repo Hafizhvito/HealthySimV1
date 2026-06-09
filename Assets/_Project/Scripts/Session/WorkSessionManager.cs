@@ -172,6 +172,15 @@ public class WorkSessionManager : MonoBehaviour
         _lastObservedGameTime = TimeManager.Instance != null ? TimeManager.Instance.CurrentTime : -1f;
     }
 
+    public void ResetForNewSession()
+    {
+        HasWorkedToday = false;
+        PendingSession = null;
+        LastSession = null;
+        LastSessionHadBonus = false;
+        _lastObservedGameTime = -1f;
+    }
+
     private static WorkPeriod MapWorkPeriod(TimeManager.TimePeriod source)
     {
         switch (source)

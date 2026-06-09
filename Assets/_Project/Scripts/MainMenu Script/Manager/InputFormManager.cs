@@ -5,6 +5,9 @@ using DG.Tweening;
 
 public class InputFormManager : MonoBehaviour
 {
+    private const float MinStartButtonWidth = 320f;
+    private const float MinStartButtonHeight = 100f;
+
     [Header("Panel References")]
     [SerializeField] private GameObject panelNama;
     [SerializeField] private GameObject panelTinggi;
@@ -32,12 +35,7 @@ public class InputFormManager : MonoBehaviour
     [SerializeField] private TMP_InputField inputNama;
 
     [Header("Scene Settings")]
-    [SerializeField] private string nextSceneName = "GameScene";
-
-    // [Header("Skip Form")]
-    // [SerializeField] private GameObject panelSkipConfirm;
-    // [SerializeField] private TMP_Text txtValidation; // tambah di Panel_Nama
-    // [SerializeField] private TMP_Text txtDataPreview;
+    [SerializeField] private string nextSceneName = "SampleScene";
 
     [Header("Gender References")]
     [SerializeField] private UIGenderSelector genderSelector;
@@ -54,6 +52,13 @@ public class InputFormManager : MonoBehaviour
     [SerializeField] private TMP_Text txtBMI;
     [SerializeField] private Image cardBMIBackground;
 
+    [Header("Ringkasan Buttons")]
+    [SerializeField] private Button btnMulai;
+
+    [Header("Layout")]
+    [Tooltip("When off, layout/touch fixes are skipped — use after running HealthySim/Fix Input Menu Ringkasan Layout in the Editor.")]
+    [SerializeField] private bool autoFixRingkasanTouchAtRuntime = true;
+
     [Header("BMI Colors")]
     [SerializeField] private Color colorKurang = new Color(0.29f, 0.56f, 0.85f);
     [SerializeField] private Color colorNormal = new Color(0.15f, 0.68f, 0.38f);
@@ -61,6 +66,9 @@ public class InputFormManager : MonoBehaviour
     [SerializeField] private Color colorObesitas = new Color(0.91f, 0.30f, 0.24f);
 
     private UIPanelTransition currentPanel;
+    private Tweener validationTween;
+    private Vector2[] cardBasePositions;
+    private bool cardPositionsCached;
 
     private void Start()
     {
@@ -69,7 +77,6 @@ public class InputFormManager : MonoBehaviour
         panelTinggi.SetActive(false);
         panelBerat.SetActive(false);
         panelRingkasan.SetActive(false);
-        // panelSkipConfirm.SetActive(false);
 
         currentPanel = transitionNama;
 
@@ -80,33 +87,122 @@ public class InputFormManager : MonoBehaviour
         }
 
         PlayerData.Load();
-
         inputNama.text = "";
 
-
-        // Cek apakah sudah ada data sebelumnya
-        // if (!string.IsNullOrEmpty(PlayerData.PlayerName))
-        // {
-        //     ShowSkipConfirm();
-        // }
-        // else
-        // {
-        //     inputNama.text = "";
-        // }
+        CacheCardBasePositions();
+        if (autoFixRingkasanTouchAtRuntime)
+            PrepareRingkasanTouchLayer();
     }
 
+    private void CacheCardBasePositions()
+    {
+        if (cardPositionsCached || dataCards == null || dataCards.Length == 0)
+            return;
 
-    // private void ShowSkipConfirm()
-    // {
-    //     txtDataPreview.text =
-    //     $"Nama: {PlayerData.PlayerName}\n" +
-    //     $"Tinggi: {PlayerData.TinggiBadan} cm\n" +
-    //     $"Berat: {PlayerData.BeratBadan} kg\n" +
-    //     $"BMI: {PlayerData.BMI:F1} ({PlayerData.KategoriBMI})";
-    //     panelSkipConfirm.SetActive(true);
-    // }
+        cardBasePositions = new Vector2[dataCards.Length];
+        for (int i = 0; i < dataCards.Length; i++)
+        {
+            if (dataCards[i] != null)
+                cardBasePositions[i] = dataCards[i].anchoredPosition;
+        }
 
-    // ── Navigasi Panel ────────────────────────────────────────
+        cardPositionsCached = true;
+    }
+
+    private void PrepareRingkasanTouchLayer()
+    {
+        ResolveMulaiButtonReference();
+        EnsureStartButtonTouchTarget();
+        EnsureRingkasanRaycastOrder();
+    }
+
+    private void ResolveMulaiButtonReference()
+    {
+        if (btnMulai != null || panelRingkasan == null)
+            return;
+
+        Button[] buttons = panelRingkasan.GetComponentsInChildren<Button>(true);
+        for (int i = 0; i < buttons.Length; i++)
+        {
+            if (buttons[i] != null && buttons[i].gameObject.name.Contains("Mulai"))
+            {
+                btnMulai = buttons[i];
+                break;
+            }
+        }
+    }
+
+    private void EnsureStartButtonTouchTarget()
+    {
+        if (btnMulai == null)
+            return;
+
+        RectTransform rect = btnMulai.GetComponent<RectTransform>();
+        if (rect == null)
+            return;
+
+        Vector2 size = rect.sizeDelta;
+        size.x = Mathf.Max(size.x, MinStartButtonWidth);
+        size.y = Mathf.Max(size.y, MinStartButtonHeight);
+        rect.sizeDelta = size;
+
+        LayoutElement layout = btnMulai.GetComponent<LayoutElement>();
+        if (layout == null)
+            layout = btnMulai.gameObject.AddComponent<LayoutElement>();
+
+        layout.minWidth = MinStartButtonWidth;
+        layout.minHeight = MinStartButtonHeight;
+        layout.preferredWidth = size.x;
+        layout.preferredHeight = size.y;
+
+        Image targetGraphic = btnMulai.targetGraphic as Image;
+        if (targetGraphic != null)
+            targetGraphic.raycastTarget = true;
+    }
+
+    private void EnsureRingkasanRaycastOrder()
+    {
+        if (panelRingkasan == null)
+            return;
+
+        Image panelBackground = panelRingkasan.GetComponent<Image>();
+        if (panelBackground != null)
+            panelBackground.raycastTarget = false;
+
+        Transform buttonRow = panelRingkasan.transform.Find("Button");
+        if (buttonRow != null)
+            buttonRow.SetAsLastSibling();
+
+        Transform cardGroup = panelRingkasan.transform.Find("Group_DataCard");
+        if (cardGroup != null)
+            SetDisplayOnlyRaycasts(cardGroup, false);
+
+        if (dataCards != null)
+        {
+            for (int i = 0; i < dataCards.Length; i++)
+            {
+                if (dataCards[i] != null)
+                    SetDisplayOnlyRaycasts(dataCards[i], false);
+            }
+        }
+    }
+
+    private static void SetDisplayOnlyRaycasts(Transform root, bool enabled)
+    {
+        if (root == null)
+            return;
+
+        Graphic[] graphics = root.GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+        {
+            Graphic graphic = graphics[i];
+            if (graphic == null || graphic.GetComponentInParent<Button>(true) != null)
+                continue;
+
+            graphic.raycastTarget = enabled;
+        }
+    }
+
     private void ShowPanel(UIPanelTransition nextPanel, int direction = 1)
     {
         if (currentPanel == nextPanel) return;
@@ -114,7 +210,6 @@ public class InputFormManager : MonoBehaviour
         currentPanel = nextPanel;
     }
 
-    // ── Validasi ──────────────────────────────────────────────
     private bool IsNamaValid()
     {
         string nama = inputNama.text.Trim();
@@ -122,21 +217,19 @@ public class InputFormManager : MonoBehaviour
         if (string.IsNullOrWhiteSpace(nama))
         {
             ShakeElement(inputNama.GetComponent<RectTransform>());
-            // ShowValidationMessage("Nama tidak boleh kosong!");
             return false;
         }
 
         if (nama.Length < 2)
         {
             ShakeElement(inputNama.GetComponent<RectTransform>());
-            // ShowValidationMessage("Nama terlalu pendek!");
             return false;
         }
 
         return true;
     }
 
-    private void ShakeElement(RectTransform target) // Animasi
+    private void ShakeElement(RectTransform target)
     {
         if (target == null)
             return;
@@ -144,25 +237,6 @@ public class InputFormManager : MonoBehaviour
         target.DOKill();
         target.DOShakePosition(0.3f, 10f, 20).SetEase(Ease.OutCubic);
     }
-
-    // Tampilkan pesan validasi sementara
-
-    private Tweener validationTween;
-
-    // private void ShowValidationMessage(string message)
-    // {
-    //     if (txtValidation == null)
-    //         return;
-
-    //     txtValidation.text = message;
-    //     txtValidation.alpha = 1f;
-
-    //     // Auto hide setelah 2 detik
-    //     validationTween?.Kill();
-    //     validationTween = txtValidation.DOFade(0f, 0.3f).SetDelay(2f);
-    // }
-
-    // ── Ringkasan ─────────────────────────────────────────────
 
     private void UpdateRingkasan()
     {
@@ -172,7 +246,6 @@ public class InputFormManager : MonoBehaviour
         txtBerat.text = $"{PlayerData.BeratBadan} kg";
         txtBMI.text = $"{PlayerData.BMI:F1} — {PlayerData.KategoriBMI}";
 
-        // Update warna card BMI
         cardBMIBackground.color = PlayerData.KategoriBMI switch
         {
             "Berat Badan Kurang" => colorKurang,
@@ -181,6 +254,9 @@ public class InputFormManager : MonoBehaviour
             _ => colorObesitas
         };
 
+        CacheCardBasePositions();
+        if (autoFixRingkasanTouchAtRuntime)
+            PrepareRingkasanTouchLayer();
         AnimateCards();
     }
 
@@ -189,64 +265,53 @@ public class InputFormManager : MonoBehaviour
         if (dataCards == null || dataCards.Length == 0)
             return;
 
-        foreach (var card in dataCards)
+        CacheCardBasePositions();
+
+        for (int i = 0; i < dataCards.Length; i++)
         {
+            RectTransform card = dataCards[i];
             if (card == null)
                 continue;
 
-            // Reset posisi & alpha
-            card.anchoredPosition += Vector2.right * 100f;
-            CanvasGroup cg = card.GetComponent<CanvasGroup>();
-            if (cg != null) cg.alpha = 0f;
-        }
+            card.DOKill();
 
-        // Animasi masuk satu per satu dengan delay
-        for (int i = 0; i < dataCards.Length; i++)
-        {
-            int index = i;
-            float delay = i * 0.5f;
+            Vector2 basePos = cardBasePositions != null && i < cardBasePositions.Length
+                ? cardBasePositions[i]
+                : card.anchoredPosition;
 
-            if (dataCards[i] == null)
-                continue;
+            card.anchoredPosition = basePos + Vector2.right * 100f;
 
-            dataCards[i].DOAnchorPosX(
-                dataCards[i].anchoredPosition.x - 100f, 0.5f).SetDelay(delay).SetEase(Ease.OutCubic);
+            CanvasGroup canvasGroup = card.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+                canvasGroup = card.gameObject.AddComponent<CanvasGroup>();
 
-            CanvasGroup cg = dataCards[i].GetComponent<CanvasGroup>();
-            if (cg != null)
-            {
-                cg.DOFade(1f, 0.5f).SetDelay(delay).SetEase(Ease.OutCubic);
-            }
+            canvasGroup.alpha = 0f;
+
+            float delay = i * 0.12f;
+            card.DOAnchorPosX(basePos.x, 0.5f).SetDelay(delay).SetEase(Ease.OutCubic);
+            canvasGroup.DOFade(1f, 0.5f).SetDelay(delay).SetEase(Ease.OutCubic);
         }
     }
 
-    // ── Button Callbacks ──────────────────────────────────────
     public void OnLanjutDariNama()
     {
         if (!IsNamaValid())
         {
-            // Animasi shake input field jika kosong
             if (inputNama != null)
                 ShakeElement(inputNama.GetComponent<RectTransform>());
             return;
         }
 
-        // Simpan nama
         PlayerData.PlayerName = inputNama.text.Trim();
-
-        // Lanjut ke step berikutnya
         stepProgressBar.NextStep();
         ShowPanel(transitionGender, 1);
-        // AudioManager._Instance?.PlaySFX(null);
     }
 
     public void OnLanjutDariGender()
     {
         if (!genderSelector.IsSelected())
         {
-            // Shake kedua tombol kalau belum pilih
             ShakeElement(genderSelector.GetComponent<RectTransform>());
-            // ShowValidationMessage("Pilih jenis kelamin dulu!");
             return;
         }
 
@@ -263,9 +328,7 @@ public class InputFormManager : MonoBehaviour
 
     public void OnLanjutDariTinggi()
     {
-        // Simpan data tinggi badan
         PlayerData.TinggiBadan = stepperTinggi.GetValue();
-
         stepProgressBar.NextStep();
         ShowPanel(transitionBerat, 1);
     }
@@ -278,9 +341,7 @@ public class InputFormManager : MonoBehaviour
 
     public void OnLanjutDariBerat()
     {
-        // Simpan data berat badan
         PlayerData.BeratBadan = stepperBerat.GetValue();
-
         stepProgressBar.NextStep();
         UpdateRingkasan();
         ShowPanel(transitionRingkasan, 1);
@@ -300,34 +361,15 @@ public class InputFormManager : MonoBehaviour
 
     public void OnMulaiButton()
     {
-        // Simpan semua data ke PlayerPrefs
         PlayerData.Save();
+        SessionResetService.ResetAllForMenuExit();
+        SpawnPlayerManager.PrepareDefaultSpawnOnNextLoad();
 
-        // Masuk ke GameScene via LoadingScreen
-        AudioManager._Instance?.StopMusic(() => SceneLoader.LoadScene(nextSceneName));
+        if (AudioManager._Instance != null)
+            AudioManager._Instance.StopMusic(() => SceneLoader.LoadScene(nextSceneName));
+        else
+            SceneLoader.LoadScene(nextSceneName);
     }
-
-    // Tombol "Gunakan Data Lama" di panelSkipConfirm
-    // public void OnGunakanDataLama()
-    // {
-    //     panelSkipConfirm.SetActive(false);
-    //     UpdateRingkasan();
-
-    //     // Langsung ke ringkasan
-    //     panelNama.SetActive(false);
-    //     panelRingkasan.SetActive(true);
-    //     currentPanel = transitionRingkasan;
-
-    //     // Set progress bar ke penuh
-    //     stepProgressBar.SetStep(3);
-    // }
-
-    // Tombol "Input Ulang" di panelSkipConfirm
-    // public void OnInputUlang()
-    // {
-    //     panelSkipConfirm.SetActive(false);
-    //     inputNama.text = PlayerData.PlayerName;
-    // }
 
     private void OnDisable()
     {

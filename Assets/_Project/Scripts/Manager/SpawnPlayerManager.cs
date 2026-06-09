@@ -9,8 +9,20 @@ public class SpawnPlayerManager : MonoBehaviour
 
     public static event Action OnSpawnComplete;
 
+    public const string DefaultSpawnId = "spawnpoint";
+
     // ID spawn yang akan dipakai saat scene berikutnya di-load
     public static string TargetSpawnID { get; set; } = "";
+
+    public static void PrepareDefaultSpawnOnNextLoad()
+    {
+        TargetSpawnID = DefaultSpawnId;
+    }
+
+    public static void ClearSpawnTarget()
+    {
+        TargetSpawnID = string.Empty;
+    }
 
     private void Awake()
     {
@@ -36,7 +48,11 @@ public class SpawnPlayerManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (string.IsNullOrEmpty(TargetSpawnID)) return;
+        if (scene.name != "SampleScene")
+            return;
+
+        if (string.IsNullOrEmpty(TargetSpawnID))
+            TargetSpawnID = DefaultSpawnId;
 
         Debug.Log($"[Spawn] Scene loaded: {scene.name}, TargetSpawnID: {TargetSpawnID}");
         StartCoroutine(SpawnAfterEverything());

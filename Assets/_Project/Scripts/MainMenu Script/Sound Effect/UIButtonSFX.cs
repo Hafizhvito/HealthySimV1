@@ -7,6 +7,9 @@ public class UIButtonSFX : MonoBehaviour, IPointerDownHandler
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (AudioManager._Instance == null || touchSFX == null)
+            return;
+
         AudioManager._Instance.PlaySFX(touchSFX);
     }
 }

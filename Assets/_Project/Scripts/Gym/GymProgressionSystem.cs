@@ -244,6 +244,13 @@ public class GymProgressionSystem : MonoBehaviour
         stats.ApplyGymProgression(-adaptationDecay, -sleepFatigueRecovery);
     }
 
+    public void ResetForNewSession()
+    {
+        HasTrainedToday = false;
+        PendingSession = null;
+        LastSession = null;
+    }
+
     public GymTier GetCurrentTier()
     {
         PlayerStats stats = ResolvePlayerStats();

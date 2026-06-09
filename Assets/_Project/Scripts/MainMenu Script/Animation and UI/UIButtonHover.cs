@@ -28,8 +28,8 @@ public class UIButtonHover : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     {
         rectTransform?.DOKill();
         buttonImage?.DOKill();
-        rectTransform?.DOScale(pressScale, scaleDuration).SetEase(Ease.OutQuad);
-        buttonImage?.DOColor(pressColor, colorDuration);
+        rectTransform?.DOScale(pressScale, scaleDuration).SetEase(Ease.OutQuad).SetUpdate(true);
+        buttonImage?.DOColor(pressColor, colorDuration).SetUpdate(true);
     }
 
     // Saat dilepas tombolnya
@@ -37,8 +37,8 @@ public class UIButtonHover : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     {
         rectTransform?.DOKill();
         buttonImage?.DOKill();
-        rectTransform?.DOScale(1f, scaleDuration).SetEase(Ease.OutBack);
-        buttonImage?.DOColor(normalColor, colorDuration);
+        rectTransform?.DOScale(1f, scaleDuration).SetEase(Ease.OutBack).SetUpdate(true);
+        buttonImage?.DOColor(normalColor, colorDuration).SetUpdate(true);
     }
 
     private void OnDisable()

@@ -36,6 +36,10 @@ public class BackstoryDialogueController : MonoBehaviour
     [SerializeField] private float nameCharsPerSecond = 48f;
     [SerializeField] private float bodyCharsPerSecond = 64f;
 
+    [Header("Layout")]
+    [Tooltip("Off by default — run HealthySim/Setup Narrative Panels in the Editor and edit HUD_Canvas/BackstoryPanel in Hierarchy.")]
+    [SerializeField] private bool autoBuildLayoutAtRuntime = false;
+
     private Coroutine typewriterRoutine;
     private string activeNameText = string.Empty;
     private string activeBodyText = string.Empty;
@@ -79,8 +83,10 @@ public class BackstoryDialogueController : MonoBehaviour
     {
         ResolveCharacterDataIfNeeded();
         TryAutoBindIfNeeded();
-        TryCreateRuntimeBindingsIfNeeded();
-        TryAutoBindIfNeeded();
+
+        if (autoBuildLayoutAtRuntime && !HasSceneLayoutBindings())
+            TryCreateRuntimeBindingsIfNeeded();
+
         BindContinueButton();
 
         if (isShowing)
@@ -297,15 +303,23 @@ public class BackstoryDialogueController : MonoBehaviour
     private string ResolveAgeLabel()
     {
         if (PlayerStats.Instance == null)
-            return "remaja";
+            return "dewasa";
 
         return PlayerStats.Instance.CurrentAgeStage switch
         {
-            PlayerStats.AgeStage.Youth => "remaja",
+            PlayerStats.AgeStage.Youth => "dewasa",
             PlayerStats.AgeStage.Adult => "dewasa",
             PlayerStats.AgeStage.Senior => "lansia",
-            _ => "remaja"
+            _ => "dewasa"
         };
+    }
+
+    private bool HasSceneLayoutBindings()
+    {
+        if (panelRoot == null || panelRoot.transform.Find("Card") == null)
+            return false;
+
+        return nameText != null && bodyText != null && continueButton != null;
     }
 
     private void ResolveCharacterDataIfNeeded()

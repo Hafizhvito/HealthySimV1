@@ -979,11 +979,27 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         if (panelTransform == null) return;
 
-        agingPanelRoot  = panelTransform as RectTransform ?? panelTransform.GetComponent<RectTransform>();
-        agingPanelGroup = panelTransform.GetComponent<CanvasGroup>();
-        agingPanelTitleText      = FindChildByName(panelTransform, "TitleText")?.GetComponent<TextMeshProUGUI>();
-        agingPanelBodyText       = FindChildByName(panelTransform, "BodyText")?.GetComponent<TextMeshProUGUI>();
-        agingPanelContinueButton = FindChildByName(panelTransform, "LanjutButton")?.GetComponent<Button>();
+        AgingNotificationPanelBinder binder = panelTransform.GetComponent<AgingNotificationPanelBinder>();
+        if (binder != null && binder.titleText != null && binder.bodyText != null && binder.continueButton != null)
+        {
+            agingPanelRoot = binder.panelRoot != null
+                ? binder.panelRoot
+                : panelTransform as RectTransform ?? panelTransform.GetComponent<RectTransform>();
+            agingPanelGroup = binder.panelGroup != null
+                ? binder.panelGroup
+                : panelTransform.GetComponent<CanvasGroup>();
+            agingPanelTitleText = binder.titleText;
+            agingPanelBodyText = binder.bodyText;
+            agingPanelContinueButton = binder.continueButton;
+        }
+        else
+        {
+            agingPanelRoot = panelTransform as RectTransform ?? panelTransform.GetComponent<RectTransform>();
+            agingPanelGroup = panelTransform.GetComponent<CanvasGroup>();
+            agingPanelTitleText = FindChildByName(panelTransform, "TitleText")?.GetComponent<TextMeshProUGUI>();
+            agingPanelBodyText = FindChildByName(panelTransform, "BodyText")?.GetComponent<TextMeshProUGUI>();
+            agingPanelContinueButton = FindChildByName(panelTransform, "LanjutButton")?.GetComponent<Button>();
+        }
 
         if (agingPanelGroup != null)
         {

@@ -404,10 +404,14 @@ public class CameraSystem : MonoBehaviour
         if (escapePressed && !isFirstPerson)
             UnlockCursor();
 
-        if (enableDesktopMouseLook && !IsTouchInputActive())
-            HandleDesktopMouseLook();
+        bool modalBlocksLook = ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen;
+        if (!modalBlocksLook)
+        {
+            if (enableDesktopMouseLook && !IsTouchInputActive())
+                HandleDesktopMouseLook();
 
-        ApplyYawRecenter();
+            ApplyYawRecenter();
+        }
     }
 
     private void ApplyYawRecenter()
@@ -511,6 +515,9 @@ public class CameraSystem : MonoBehaviour
 
     public void AddLookInput(Vector2 lookDelta, float sensitivity)
     {
+        if (ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen)
+            return;
+
         if (isFirstPerson)
         {
             Vector2 scaled = lookDelta * Mathf.Max(0.001f, sensitivity);
@@ -540,6 +547,9 @@ public class CameraSystem : MonoBehaviour
     /// </summary>
     public void AddMobileTppLookInput(Vector2 normalizedScreenDelta, float sensitivity, float gainMultiplier)
     {
+        if (ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen)
+            return;
+
         if (isFirstPerson || orbitalFollow == null)
             return;
 
