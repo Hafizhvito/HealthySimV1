@@ -82,7 +82,7 @@ public class PauseMenuManager : MonoBehaviour
     {
         ResetPauseState();
         LoadOptions();
-        AudioManager._Instance?.PlayMusic(gameMusic);
+        TryPlayGameMusic();
     }
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -95,6 +95,24 @@ public class PauseMenuManager : MonoBehaviour
         WirePauseUiButtons();
 
         ApplyRuntimePauseUiFixes();
+        TryPlayGameMusic();
+    }
+
+    private void TryPlayGameMusic()
+    {
+        if (gameMusic == null)
+        {
+            Debug.LogWarning("[PauseMenuManager] gameMusic belum di-assign — musik in-game tidak diputar.");
+            return;
+        }
+
+        if (AudioManager._Instance == null)
+        {
+            Debug.LogWarning("[PauseMenuManager] AudioManager tidak ditemukan — musik in-game tidak diputar.");
+            return;
+        }
+
+        AudioManager._Instance.PlayMusic(gameMusic);
     }
 
     private void ApplyRuntimePauseUiFixes()

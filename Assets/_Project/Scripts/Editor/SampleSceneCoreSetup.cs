@@ -219,7 +219,7 @@ public static class SampleSceneCoreSetup
             SerializedProperty forceIntro = serializedBootstrap.FindProperty("forceIntroEveryPlay");
             if (forceIntro != null)
             {
-                forceIntro.boolValue = true;
+                forceIntro.boolValue = false;
                 serializedBootstrap.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(bootstrap);
             }
@@ -232,7 +232,7 @@ public static class SampleSceneCoreSetup
             SerializedProperty forcePlay = serializedIntro.FindProperty("forcePlayIntro");
             if (forcePlay != null)
             {
-                forcePlay.boolValue = true;
+                forcePlay.boolValue = false;
                 serializedIntro.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(intro);
             }

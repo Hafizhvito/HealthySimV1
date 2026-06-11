@@ -80,27 +80,16 @@ public class SpawnPlayerManager : MonoBehaviour
             FindObjectsInactive.Include,
             FindObjectsSortMode.None);
 
-        SpawnPointID targetSpawn = null;
-        foreach (var sp in spawnPoints)
-        {
-            if (sp.ID == TargetSpawnID)
-            {
-                targetSpawn = sp;
-                break;
-            }
-        }
+        SpawnPointID targetSpawn = ResolveSpawnPointId(spawnPoints, TargetSpawnID);
 
         Transform fallbackSpawn = null;
         if (targetSpawn == null)
-        {
-            GameObject fallbackObj = GameObject.FindWithTag("SpawnPoint");
-            fallbackSpawn = fallbackObj != null ? fallbackObj.transform : null;
+            fallbackSpawn = ResolveFallbackSpawnTransform();
 
-            if (fallbackSpawn == null)
-            {
-                Debug.LogWarning($"[Spawn] SpawnPoint '{TargetSpawnID}' tidak ditemukan dan fallback tag 'SpawnPoint' kosong!");
-                return;
-            }
+        if (targetSpawn == null && fallbackSpawn == null)
+        {
+            Debug.LogWarning($"[Spawn] SpawnPoint '{TargetSpawnID}' tidak ditemukan dan fallback Respawn/SpawnPoint kosong!");
+            return;
         }
 
         
@@ -161,6 +150,60 @@ public class SpawnPlayerManager : MonoBehaviour
     public void TestSpawn()
     {
         SpawnPlayer();
+    }
+
+    private static SpawnPointID ResolveSpawnPointId(SpawnPointID[] spawnPoints, string targetId)
+    {
+        if (spawnPoints == null || spawnPoints.Length == 0 || string.IsNullOrWhiteSpace(targetId))
+            return null;
+
+        SpawnPointID taggedRespawn = null;
+        SpawnPointID activeMatch = null;
+        SpawnPointID anyMatch = null;
+
+        for (int i = 0; i < spawnPoints.Length; i++)
+        {
+            SpawnPointID sp = spawnPoints[i];
+            if (sp == null || sp.ID != targetId)
+                continue;
+
+            anyMatch ??= sp;
+
+            if (sp.gameObject.activeInHierarchy)
+                activeMatch ??= sp;
+
+            if (sp.CompareTag("Respawn"))
+                taggedRespawn = sp;
+        }
+
+        return taggedRespawn ?? activeMatch ?? anyMatch;
+    }
+
+    private static Transform ResolveFallbackSpawnTransform()
+    {
+        GameObject respawnTagged = null;
+        try
+        {
+            respawnTagged = GameObject.FindGameObjectWithTag("Respawn");
+        }
+        catch (UnityException)
+        {
+            // Tag may not exist in project settings yet.
+        }
+
+        if (respawnTagged != null)
+            return respawnTagged.transform;
+
+        GameObject namedSpawn = GameObject.Find("SpawnPoint (Main)");
+        if (namedSpawn != null)
+            return namedSpawn.transform;
+
+        GameObject spawnPoint = GameObject.Find("SpawnPoint");
+        if (spawnPoint != null)
+            return spawnPoint.transform;
+
+        GameObject spawnPointTagged = GameObject.FindWithTag("SpawnPoint");
+        return spawnPointTagged != null ? spawnPointTagged.transform : null;
     }
 
     private static void SnapToGround(Transform player, Vector3 spawnPosition)

@@ -68,8 +68,13 @@ public class AudioManager : MonoBehaviour
     // ── Music Control ─────────────────────────────────────────
     public void PlayMusic(AudioClip clip)
     {
-        if (musicSource.clip == clip) return; // hindari restart jika sama
+        if (clip == null || musicSource == null)
+            return;
 
+        if (musicSource.clip == clip && musicSource.isPlaying)
+            return;
+
+        musicSource.DOKill();
         musicSource.clip = clip;
         musicSource.volume = 0f;
         musicSource.Play();
@@ -79,6 +84,13 @@ public class AudioManager : MonoBehaviour
 
     public void StopMusic(System.Action onComplete = null)
     {
+        if (musicSource == null)
+        {
+            onComplete?.Invoke();
+            return;
+        }
+
+        musicSource.DOKill();
         musicSource.DOFade(0f, fadeOutDuration)
             .SetEase(Ease.InCubic)
             .OnComplete(() =>

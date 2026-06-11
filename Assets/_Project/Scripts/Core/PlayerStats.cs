@@ -76,6 +76,7 @@ public class PlayerStats : MonoBehaviour
     private float faintTimer = 0f;
     private float faintDuration = 3f;
     private float runningDuration;
+    private bool faintRespawnHandled;
 
     // ── Public getters ───────────────────────────────────────
     public float CurrentEnergy       => currentEnergy;
@@ -432,6 +433,7 @@ public class PlayerStats : MonoBehaviour
         currentEnergyState = EnergyState.Normal;
         faintTimer = 0f;
         runningDuration = 0f;
+        faintRespawnHandled = false;
 
         totalCaloriesConsumed = 0f;
         dailyProtein = 0f;
@@ -569,16 +571,93 @@ public class PlayerStats : MonoBehaviour
         if (currentEnergy <= 0)
         {
             faintTimer += Time.deltaTime;
-            if (faintTimer >= faintDuration)
-            {
-                currentEnergyState = EnergyState.Fainted;
-                OnPlayerFainted?.Invoke();
-            }
+            if (faintTimer >= faintDuration && !faintRespawnHandled)
+                FaintAndRespawn();
         }
         else
         {
             faintTimer = 0f;
         }
+    }
+
+    public void FaintAndRespawn()
+    {
+        if (faintRespawnHandled)
+            return;
+
+        faintRespawnHandled = true;
+        faintTimer = 0f;
+
+        currentEnergy = maxEnergy;
+        OnEnergyChanged?.Invoke(currentEnergy);
+
+        currentEnergyState = EnergyState.Fainted;
+        OnEnergyStateChanged?.Invoke(currentEnergyState);
+
+        TeleportPlayerToRespawn();
+        OnPlayerFainted?.Invoke();
+
+        FaintNotificationController faintPanel = FindFirstObjectByType<FaintNotificationController>(FindObjectsInactive.Include);
+        if (faintPanel != null)
+            faintPanel.ShowPanel();
+        else
+            Debug.LogWarning("[PlayerStats] FaintNotificationController tidak ditemukan di scene.");
+    }
+
+    public void ResetFaintState()
+    {
+        if (currentEnergyState != EnergyState.Fainted)
+            return;
+
+        faintRespawnHandled = false;
+        faintTimer = 0f;
+        currentEnergyState = EnergyState.Normal;
+        OnEnergyStateChanged?.Invoke(currentEnergyState);
+    }
+
+    static void TeleportPlayerToRespawn()
+    {
+        Transform respawnTransform = null;
+
+        try
+        {
+            GameObject tagged = GameObject.FindGameObjectWithTag("Respawn");
+            if (tagged != null)
+                respawnTransform = tagged.transform;
+        }
+        catch (UnityException)
+        {
+            // Tag "Respawn" may not exist in the project yet.
+        }
+
+        if (respawnTransform == null)
+        {
+            GameObject mainSpawn = GameObject.Find("SpawnPoint (Main)");
+            if (mainSpawn != null)
+                respawnTransform = mainSpawn.transform;
+        }
+
+        if (respawnTransform == null)
+        {
+            GameObject spawnPoint = GameObject.Find("SpawnPoint");
+            if (spawnPoint != null)
+                respawnTransform = spawnPoint.transform;
+        }
+
+        if (respawnTransform == null)
+        {
+            Debug.LogWarning("[PlayerStats] Respawn point tidak ditemukan (tag Respawn / SpawnPoint (Main) / SpawnPoint).");
+            return;
+        }
+
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player == null)
+        {
+            Debug.LogWarning("[PlayerStats] Player tidak ditemukan untuk teleport respawn.");
+            return;
+        }
+
+        player.transform.SetPositionAndRotation(respawnTransform.position, respawnTransform.rotation);
     }
 
     void CalculateBMI()

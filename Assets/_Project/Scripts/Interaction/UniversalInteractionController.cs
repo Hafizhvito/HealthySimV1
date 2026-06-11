@@ -18,10 +18,19 @@ public class UniversalInteractionController : MonoBehaviour
     [SerializeField] private float inputDebounceSeconds = 0.2f;
     [SerializeField] private float minForwardDot = -0.2f;
     [SerializeField] private float bubbleHeight = 1.6f;
-    [SerializeField] private float bubbleMaxDistance = 5.5f;
-    [SerializeField] private float bubbleScale = 0.0035f;
+    [SerializeField] private float bubbleMaxDistance = 6.5f;
+    [SerializeField] private float bubbleScale = 0.0046f;
+    [SerializeField] private float bubbleBgSize = 118f;
+    [SerializeField] private float bubbleFontSize = 80f;
     [SerializeField] private Color bubbleNormalColor = new Color(0f, 0f, 0f, 0.45f);
     [SerializeField] private Color bubbleSelectedColor = new Color(1f, 0.78f, 0.2f, 0.92f);
+
+    [Header("Mobile Proximity Button")]
+    [SerializeField] private bool preferProximityButtonOnMobile = true;
+    [SerializeField] private bool hideWorldBubblesOnMobile = false;
+
+    private const int PresentationVersion = 2;
+    [SerializeField] private int presentationVersion;
 
     private float nextInteractAllowedTime;
     private IInteractable currentInteractable;
@@ -84,9 +93,40 @@ public class UniversalInteractionController : MonoBehaviour
             playerCamera = Camera.main;
 
         modalStateManager = FindFirstObjectByType<ModalStateManager>();
+        ApplyPresentationDefaults();
 
         EnsureHintUI();
         SetHintVisible(false, string.Empty);
+    }
+
+    private void ApplyPresentationDefaults()
+    {
+        if (presentationVersion >= PresentationVersion)
+            return;
+
+        hideWorldBubblesOnMobile = false;
+        if (bubbleScale < 0.0042f)
+            bubbleScale = 0.0046f;
+        if (bubbleMaxDistance < 6f)
+            bubbleMaxDistance = 6.5f;
+        if (bubbleBgSize < 110f)
+            bubbleBgSize = 118f;
+        if (bubbleFontSize < 76f)
+            bubbleFontSize = 80f;
+
+        presentationVersion = PresentationVersion;
+        RefreshBubbleWorldScale();
+    }
+
+    private void RefreshBubbleWorldScale()
+    {
+        foreach (var pair in bubbleByTransform)
+        {
+            if (pair.Value?.Canvas == null)
+                continue;
+
+            pair.Value.Canvas.transform.localScale = Vector3.one * bubbleScale;
+        }
     }
 
     void Update()
@@ -244,6 +284,12 @@ public class UniversalInteractionController : MonoBehaviour
             return;
         }
 
+        if (ShouldUseProximityButton())
+        {
+            SetHintVisible(false, string.Empty);
+            return;
+        }
+
         // Prevent duplicate cue when world bubbles are already visible.
         if (visibleBubbleCount > 0)
         {
@@ -263,6 +309,13 @@ public class UniversalInteractionController : MonoBehaviour
             return;
 
         if (IsModalBlocked())
+        {
+            visibleBubbleCount = 0;
+            HideAllBubbles();
+            return;
+        }
+
+        if (ShouldUseProximityButton() && hideWorldBubblesOnMobile)
         {
             visibleBubbleCount = 0;
             HideAllBubbles();
@@ -300,7 +353,11 @@ public class UniversalInteractionController : MonoBehaviour
             bool selected = currentInteractable != null && ReferenceEquals(currentInteractable, entry.Interactable);
             bubble.Background.color = selected ? bubbleSelectedColor : bubbleNormalColor;
             bubble.Text.color = selected ? new Color(0.14f, 0.1f, 0.02f, 1f) : new Color(1f, 1f, 1f, 0.92f);
-            bubble.RootRect.localScale = selected ? Vector3.one * 1.08f : Vector3.one;
+
+            float proximity = 1f - Mathf.Clamp01(distanceToPlayer / bubbleMaxDistance);
+            float responsiveScale = Mathf.Lerp(1f, 1.22f, proximity);
+            float selectedScale = selected ? 1.12f : 1f;
+            bubble.RootRect.localScale = Vector3.one * (responsiveScale * selectedScale);
             bubble.Text.text = GetBubbleLabel();
         }
 
@@ -324,20 +381,25 @@ public class UniversalInteractionController : MonoBehaviour
         Canvas canvas = canvasObj.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
         canvas.overrideSorting = true;
-        canvas.sortingOrder = 200;
+        canvas.sortingOrder = 250;
         canvas.worldCamera = playerCamera != null ? playerCamera : Camera.main;
         canvas.transform.localScale = Vector3.one * bubbleScale;
         canvasObj.AddComponent<CanvasScaler>();
         GraphicRaycaster raycaster = canvasObj.AddComponent<GraphicRaycaster>();
         raycaster.enabled = true;
 
+        float bgSize = Mathf.Max(96f, bubbleBgSize);
+        float textSize = Mathf.Max(64f, bubbleFontSize);
+        float canvasSize = bgSize + 42f;
+        float textBoxSize = bgSize - 18f;
+
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(160f, 160f);
+        canvasRect.sizeDelta = new Vector2(canvasSize, canvasSize);
 
         GameObject bgObj = new GameObject("BubbleBG");
         bgObj.transform.SetParent(canvasObj.transform, false);
         RectTransform bgRect = bgObj.AddComponent<RectTransform>();
-        bgRect.sizeDelta = new Vector2(98f, 98f);
+        bgRect.sizeDelta = new Vector2(bgSize, bgSize);
 
         Image bg = bgObj.AddComponent<Image>();
         bg.raycastTarget = true;
@@ -356,12 +418,12 @@ public class UniversalInteractionController : MonoBehaviour
         textObj.transform.SetParent(bgObj.transform, false);
 
         RectTransform rect = textObj.AddComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(82f, 82f);
+        rect.sizeDelta = new Vector2(textBoxSize, textBoxSize);
 
         TextMeshProUGUI text = textObj.AddComponent<TextMeshProUGUI>();
         text.text = GetBubbleLabel();
         text.alignment = TextAlignmentOptions.Center;
-        text.fontSize = 68f;
+        text.fontSize = textSize;
         text.raycastTarget = false;
         text.color = Color.white;
 
@@ -448,12 +510,41 @@ public class UniversalInteractionController : MonoBehaviour
 #endif
     }
 
+    public bool ShouldUseProximityButton()
+    {
+        // Active on Android builds and in Editor/desktop so proximity UX can be tested while developing.
+        return preferProximityButtonOnMobile;
+    }
+
+    public bool TryGetProximityActionLabel(out string label)
+    {
+        label = string.Empty;
+
+        if (IsModalBlocked() || !ShouldUseProximityButton())
+            return false;
+
+        if (!TryResolveNearestInteractableForUi(out IInteractable interactable, out _, out _, bubbleMaxDistance))
+            return false;
+
+        if (!interactable.CanInteract(gameObject))
+            return false;
+
+        label = FormatProximityActionLabel(interactable.GetInteractionText());
+        return !string.IsNullOrWhiteSpace(label);
+    }
+
     public void TriggerInteractFromMobile()
     {
+        if (TryResolveNearestInteractableForUi(out IInteractable interactable, out Transform targetTransform, out Collider targetCollider, bubbleMaxDistance))
+        {
+            TryInteract(interactable, targetTransform, targetCollider, skipForwardCheck: true);
+            return;
+        }
+
         pendingInteract = true;
     }
 
-    private void TryInteract(IInteractable interactable, Transform targetTransform, Collider targetCollider)
+    private void TryInteract(IInteractable interactable, Transform targetTransform, Collider targetCollider, bool skipForwardCheck = false)
     {
         if (IsModalBlocked())
             return;
@@ -473,11 +564,14 @@ public class UniversalInteractionController : MonoBehaviour
         if (distance <= 0.001f || distance > interactDistance)
             return;
 
-        Vector3 forward = playerCamera != null ? playerCamera.transform.forward : transform.forward;
-        Vector3 dir = (targetPoint - playerPos).normalized;
-        float forwardDot = Vector3.Dot(forward, dir);
-        if (forwardDot < minForwardDot)
-            return;
+        if (!skipForwardCheck)
+        {
+            Vector3 forward = playerCamera != null ? playerCamera.transform.forward : transform.forward;
+            Vector3 dir = (targetPoint - playerPos).normalized;
+            float forwardDot = Vector3.Dot(forward, dir);
+            if (forwardDot < minForwardDot)
+                return;
+        }
 
         Vector3 castOrigin = playerPos + Vector3.up * 1.1f;
         if (!HasLineOfSight(castOrigin, targetPoint, targetCollider, distance + 0.8f))
@@ -492,6 +586,71 @@ public class UniversalInteractionController : MonoBehaviour
             PlayerActionTracker.Instance.Track(PlayerActionTracker.ActionType.GenericInteraction, interactable.GetInteractionText());
 
         interactable.Interact(gameObject);
+    }
+
+    private bool TryResolveNearestInteractableForUi(
+        out IInteractable interactable,
+        out Transform targetTransform,
+        out Collider targetCollider,
+        float maxDistance = -1f)
+    {
+        interactable = null;
+        targetTransform = null;
+        targetCollider = null;
+
+        if (maxDistance <= 0f)
+            maxDistance = interactDistance;
+
+        var entries = InteractableRegistry.Entries;
+        if (entries == null || entries.Count == 0)
+            return false;
+
+        Vector3 playerPos = transform.position;
+        float bestDistance = float.PositiveInfinity;
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            if (entry.Collider == null || entry.Interactable == null || entry.Transform == null)
+                continue;
+
+            if (!entry.Collider.enabled || !entry.Transform.gameObject.activeInHierarchy)
+                continue;
+
+            Vector3 targetPoint = entry.Collider.bounds.center;
+            float distance = Vector3.Distance(playerPos, targetPoint);
+            if (distance <= 0.001f || distance > maxDistance)
+                continue;
+
+            if (!entry.Interactable.CanInteract(gameObject))
+                continue;
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                interactable = entry.Interactable;
+                targetTransform = entry.Transform;
+                targetCollider = entry.Collider;
+            }
+        }
+
+        return interactable != null;
+    }
+
+    private static string FormatProximityActionLabel(string rawText)
+    {
+        if (string.IsNullOrWhiteSpace(rawText))
+            return string.Empty;
+
+        string text = rawText.Trim();
+
+        if (text.StartsWith("Tekan E untuk ", System.StringComparison.OrdinalIgnoreCase))
+            text = text.Substring("Tekan E untuk ".Length);
+
+        if (text.StartsWith("Tekan E ", System.StringComparison.OrdinalIgnoreCase))
+            text = text.Substring("Tekan E ".Length);
+
+        return text.Trim();
     }
 
     private string GetBubbleLabel()

@@ -16,7 +16,7 @@ public class SampleSceneBootstrap : MonoBehaviour
     private const string FallbackLogPrefix = "[SwapContract/Fallback]";
 
     [Header("Intro Cutscene")]
-    [SerializeField] private bool forceIntroEveryPlay = true;
+    [SerializeField] private bool forceIntroEveryPlay = false;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void AutoBootstrapAfterSceneLoad()
@@ -99,6 +99,7 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsureCoreManagers();
         EnsureEventSystemSetup();
         EnsurePlayerInteraction();
+        EnsureProximityInteractButton();
         EnsurePlaceholderInteractables();
         WirePlaceholderDialogueAssignments();
 
@@ -222,6 +223,39 @@ public class SampleSceneBootstrap : MonoBehaviour
         }
 
         EnsureComponent<UniversalInteractionController>(player);
+    }
+
+    private void EnsureProximityInteractButton()
+    {
+        ProximityInteractButton existing = FindFirstObjectByType<ProximityInteractButton>(FindObjectsInactive.Include);
+        if (existing != null)
+        {
+            if (!existing.gameObject.activeInHierarchy)
+                existing.gameObject.SetActive(true);
+            return;
+        }
+
+        Canvas hudCanvas = null;
+        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            if (canvases[i] != null && canvases[i].name == "HUD_Canvas")
+            {
+                hudCanvas = canvases[i];
+                break;
+            }
+        }
+
+        if (hudCanvas == null)
+        {
+            Debug.LogWarning("[Bootstrap] HUD_Canvas tidak ditemukan. ProximityInteractButton tidak dibuat.");
+            return;
+        }
+
+        GameObject root = new GameObject("ProximityInteractButton", typeof(RectTransform), typeof(CanvasGroup), typeof(ProximityInteractButton));
+        root.transform.SetParent(hudCanvas.transform, false);
+        root.SetActive(true);
+        Debug.LogWarning($"{FallbackLogPrefix} Created ProximityInteractButton at runtime under HUD_Canvas.");
     }
 
     private void EnsurePlayerCharacterSwapper()
@@ -460,10 +494,29 @@ public class SampleSceneBootstrap : MonoBehaviour
         if (StoryIntroManager.Instance == null)
             yield break;
 
+        if (ShouldSkipIntroOnThisLoad())
+        {
+            Debug.Log("[Bootstrap] Intro/backstory dilewati — kembali dari aktivitas atau sudah pernah dimainkan.");
+            StoryIntroManager.Instance.SkipIntroFlow();
+            yield break;
+        }
+
         if (forceIntroEveryPlay)
             StoryIntroManager.Instance.ResetIntroFlag();
 
         yield return StoryIntroManager.Instance.StartIntroFlow();
+    }
+
+    private static bool ShouldSkipIntroOnThisLoad()
+    {
+        string spawnId = SpawnPlayerManager.TargetSpawnID;
+        if (!string.IsNullOrEmpty(spawnId)
+            && !string.Equals(spawnId, SpawnPlayerManager.DefaultSpawnId, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private static GameObject FindManagerHost()

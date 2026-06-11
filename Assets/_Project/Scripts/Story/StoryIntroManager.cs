@@ -16,7 +16,7 @@ public class StoryIntroManager : MonoBehaviour
     [SerializeField] private BackstoryDialogueController backstoryDialogue;
 
     [Header("Intro Debug")]
-    [SerializeField] private bool forcePlayIntro = true;
+    [SerializeField] private bool forcePlayIntro = false;
 
     private StoryTemplate[] templates;
 
@@ -32,6 +32,11 @@ public class StoryIntroManager : MonoBehaviour
 
         Instance = this;
         BuildTemplates();
+    }
+
+    public void SkipIntroFlow()
+    {
+        OnIntroFlowCompleted?.Invoke();
     }
 
     public IEnumerator StartIntroFlow()
