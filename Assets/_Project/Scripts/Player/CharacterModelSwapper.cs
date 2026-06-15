@@ -113,8 +113,6 @@ public class CharacterModelSwapper : MonoBehaviour
         SetActiveModel(target, gender);
         activeBuild = build;
         activeGender = gender;
-
-        Debug.Log($"[CharacterModelSwapper] Active model → gender={gender} build={build} bmi={stats.PlayerBMI:0.0}");
     }
 
     public static BodyBuild ResolveBodyBuild(float bmi)

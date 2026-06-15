@@ -33,7 +33,7 @@ public class SpawnPlayerManager : MonoBehaviour
         }
 
         _Instance = this;
-        DontDestroyOnLoad(gameObject);
+        DontDestroyOnLoad(transform.root.gameObject);
     }
 
     private void OnEnable()
@@ -54,7 +54,6 @@ public class SpawnPlayerManager : MonoBehaviour
         if (string.IsNullOrEmpty(TargetSpawnID))
             TargetSpawnID = DefaultSpawnId;
 
-        Debug.Log($"[Spawn] Scene loaded: {scene.name}, TargetSpawnID: {TargetSpawnID}");
         StartCoroutine(SpawnAfterEverything());
     }
 
@@ -72,7 +71,6 @@ public class SpawnPlayerManager : MonoBehaviour
 
     private void SpawnPlayer()
     {
-        Debug.Log($"[Spawn DEBUG] TargetSpawnID saat SpawnPlayer() = '{TargetSpawnID}'");
         if (string.IsNullOrEmpty(TargetSpawnID)) return;
 
         // Cari SpawnPoint
@@ -114,35 +112,15 @@ public class SpawnPlayerManager : MonoBehaviour
 
         // Teleport player
         Transform spawnTransform = targetSpawn != null ? targetSpawn.transform : fallbackSpawn;
-        Debug.Log($"[Spawn] Target '{TargetSpawnID}' at {spawnTransform.position} (pre-teleport player at {player.transform.position}).");
         player.transform.position = spawnTransform.position;
         player.transform.rotation = spawnTransform.rotation;
         if (spawnTransform.position.y < 1f)
             SnapToGround(player.transform, spawnTransform.position);
-        Debug.Log($"[Spawn] Player post-teleport at {player.transform.position}.");
 
         if (cc != null) cc.enabled = true;
 
-        string spawnLabel = targetSpawn != null ? targetSpawn.ID : "SpawnPoint";
-        Debug.Log($"[Spawn] ✅ Player di-spawn di '{spawnLabel}' → {spawnTransform.position}");
-
-        // Reset setelah dipakai
         TargetSpawnID = "";
         OnSpawnComplete?.Invoke();
-        StartCoroutine(WatchPlayerPosition());
-    }
-
-     private IEnumerator WatchPlayerPosition()
-    {
-        GameObject player = GameObject.FindWithTag("Player");
-        if (player == null) yield break;
-        
-        for (int i = 0; i < 10; i++)
-        {
-            yield return new WaitForSeconds(0.1f);
-            if (player == null) yield break;
-            Debug.Log($"[SpawnWatch] t={i * 0.1f:F1}s player pos = {player.transform.position}");
-        }
     }
 
     // ── Dev Tool ──────────────────────────────────────────────
@@ -219,7 +197,6 @@ public class SpawnPlayerManager : MonoBehaviour
             if (Mathf.Abs(groundY - spawnPosition.y) < 10f)
             {
                 player.position = new Vector3(spawnPosition.x, groundY, spawnPosition.z);
-                Debug.Log($"[Spawn] SnapToGround berhasil → y={groundY:F2}");
                 return;
             }
 

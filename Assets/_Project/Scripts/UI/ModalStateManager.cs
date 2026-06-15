@@ -63,8 +63,6 @@ public class ModalStateManager : MonoBehaviour
 
         if (!wasOpen)
             OnModalStateChanged?.Invoke(true);
-
-        Debug.Log($"[ModalState] Open {key} (active={GetActiveModalCount()})");
     }
 
     public void CloseModal(string modalName)
@@ -91,8 +89,6 @@ public class ModalStateManager : MonoBehaviour
 
         if (wasOpen && !IsAnyModalOpen)
             OnModalStateChanged?.Invoke(false);
-
-        Debug.Log($"[ModalState] Close {key} (active={GetActiveModalCount()})");
     }
 
     public void ForceResetAllModals()
@@ -104,7 +100,6 @@ public class ModalStateManager : MonoBehaviour
             playerController.ResetInputLocks("ForceReset");
 
         OnModalStateChanged?.Invoke(false);
-        Debug.Log("[ModalState] Force reset all modals.");
     }
 
     private int GetActiveModalCount()

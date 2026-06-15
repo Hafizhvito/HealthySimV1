@@ -341,8 +341,6 @@ public class PlayerStats : MonoBehaviour
         dailyCalorieTarget    = data.dailyCalorieTarget;
         movementDrainModifier = Mathf.Clamp(data.movementDrainMultiplier, 0.5f, 1.5f);
         moodDrainRate         = data.moodDrainMultiplier * 0.2f;
-        Debug.Log($"[PlayerStats] PhaseModifiers applied: stage={currentAgeStage} gender={playerGender} " +
-                  $"cal={dailyCalorieTarget} drain={movementDrainModifier} mood={moodDrainRate}");
     }
 
     private PhaseModifierData GetPhaseModifier(AgeStage stage, Gender gender)

@@ -100,17 +100,8 @@ public class PauseMenuManager : MonoBehaviour
 
     private void TryPlayGameMusic()
     {
-        if (gameMusic == null)
-        {
-            Debug.LogWarning("[PauseMenuManager] gameMusic belum di-assign — musik in-game tidak diputar.");
+        if (gameMusic == null || AudioManager._Instance == null)
             return;
-        }
-
-        if (AudioManager._Instance == null)
-        {
-            Debug.LogWarning("[PauseMenuManager] AudioManager tidak ditemukan — musik in-game tidak diputar.");
-            return;
-        }
 
         AudioManager._Instance.PlayMusic(gameMusic);
     }

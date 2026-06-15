@@ -30,13 +30,7 @@ public class SceneLoaderInteractable : MonoBehaviour, IInteractable
     {
         _cachedCollider = GetComponent<Collider>();
         if (_cachedCollider == null)
-        {
             Debug.LogWarning("Collider tidak ditemukan");
-        }
-        else if (_cachedCollider != null)
-        {
-            Debug.LogWarning("Collider ditemukan");
-        }
     }
 
     private void OnEnable()

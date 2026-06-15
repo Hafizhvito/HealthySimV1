@@ -8,7 +8,7 @@ public class SessionSeedManager : MonoBehaviour
     [Header("Seed Settings")]
     [SerializeField] private bool useManualSeed = false;
     [SerializeField] private int manualSeed = 123456;
-    [SerializeField] private bool logSeedOnStart = true;
+    [SerializeField] private bool logSeedOnStart = false;
 
     public int SessionSeed { get; private set; }
     public bool UsingManualSeed => useManualSeed;

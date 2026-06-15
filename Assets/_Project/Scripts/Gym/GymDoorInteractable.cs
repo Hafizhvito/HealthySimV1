@@ -10,8 +10,8 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
     [SerializeField] private string gymSceneName = "GymScene";
     [SerializeField] private string promptText = "Masuk Gym";
     [SerializeField] private string blockedEnergyText = "Energi terlalu rendah untuk latihan.";
-    [SerializeField] private string blockedNightText = "Gym sudah tutup malam ini.";
-    [SerializeField] private string alreadyTrainedText = "Kamu sudah latihan hari ini.";
+    [SerializeField] private string blockedNightText = "Gym sudah tutup. Jam operasional 06.00 - 22.00.";
+    [SerializeField] private string alreadyTrainedText = "Kamu sudah berlatih hari ini. Istirahat dulu!";
     [SerializeField] private GymProgressionSystem gymProgressionOverride;
     [SerializeField] private FadeManager fadeManagerOverride;
 
@@ -80,7 +80,7 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
         if (hour < 6f || hour >= 22f)
         {
-            ShowFloatingText("Gym sudah tutup. Jam operasional 06.00 - 22.00.", 2f);
+            ShowFloatingText(blockedNightText, 2f);
             return;
         }
 
@@ -88,11 +88,9 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
         bool hasTrained = progression.HasTrainedToday;
         bool canTrain = progression.CanTrain(energy, period);
 
-        Debug.Log($"[GymDoor] hour={hour:F2} energy={energy:F2} hasTrained={hasTrained} canTrain={canTrain}");
-
         if (hasTrained)
         {
-            ShowFloatingText("Kamu sudah berlatih hari ini. Istirahat dulu!", 2f);
+            ShowFloatingText(alreadyTrainedText, 2f);
             return;
         }
 

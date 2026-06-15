@@ -33,9 +33,6 @@ public class IntroCutsceneController : MonoBehaviour
     [SerializeField] private int gameplayPriority = 50;
     [SerializeField] private int inactivePriority = 1;
 
-    [Header("Camera Motion")]
-    [SerializeField] private float cutShakeAmplitude = 0.03f;
-
     [Header("Street-Level Tour")]
     [SerializeField] private float streetShotHeight = 1.7f;
     [SerializeField] private float streetShotDistance = 8f;
@@ -582,18 +579,6 @@ public class IntroCutsceneController : MonoBehaviour
             introHotspotCamera.transform.rotation = Quaternion.LookRotation((lookTarget - camPos).normalized, Vector3.up);
             yield return null;
         }
-    }
-
-    private IEnumerator ApplySingleFrameCutShake(CinemachineCamera cam, float amplitude)
-    {
-        if (cam == null || amplitude <= 0f)
-            yield break;
-
-        Vector3 originalPosition = cam.transform.position;
-        Vector3 offset = Random.insideUnitSphere * amplitude;
-        cam.transform.position = originalPosition + offset;
-        yield return null;
-        cam.transform.position = originalPosition;
     }
 
     private IEnumerator PlayTitleCard(StoryTemplate template)

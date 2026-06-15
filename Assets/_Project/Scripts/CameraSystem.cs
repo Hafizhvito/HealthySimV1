@@ -43,10 +43,16 @@ public class CameraSystem : MonoBehaviour
     [SerializeField] private float deoccluderSmoothingTime = 0.2f;
     [SerializeField] private float deoccluderDampingWhenOccluded = 0.4f;
 
-    [Header("Look Input")]
+    [Header("Look Input (TPP)")]
     [SerializeField] private bool enableDesktopMouseLook = true;
     [SerializeField] [Range(0.1f, 6f)] private float mouseLookSensitivity = 1f;
-    [SerializeField] private float lookSmoothing = 10f;
+    [SerializeField] [Range(0f, 20f)] private float lookSmoothing = 10f;
+
+    [Header("Look Input (FPP)")]
+    [Tooltip("Mouse/touch look speed in first-person. Lower = less slippery.")]
+    [SerializeField] [Range(0.05f, 3f)] private float fppMouseLookSensitivity = 0.4f;
+    [Tooltip("Smoothing for FPP look. Higher = steadier camera, less jitter.")]
+    [SerializeField] [Range(0f, 20f)] private float fppLookSmoothing = 12f;
     [SerializeField] private float fppPitchMin = -60f;
     [SerializeField] private float fppPitchMax = 60f;
     [SerializeField] private float transitionDuration = 0.25f;
@@ -518,13 +524,21 @@ public class CameraSystem : MonoBehaviour
         if (ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen)
             return;
 
+        float dt = Time.unscaledDeltaTime;
+
         if (isFirstPerson)
         {
-            Vector2 scaled = lookDelta * Mathf.Max(0.001f, sensitivity);
-            if (scaled.sqrMagnitude <= 0.000001f)
+            if (lookDelta.sqrMagnitude <= 0.000001f)
+            {
+                smoothedLookDelta = Vector2.zero;
                 return;
+            }
 
-            ApplyFppLookInput(scaled.x, scaled.y);
+            float effectiveSensitivity = fppMouseLookSensitivity * Mathf.Max(0.001f, sensitivity);
+            Vector2 scaled = lookDelta * effectiveSensitivity;
+            float fppSmoothT = fppLookSmoothing <= 0f ? 1f : 1f - Mathf.Exp(-fppLookSmoothing * dt);
+            smoothedLookDelta = Vector2.Lerp(smoothedLookDelta, scaled, fppSmoothT);
+            ApplyFppLookInput(smoothedLookDelta.x, smoothedLookDelta.y);
             return;
         }
 
@@ -534,11 +548,10 @@ public class CameraSystem : MonoBehaviour
             return;
         }
 
-        float dt = Time.unscaledDeltaTime;
-        float scale = Mathf.Max(0.01f, sensitivity) * dt;
+        float scale = Mathf.Max(0.01f, mouseLookSensitivity) * Mathf.Max(0.01f, sensitivity) * dt;
         Vector2 scaledTpp = lookDelta * scale;
-        float t = lookSmoothing <= 0f ? 1f : 1f - Mathf.Exp(-lookSmoothing * dt);
-        smoothedLookDelta = Vector2.Lerp(smoothedLookDelta, scaledTpp, t);
+        float tppSmoothT = lookSmoothing <= 0f ? 1f : 1f - Mathf.Exp(-lookSmoothing * dt);
+        smoothedLookDelta = Vector2.Lerp(smoothedLookDelta, scaledTpp, tppSmoothT);
         ApplyTppLookInput(smoothedLookDelta.x, smoothedLookDelta.y);
     }
 
@@ -632,8 +645,7 @@ public class CameraSystem : MonoBehaviour
         if (Mathf.Abs(mouseX) < 0.0001f && Mathf.Abs(mouseY) < 0.0001f)
             return;
 
-        Vector2 lookDelta = new Vector2(mouseX, mouseY) * mouseLookSensitivity;
-        AddLookInput(lookDelta, 1f);
+        AddLookInput(new Vector2(mouseX, mouseY), 1f);
 #endif
     }
 

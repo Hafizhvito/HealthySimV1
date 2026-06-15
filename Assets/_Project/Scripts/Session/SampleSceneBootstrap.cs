@@ -13,7 +13,6 @@ using UnityEngine.UI;
 public class SampleSceneBootstrap : MonoBehaviour
 {
     private const string TargetSceneName = "SampleScene";
-    private const string FallbackLogPrefix = "[SwapContract/Fallback]";
 
     [Header("Intro Cutscene")]
     [SerializeField] private bool forceIntroEveryPlay = false;
@@ -26,27 +25,17 @@ public class SampleSceneBootstrap : MonoBehaviour
 
     private static void HandleAutoBootstrapSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        Debug.Log($"Bootstrap check — scene loaded: {scene.name}");
-
-        if (scene.name != TargetSceneName) // skip scene kalo bukan yang dituju
-        {
-            Debug.Log($"Bootstrap skip — bukan {TargetSceneName}");
+        if (scene.name != TargetSceneName)
             return;
-        }
 
-        // hilangkan script di scene supaya tidak dipanggil lagi
         SceneManager.sceneLoaded -= HandleAutoBootstrapSceneLoaded;
 
         foreach (GameObject root in scene.GetRootGameObjects())
         {
             if (root.GetComponentInChildren<SampleSceneBootstrap>(true) != null)
-            {
-                Debug.Log("Bootstrap sudah ada di scene, skip runtime spawn.");
                 return;
-            }
         }
 
-        Debug.LogWarning($"{FallbackLogPrefix} Spawning SampleSceneBootstrap at runtime. Add it to the scene via HealthySim/Setup SampleScene Core.");
         var bootstrap = new GameObject("SampleSceneBootstrap");
         bootstrap.AddComponent<SampleSceneBootstrap>();
     }
@@ -111,11 +100,6 @@ public class SampleSceneBootstrap : MonoBehaviour
             float savedWeight  = PlayerData.BeratBadan  > 0 ? PlayerData.BeratBadan  : 65f;
             PlayerStats.Instance.SetPlayerData(savedName, savedHeight, savedWeight);
             PlayerStats.Instance.SetGender(ResolvePlayerGender(PlayerData.JenisKelamin));
-            Debug.Log($"[Bootstrap] PlayerData wired → name={savedName} h={savedHeight} w={savedWeight} gender={PlayerStats.Instance.PlayerGender}");
-        }
-        else
-        {
-            Debug.LogWarning("[Bootstrap] PlayerStats.Instance null — SetPlayerData skipped.");
         }
 
         EnsurePlayerCharacterSwapper();
@@ -132,7 +116,6 @@ public class SampleSceneBootstrap : MonoBehaviour
         {
             manager = new GameObject("GameManager");
             DontDestroyOnLoad(manager);
-            Debug.LogWarning($"{FallbackLogPrefix} Created GameManager at runtime. Run HealthySim/Setup SampleScene Core in the Editor.");
         }
         else if (manager.scene.name != "DontDestroyOnLoad")
         {
@@ -172,7 +155,6 @@ public class SampleSceneBootstrap : MonoBehaviour
         {
             GameObject eventObj = new GameObject("EventSystem");
             eventSystem = eventObj.AddComponent<EventSystem>();
-            Debug.LogWarning($"{FallbackLogPrefix} Created EventSystem at runtime.");
         }
 
         StandaloneInputModule standaloneModule = eventSystem.GetComponent<StandaloneInputModule>();
@@ -184,7 +166,6 @@ public class SampleSceneBootstrap : MonoBehaviour
         if (standaloneModule == null)
         {
             standaloneModule = eventSystem.gameObject.AddComponent<StandaloneInputModule>();
-            Debug.LogWarning($"{FallbackLogPrefix} Added StandaloneInputModule to EventSystem at runtime.");
         }
 
         standaloneModule.enabled = true;
@@ -201,7 +182,6 @@ public class SampleSceneBootstrap : MonoBehaviour
         if (inputSystemModule == null)
         {
             inputSystemModule = eventSystem.gameObject.AddComponent<InputSystemUIInputModule>();
-            Debug.LogWarning($"{FallbackLogPrefix} Added InputSystemUIInputModule to EventSystem at runtime.");
         }
 
         inputSystemModule.enabled = true;
@@ -255,7 +235,6 @@ public class SampleSceneBootstrap : MonoBehaviour
         GameObject root = new GameObject("ProximityInteractButton", typeof(RectTransform), typeof(CanvasGroup), typeof(ProximityInteractButton));
         root.transform.SetParent(hudCanvas.transform, false);
         root.SetActive(true);
-        Debug.LogWarning($"{FallbackLogPrefix} Created ProximityInteractButton at runtime under HUD_Canvas.");
     }
 
     private void EnsurePlayerCharacterSwapper()
@@ -309,7 +288,6 @@ public class SampleSceneBootstrap : MonoBehaviour
                 if (item == null || item == keep)
                     continue;
 
-                Debug.LogWarning($"{FallbackLogPrefix} Removed extra FoodPickupInteractable '{item.gameObject.name}' at runtime.");
                 Destroy(item.gameObject);
             }
         }
@@ -320,7 +298,6 @@ public class SampleSceneBootstrap : MonoBehaviour
         GameObject legacyFoodCube = GameObject.Find("Interactable_FoodCube");
         if (hasFoodSetup && legacyFoodCube != null)
         {
-            Debug.LogWarning($"{FallbackLogPrefix} Removed legacy Interactable_FoodCube at runtime (scene already has restaurant + home station).");
             Destroy(legacyFoodCube);
         }
 
@@ -332,7 +309,6 @@ public class SampleSceneBootstrap : MonoBehaviour
             foodObj.transform.localScale = new Vector3(1.2f, 1.2f, 1.2f);
             foodObj.GetComponent<Renderer>().material.color = new Color(0.2f, 0.8f, 0.2f);
             EnsureComponent<FoodPickupInteractable>(foodObj);
-            Debug.LogWarning($"{FallbackLogPrefix} Created placeholder Interactable_FoodCube at runtime.");
         }
 
         if (GameObject.Find("Interactable_NPC") == null)
@@ -342,7 +318,6 @@ public class SampleSceneBootstrap : MonoBehaviour
             npcObj.transform.position = new Vector3(-52f, 1f, 31f);
             npcObj.GetComponent<Renderer>().material.color = new Color(0.2f, 0.5f, 0.95f);
             EnsureComponent<NpcDialogueInteractable>(npcObj);
-            Debug.LogWarning($"{FallbackLogPrefix} Created placeholder Interactable_NPC at runtime.");
         }
 
         if (GameObject.Find("Interactable_NPC_Restoran") == null)
@@ -352,7 +327,6 @@ public class SampleSceneBootstrap : MonoBehaviour
             npcObj.transform.position = new Vector3(-49f, 1f, 34f);
             npcObj.GetComponent<Renderer>().material.color = new Color(0.95f, 0.55f, 0.2f);
             EnsureComponentByTypeName(npcObj, "NpcRestaurantInteractable");
-            Debug.LogWarning($"{FallbackLogPrefix} Created placeholder Interactable_NPC_Restoran at runtime.");
         }
 
         if (GameObject.Find("Interactable_Bed") == null)
@@ -363,7 +337,6 @@ public class SampleSceneBootstrap : MonoBehaviour
             bedObj.transform.localScale = new Vector3(2.2f, 0.45f, 1.25f);
             bedObj.GetComponent<Renderer>().material.color = new Color(0.64f, 0.42f, 0.28f);
             EnsureComponent<SleepBedInteractable>(bedObj);
-            Debug.LogWarning($"{FallbackLogPrefix} Created placeholder Interactable_Bed at runtime.");
         }
 
         // ── SpawnPoint: jangan pernah destroy SpawnPoint yang sudah ada di scene ──
@@ -382,14 +355,7 @@ public class SampleSceneBootstrap : MonoBehaviour
                 {
                     string currentId = spawnField.GetValue(sp) as string;
                     if (string.IsNullOrWhiteSpace(currentId))
-                    {
                         spawnField.SetValue(sp, "spawnpoint");
-                        Debug.Log($"[Bootstrap] SpawnPointID '{sp.gameObject.name}' — ID kosong, diset ke 'spawnpoint'.");
-                    }
-                    else
-                    {
-                        Debug.Log($"[Bootstrap] SpawnPointID '{sp.gameObject.name}' sudah ada dengan ID='{currentId}' di {sp.transform.position} — skip.");
-                    }
                 }
             }
             return;
@@ -410,7 +376,6 @@ public class SampleSceneBootstrap : MonoBehaviour
             {
                 spawnPoint.transform.position = new Vector3(0f, 1f, 0f);
             }
-            Debug.LogWarning($"{FallbackLogPrefix} Created fallback SpawnPoint (tidak ada SpawnPointID di scene).");
         }
 
         SpawnPointID newSpawnId = spawnPoint.GetComponent<SpawnPointID>();
@@ -496,7 +461,6 @@ public class SampleSceneBootstrap : MonoBehaviour
 
         if (ShouldSkipIntroOnThisLoad())
         {
-            Debug.Log("[Bootstrap] Intro/backstory dilewati — kembali dari aktivitas atau sudah pernah dimainkan.");
             StoryIntroManager.Instance.SkipIntroFlow();
             yield break;
         }
@@ -569,10 +533,7 @@ public class SampleSceneBootstrap : MonoBehaviour
     {
         T component = target.GetComponent<T>();
         if (component == null)
-        {
             component = target.AddComponent<T>();
-            Debug.LogWarning($"{FallbackLogPrefix} Added {typeof(T).Name} to {target.name} at runtime.");
-        }
 
         return component;
     }
@@ -596,12 +557,8 @@ public class SampleSceneBootstrap : MonoBehaviour
         }
 
         if (found == null)
-        {
-            Debug.LogWarning($"[Bootstrap] Tipe komponen tidak ditemukan: {typeName}");
             return null;
-        }
 
-        Debug.LogWarning($"{FallbackLogPrefix} Added {typeName} to {target.name} at runtime.");
         return target.AddComponent(found);
     }
 }
