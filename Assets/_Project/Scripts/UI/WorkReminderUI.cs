@@ -238,6 +238,8 @@ public class WorkReminderUI : MonoBehaviour
             if (hudWorkIndicator == null)
                 CreateWorkHudIndicator();
         }
+        else
+            ApplyReadableHudText(hudWorkIndicator);
 
         ConfigureWorkIndicatorLayout();
 
@@ -260,6 +262,8 @@ public class WorkReminderUI : MonoBehaviour
             if (hudMoneyIndicator == null)
                 CreateMoneyHudIndicator();
         }
+        else
+            ApplyReadableHudText(hudMoneyIndicator);
 
         ConfigureMoneyIndicatorLayout();
     }
@@ -283,20 +287,20 @@ public class WorkReminderUI : MonoBehaviour
         hudStatusPanel.anchorMin = new Vector2(0f, 1f);
         hudStatusPanel.anchorMax = new Vector2(0f, 1f);
         hudStatusPanel.pivot = new Vector2(0f, 1f);
-        hudStatusPanel.anchoredPosition = new Vector2(40f, -124f);
-        hudStatusPanel.sizeDelta = new Vector2(320f, 66f);
+        hudStatusPanel.anchoredPosition = new Vector2(36f, -142f);
+        hudStatusPanel.sizeDelta = new Vector2(348f, 88f);
 
         Image bg = hudStatusPanel.GetComponent<Image>();
         if (bg == null)
             bg = hudStatusPanel.gameObject.AddComponent<Image>();
 
-        bg.color = new Color(14f / 255f, 20f / 255f, 28f / 255f, 185f / 255f);
+        bg.color = new Color32(10, 14, 20, 230);
 
         Outline outline = hudStatusPanel.GetComponent<Outline>();
         if (outline == null)
             outline = hudStatusPanel.gameObject.AddComponent<Outline>();
 
-        outline.effectColor = new Color(1f, 1f, 1f, 0.14f);
+        outline.effectColor = new Color(1f, 1f, 1f, 0.16f);
         outline.effectDistance = new Vector2(1f, -1f);
     }
 
@@ -382,9 +386,10 @@ public class WorkReminderUI : MonoBehaviour
     private void CreateWorkHudIndicator()
     {
         Transform parent = hudStatusPanel != null ? hudStatusPanel : hudCanvas.transform;
-        hudWorkIndicator = CreateTmp("WorkHUDIndicator", parent, 15f, FontStyles.Bold, new Color32(189, 244, 194, 240));
+        hudWorkIndicator = CreateTmp("WorkHUDIndicator", parent, 18f, FontStyles.Bold, new Color32(245, 248, 252, 255));
+        ApplyReadableHudText(hudWorkIndicator);
         ConfigureWorkIndicatorLayout();
-        hudWorkIndicator.text = "Status kerja: " + GetWorkHoursText();
+        hudWorkIndicator.text = "Kerja · " + GetWorkHoursText();
     }
 
     private void ConfigureWorkIndicatorLayout()
@@ -396,17 +401,18 @@ public class WorkReminderUI : MonoBehaviour
         rect.anchorMin = new Vector2(0f, 1f);
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(12f, -10f);
-        rect.sizeDelta = new Vector2(-18f, 26f);
+        rect.anchoredPosition = new Vector2(14f, -12f);
+        rect.sizeDelta = new Vector2(-24f, 30f);
         hudWorkIndicator.alignment = TextAlignmentOptions.TopLeft;
     }
 
     private void CreateMoneyHudIndicator()
     {
         Transform parent = hudStatusPanel != null ? hudStatusPanel : hudCanvas.transform;
-        hudMoneyIndicator = CreateTmp("MoneyHUDIndicator", parent, 16f, FontStyles.Bold, new Color32(255, 233, 150, 240));
+        hudMoneyIndicator = CreateTmp("MoneyHUDIndicator", parent, 19f, FontStyles.Bold, new Color32(255, 232, 150, 255));
+        ApplyReadableHudText(hudMoneyIndicator);
         ConfigureMoneyIndicatorLayout();
-        hudMoneyIndicator.text = "Saldo: Rp0";
+        hudMoneyIndicator.text = "Saldo · Rp0";
     }
 
     private void ConfigureMoneyIndicatorLayout()
@@ -418,8 +424,8 @@ public class WorkReminderUI : MonoBehaviour
         rect.anchorMin = new Vector2(0f, 1f);
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(12f, -36f);
-        rect.sizeDelta = new Vector2(-18f, 26f);
+        rect.anchoredPosition = new Vector2(14f, -48f);
+        rect.sizeDelta = new Vector2(-24f, 32f);
         hudMoneyIndicator.alignment = TextAlignmentOptions.TopLeft;
     }
 
@@ -431,26 +437,26 @@ public class WorkReminderUI : MonoBehaviour
         WorkSessionManager work = WorkSessionManager.Instance;
         if (work == null || !work.HasWorkedToday || work.LastSession == null)
         {
-            hudWorkIndicator.color = new Color32(255, 232, 160, 220);
-            hudWorkIndicator.text = "Status kerja: " + GetWorkHoursText();
+            hudWorkIndicator.color = new Color32(245, 248, 252, 255);
+            hudWorkIndicator.text = "Kerja · " + GetWorkHoursText();
             return;
         }
 
         WorkResult result = work.LastSession.result;
         if (result == WorkResult.Full)
         {
-            hudWorkIndicator.text = "Status kerja: selesai";
-            hudWorkIndicator.color = new Color(0.46f, 0.88f, 0.5f, 0.95f);
+            hudWorkIndicator.text = "Kerja · selesai";
+            hudWorkIndicator.color = new Color(0.62f, 0.96f, 0.68f, 1f);
         }
         else if (result == WorkResult.Partial)
         {
-            hudWorkIndicator.text = "Status kerja: sebagian";
-            hudWorkIndicator.color = new Color(1f, 0.68f, 0.3f, 0.95f);
+            hudWorkIndicator.text = "Kerja · sebagian";
+            hudWorkIndicator.color = new Color(1f, 0.78f, 0.42f, 1f);
         }
         else
         {
-            hudWorkIndicator.text = "Status kerja: gagal";
-            hudWorkIndicator.color = new Color(1f, 0.45f, 0.45f, 0.95f);
+            hudWorkIndicator.text = "Kerja · gagal";
+            hudWorkIndicator.color = new Color(1f, 0.58f, 0.58f, 1f);
         }
     }
 
@@ -460,7 +466,17 @@ public class WorkReminderUI : MonoBehaviour
             return;
 
         int money = PlayerStats.Instance != null ? Mathf.Max(0, PlayerStats.Instance.Money) : 0;
-        hudMoneyIndicator.text = string.Format("Saldo: Rp{0:N0}", money);
+        hudMoneyIndicator.text = string.Format("Saldo · Rp{0:N0}", money);
+        hudMoneyIndicator.color = new Color32(255, 232, 150, 255);
+    }
+
+    private static void ApplyReadableHudText(TextMeshProUGUI text)
+    {
+        if (text == null)
+            return;
+
+        text.outlineColor = new Color(0f, 0f, 0f, 0.9f);
+        text.outlineWidth = 0.16f;
     }
 
     private void RefreshReminderContent()

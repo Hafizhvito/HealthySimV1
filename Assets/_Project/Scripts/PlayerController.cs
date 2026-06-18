@@ -243,7 +243,9 @@ public class PlayerController : MonoBehaviour
         if (jumpPressed)
             jumpRequest = true;
 
-        if (playerStats != null)
+        if (playerStats != null
+            && !IsInputLocked
+            && ShouldDrainEnergyFromMovement())
             playerStats.DrainEnergy(
                 moveDir.magnitude > 0.1f && !isRunning,
                 isRunning,
@@ -795,6 +797,14 @@ public class PlayerController : MonoBehaviour
     public bool IsInputLocked => inputLocks.Count > 0;
     public bool IsMovementLocked => IsInputLocked;
     public bool IsInputBlocked() => IsInputLocked;
+
+    private bool ShouldDrainEnergyFromMovement()
+    {
+        if (TimeManager.Instance != null && !TimeManager.Instance.IsRunning)
+            return false;
+
+        return true;
+    }
 
     public float JumpForce => jumpForce;
     public float CoyoteTime => 0f;

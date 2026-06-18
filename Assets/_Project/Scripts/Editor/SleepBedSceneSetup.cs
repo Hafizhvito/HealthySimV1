@@ -8,7 +8,7 @@ public static class SleepBedSceneSetup
 {
     private const string SampleScenePath = "Assets/Scenes/SampleScene.unity";
 
-    [MenuItem("HealthSim/Setup/Ensure Sleep Bed Placeholder")]
+    [MenuItem("HealthySim/Setup/Ensure Sleep Bed Placeholder")]
     public static void EnsureSleepBedPlaceholder()
     {
         Scene scene = EditorSceneManager.OpenScene(SampleScenePath, OpenSceneMode.Single);
@@ -53,6 +53,69 @@ public static class SleepBedSceneSetup
         AssetDatabase.Refresh();
 
         Debug.Log("[SleepBedSceneSetup] Placeholder kasur siap di SampleScene (visible sebelum Play).");
+    }
+
+    [MenuItem("HealthySim/Setup/Wire Sleep Wake To bedSingle")]
+    public static void WireSleepWakeToBedSingle()
+    {
+        Scene scene = EditorSceneManager.GetActiveScene();
+        if (!scene.IsValid())
+        {
+            Debug.LogError("[SleepBedSceneSetup] Tidak ada scene aktif.");
+            return;
+        }
+
+        GameObject bedSingle = GameObject.Find("bedSingle");
+        if (bedSingle == null)
+        {
+            Debug.LogError("[SleepBedSceneSetup] Object 'bedSingle' tidak ditemukan di scene aktif.");
+            return;
+        }
+
+        SleepBedInteractable sleepBed = bedSingle.GetComponent<SleepBedInteractable>();
+        if (sleepBed == null)
+            sleepBed = bedSingle.AddComponent<SleepBedInteractable>();
+
+        Transform spawn = bedSingle.transform.Find("BedSpawnPoint");
+        if (spawn == null)
+        {
+            GameObject spawnObj = new GameObject("BedSpawnPoint");
+            spawnObj.transform.SetParent(bedSingle.transform, false);
+            spawn = spawnObj.transform;
+        }
+
+        Collider bedCollider = bedSingle.GetComponent<Collider>();
+        if (bedCollider == null)
+            bedCollider = bedSingle.GetComponentInChildren<Collider>();
+
+        Vector3 worldSpawn;
+        if (bedCollider != null)
+        {
+            Bounds bounds = bedCollider.bounds;
+            worldSpawn = new Vector3(bounds.center.x, bounds.max.y + 0.05f, bounds.center.z);
+        }
+        else
+        {
+            worldSpawn = bedSingle.transform.position + Vector3.up * 0.35f;
+        }
+
+        spawn.position = worldSpawn;
+        spawn.rotation = Quaternion.Euler(0f, bedSingle.transform.eulerAngles.y, 0f);
+
+        SerializedObject serializedSleep = new SerializedObject(sleepBed);
+        serializedSleep.FindProperty("bedSpawnPoint").objectReferenceValue = spawn;
+        serializedSleep.ApplyModifiedPropertiesWithoutUndo();
+
+        SleepBedInteractable legacyBed = null;
+        GameObject interactableBed = GameObject.Find("Interactable_Bed");
+        if (interactableBed != null)
+            legacyBed = interactableBed.GetComponent<SleepBedInteractable>();
+
+        if (legacyBed != null && legacyBed != sleepBed)
+            Object.DestroyImmediate(legacyBed);
+
+        EditorSceneManager.MarkSceneDirty(scene);
+        Debug.Log($"[SleepBedSceneSetup] bedSpawnPoint di '{bedSingle.name}' → {spawn.position}. Save scene (Ctrl+S).");
     }
 }
 #endif

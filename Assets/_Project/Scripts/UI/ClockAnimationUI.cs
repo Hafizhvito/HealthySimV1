@@ -7,6 +7,27 @@ using UnityEngine.UI;
 public class ClockAnimationUI : MonoBehaviour
 {
     private static Sprite runtimeCircleSprite;
+    private static ClockAnimationUI instance;
+
+    public static ClockAnimationUI Instance => instance;
+
+    public static ClockAnimationUI EnsureInstance()
+    {
+        if (instance != null)
+            return instance;
+
+        instance = FindFirstObjectByType<ClockAnimationUI>();
+        if (instance != null)
+            return instance;
+
+        instance = FindFirstObjectByType<ClockAnimationUI>(FindObjectsInactive.Include);
+        if (instance != null)
+            return instance;
+
+        GameObject clockObj = new GameObject("ClockAnimationUI");
+        instance = clockObj.AddComponent<ClockAnimationUI>();
+        return instance;
+    }
 
     [Header("Timings")]
     [SerializeField] private float fadeDuration = 0.5f;
@@ -28,6 +49,24 @@ public class ClockAnimationUI : MonoBehaviour
 
     private Coroutine playRoutine;
     private bool isAnimating;
+
+    private void Awake()
+    {
+        if (instance != null && instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    private void OnDestroy()
+    {
+        if (instance == this)
+            instance = null;
+    }
 
     private void Start()
     {
@@ -54,7 +93,7 @@ public class ClockAnimationUI : MonoBehaviour
         playRoutine = StartCoroutine(PlayRoutine(data, onComplete));
     }
 
-    public void PlayTimeSkipAnimation(string title, int startHour, int endHour, float customDuration, Action onComplete)
+    public void PlayTimeSkipAnimation(string title, float startHour, float endHour, float customDuration, Action onComplete)
     {
         EnsureUiBuilt();
 
@@ -65,7 +104,7 @@ public class ClockAnimationUI : MonoBehaviour
         playRoutine = StartCoroutine(PlayTimeSkipRoutine(title, startHour, endHour, customDuration, onComplete));
     }
 
-    private IEnumerator PlayTimeSkipRoutine(string title, int startHour, int endHour, float customDuration, Action onComplete)
+    private IEnumerator PlayTimeSkipRoutine(string title, float startHour, float endHour, float customDuration, Action onComplete)
     {
         panelGroup.alpha = 0f;
         panelGroup.gameObject.SetActive(true);
@@ -93,7 +132,7 @@ public class ClockAnimationUI : MonoBehaviour
         }
 
         UpdateClockVisual(toHour);
-        statusLabel.text = "Waktu berlalu... pagi tiba.";
+        statusLabel.text = string.IsNullOrWhiteSpace(title) ? "Waktu berlalu..." : title + " selesai.";
 
         yield return new WaitForSecondsRealtime(Mathf.Max(0.3f, statusHoldDuration * 0.6f));
 
@@ -236,6 +275,7 @@ public class ClockAnimationUI : MonoBehaviour
             return;
 
         GameObject canvasObj = new GameObject("ClockCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        canvasObj.transform.SetParent(transform, false);
         clockCanvas = canvasObj.GetComponent<Canvas>();
         clockCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
         clockCanvas.sortingOrder = 1200;
@@ -384,6 +424,8 @@ public class ClockAnimationUI : MonoBehaviour
         rect.SetSiblingIndex(siblingIndex + 10);
 
         Image img = handObj.GetComponent<Image>();
+        img.sprite = GetOrCreateRuntimeCircleSprite();
+        img.type = Image.Type.Simple;
         img.color = color;
         return rect;
     }

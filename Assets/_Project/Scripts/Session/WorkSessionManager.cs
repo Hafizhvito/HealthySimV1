@@ -38,6 +38,16 @@ public class WorkSessionManager : MonoBehaviour
 
         _instance = this;
         DontDestroyOnLoad(gameObject);
+        EnsureTimeSkipPresenter();
+    }
+
+    private static void EnsureTimeSkipPresenter()
+    {
+        if (SessionTimeSkipPresenter.Instance != null)
+            return;
+
+        GameObject presenterObj = new GameObject("SessionTimeSkipPresenter");
+        presenterObj.AddComponent<SessionTimeSkipPresenter>();
     }
 
     private void Update()
@@ -143,6 +153,40 @@ public class WorkSessionManager : MonoBehaviour
         HasWorkedToday = true;
     }
 
+    public static void SyncGameClockAfterWork(WorkSessionData data)
+    {
+        if (data == null || data.result == WorkResult.Failed || TimeManager.Instance == null)
+            return;
+
+        float targetHour = ResolveWorkEndHour(data);
+        TimeManager.Instance.SetTimeByHour(targetHour);
+        Debug.Log($"[WorkSession] Jam maju ke {targetHour:0.##} setelah kerja ({data.result}).");
+    }
+
+    public void PrepareWorkSessionOutcome(WorkSessionData data)
+    {
+        if (data == null)
+            return;
+
+        const float partialThreshold = 0.30f;
+        const float severeDropThreshold = 0.20f;
+
+        float energy = Mathf.Clamp01(data.energyAtStart);
+        float completionRatio = 1f;
+        bool performanceDrop = false;
+
+        if (energy < partialThreshold)
+        {
+            float normalizedLowEnergy = Mathf.Clamp01(energy / Mathf.Max(0.0001f, partialThreshold));
+            float minimumFinishRatio = energy < severeDropThreshold ? 0.25f : 0.40f;
+            completionRatio = Mathf.Lerp(minimumFinishRatio, 0.75f, normalizedLowEnergy);
+            performanceDrop = true;
+        }
+
+        data.completionRatio = completionRatio;
+        data.performanceDropped = performanceDrop;
+    }
+
     public void RequestWorkStartFromBossDialogue()
     {
         if (PendingSession == null)
@@ -205,5 +249,18 @@ public class WorkSessionManager : MonoBehaviour
             default:
                 return _basePaySore;
         }
+    }
+
+    private static float ResolveWorkEndHour(WorkSessionData data)
+    {
+        if (data.result == WorkResult.Failed)
+            return TimeManager.Instance != null ? TimeManager.Instance.CurrentHour : data.startHour;
+
+        float shiftHours = Mathf.Max(0f, data.endHour - data.startHour);
+        float ratio = data.result == WorkResult.Full && !data.performanceDropped
+            ? 1f
+            : Mathf.Clamp01(data.completionRatio);
+
+        return data.startHour + (shiftHours * ratio);
     }
 }

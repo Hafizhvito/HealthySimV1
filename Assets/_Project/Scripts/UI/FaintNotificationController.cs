@@ -74,6 +74,17 @@ public class FaintNotificationController : MonoBehaviour
         isShowing = false;
     }
 
+    /// <summary>
+    /// Hides the faint panel and resumes scaled time without requiring a button click.
+    /// Used when sleep/wake already restores the player.
+    /// </summary>
+    public void DismissForSleepWake()
+    {
+        Time.timeScale = 1f;
+        HideImmediate();
+        isShowing = false;
+    }
+
     private void BindContinueButton()
     {
         if (continueButton == null)

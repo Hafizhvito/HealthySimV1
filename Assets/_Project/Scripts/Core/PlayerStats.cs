@@ -345,13 +345,15 @@ public class PlayerStats : MonoBehaviour
 
     private PhaseModifierData GetPhaseModifier(AgeStage stage, Gender gender)
     {
+        // Target harian mengacu AKG Indonesia 2019 (disederhanakan per fase simulasi).
+        // Remaja: kebutuhan lebih tinggi; lansia: lebih rendah; perempuan umumnya < laki-laki.
         return (stage, gender) switch
         {
-            (AgeStage.Youth,  Gender.Male)   => new PhaseModifierData { dailyCalorieTarget = 2500f, movementDrainMultiplier = 1.00f, moodDrainMultiplier = 1.00f },
-            (AgeStage.Youth,  Gender.Female) => new PhaseModifierData { dailyCalorieTarget = 2000f, movementDrainMultiplier = 1.00f, moodDrainMultiplier = 1.00f },
-            (AgeStage.Adult,  Gender.Male)   => new PhaseModifierData { dailyCalorieTarget = 2300f, movementDrainMultiplier = 1.05f, moodDrainMultiplier = 1.05f },
-            (AgeStage.Adult,  Gender.Female) => new PhaseModifierData { dailyCalorieTarget = 1900f, movementDrainMultiplier = 1.05f, moodDrainMultiplier = 1.10f },
-            (AgeStage.Senior, Gender.Male)   => new PhaseModifierData { dailyCalorieTarget = 2000f, movementDrainMultiplier = 1.20f, moodDrainMultiplier = 1.15f },
+            (AgeStage.Youth,  Gender.Male)   => new PhaseModifierData { dailyCalorieTarget = 2600f, movementDrainMultiplier = 1.00f, moodDrainMultiplier = 1.00f },
+            (AgeStage.Youth,  Gender.Female) => new PhaseModifierData { dailyCalorieTarget = 2100f, movementDrainMultiplier = 1.00f, moodDrainMultiplier = 1.00f },
+            (AgeStage.Adult,  Gender.Male)   => new PhaseModifierData { dailyCalorieTarget = 2400f, movementDrainMultiplier = 1.05f, moodDrainMultiplier = 1.05f },
+            (AgeStage.Adult,  Gender.Female) => new PhaseModifierData { dailyCalorieTarget = 1950f, movementDrainMultiplier = 1.05f, moodDrainMultiplier = 1.10f },
+            (AgeStage.Senior, Gender.Male)   => new PhaseModifierData { dailyCalorieTarget = 2050f, movementDrainMultiplier = 1.20f, moodDrainMultiplier = 1.15f },
             (AgeStage.Senior, Gender.Female) => new PhaseModifierData { dailyCalorieTarget = 1700f, movementDrainMultiplier = 1.20f, moodDrainMultiplier = 1.30f },
             _                                => new PhaseModifierData { dailyCalorieTarget = 2000f, movementDrainMultiplier = 1.00f, moodDrainMultiplier = 1.00f },
         };

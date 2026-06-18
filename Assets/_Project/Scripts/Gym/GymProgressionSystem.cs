@@ -58,6 +58,10 @@ public class GymProgressionSystem : MonoBehaviour
     [SerializeField] [Range(0f, 1f)] private float excellentThreshold = 0.72f;
     [SerializeField] [Range(0f, 1f)] private float strainedThreshold = 0.45f;
 
+    [Header("Session Duration")]
+    [SerializeField] [Range(1, 3)] private int gymSessionDurationHours = 2;
+    [SerializeField] [Range(1, 2)] private int gymSessionDurationHoursEvening = 1;
+
     [Header("Sleep Reset")]
     [SerializeField] private float sleepFatigueRecovery = 7.5f;
     [SerializeField] private float sleepAdaptationDecayWhenOverFatigued = 1.5f;
@@ -102,8 +106,8 @@ public class GymProgressionSystem : MonoBehaviour
         GymSessionData data = new GymSessionData
         {
             period = period,
-            startHour = ResolveStartHour(period),
-            endHour = ResolveEndHour(period),
+            startHour = 0,
+            endHour = 0,
             energyAtStart = Mathf.Clamp01(energyNormalized),
             tierAtStart = EvaluateTier(adaptation, fatigue),
             adaptationBefore = adaptation,
@@ -112,6 +116,7 @@ public class GymProgressionSystem : MonoBehaviour
             forceFaint = false
         };
 
+        ResolveGymSessionHours(data, period);
         PendingSession = data;
         return data;
     }
@@ -131,8 +136,8 @@ public class GymProgressionSystem : MonoBehaviour
         GymSessionData data = new GymSessionData
         {
             period = period,
-            startHour = ResolveStartHour(period),
-            endHour = ResolveEndHour(period),
+            startHour = 0,
+            endHour = 0,
             energyAtStart = Mathf.Clamp01(energyNormalized),
             tierAtStart = EvaluateTier(adaptation, fatigue),
             adaptationBefore = adaptation,
@@ -141,6 +146,7 @@ public class GymProgressionSystem : MonoBehaviour
             forceFaint = true
         };
 
+        ResolveGymSessionHours(data, period);
         PendingSession = data;
         return data;
     }
@@ -228,6 +234,15 @@ public class GymProgressionSystem : MonoBehaviour
         HasTrainedToday = true;
     }
 
+    public static void SyncGameClockAfterGym(GymSessionData data)
+    {
+        if (data == null || TimeManager.Instance == null)
+            return;
+
+        TimeManager.Instance.SetTimeByHour(data.endHour);
+        Debug.Log($"[Gym] Jam maju ke {data.endHour:0} setelah latihan ({data.startHour}→{data.endHour}).");
+    }
+
     public void NotifyDayResetFromSleep()
     {
         HasTrainedToday = false;
@@ -271,37 +286,33 @@ public class GymProgressionSystem : MonoBehaviour
         return GymTier.Beginner;
     }
 
+    private void ResolveGymSessionHours(GymSessionData data, TimeManager.TimePeriod period)
+    {
+        if (data == null)
+            return;
+
+        int startHour = TimeManager.Instance != null
+            ? Mathf.FloorToInt(TimeManager.Instance.CurrentHour)
+            : 17;
+
+        startHour = Mathf.Clamp(startHour, 6, 23);
+
+        int duration = period == TimeManager.TimePeriod.Evening
+            ? gymSessionDurationHoursEvening
+            : gymSessionDurationHours;
+
+        duration = Mathf.Clamp(duration, 1, 3);
+        int endHour = Mathf.Min(24, startHour + duration);
+
+        data.startHour = startHour;
+        data.endHour = endHour;
+    }
+
     private static PlayerStats ResolvePlayerStats()
     {
         if (PlayerStats.Instance != null)
             return PlayerStats.Instance;
 
         return FindFirstObjectByType<PlayerStats>();
-    }
-
-    private static int ResolveStartHour(TimeManager.TimePeriod period)
-    {
-        switch (period)
-        {
-            case TimeManager.TimePeriod.Morning:
-                return 6;
-            case TimeManager.TimePeriod.Afternoon:
-                return 13;
-            default:
-                return 17;
-        }
-    }
-
-    private static int ResolveEndHour(TimeManager.TimePeriod period)
-    {
-        switch (period)
-        {
-            case TimeManager.TimePeriod.Morning:
-                return 8;
-            case TimeManager.TimePeriod.Afternoon:
-                return 15;
-            default:
-                return 19;
-        }
     }
 }

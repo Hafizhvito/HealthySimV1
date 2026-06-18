@@ -56,15 +56,13 @@ public class WorkSessionController : MonoBehaviour
         }
 
         bool animationCompleted = false;
-        _clockUI.PlayWorkAnimation(_activeSession, _ =>
-        {
-            animationCompleted = true;
-        });
+        _clockUI.PlayWorkAnimation(_activeSession, _ => animationCompleted = true);
 
         while (!animationCompleted)
             yield return null;
 
         WorkSessionManager.Instance.ApplyResult(_activeSession);
+        WorkSessionManager.SyncGameClockAfterWork(_activeSession);
 
         DialogueGraphData postDialogue = BuildPostWorkDialogueForResult();
         yield return StartCoroutine(PlayDialogueAndWait(postDialogue, null));
@@ -101,10 +99,7 @@ public class WorkSessionController : MonoBehaviour
             return false;
 
         if (_clockUI == null)
-            _clockUI = FindFirstObjectByType<ClockAnimationUI>();
-
-        if (_clockUI == null)
-            _clockUI = FindFirstObjectByType<ClockAnimationUI>(FindObjectsInactive.Include);
+            _clockUI = ClockAnimationUI.EnsureInstance();
 
         if (_clockUI == null)
         {

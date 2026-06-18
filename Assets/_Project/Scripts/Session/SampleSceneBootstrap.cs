@@ -110,6 +110,8 @@ public class SampleSceneBootstrap : MonoBehaviour
 
     private void EnsureCoreManagers()
     {
+        TimeManager.EnsureExists();
+
         GameObject manager = FindManagerHost();
 
         if (manager == null)
@@ -137,7 +139,10 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsureComponent<SessionFoodStash>(manager);
         EnsureComponent<ModalStateManager>(manager);
         EnsureComponent<WorkReminderUI>(manager);
+        EnsureComponent<TimeManager>(manager);
         EnsureComponent<WorkSessionManager>(manager);
+        EnsureComponent<SessionTimeSkipPresenter>(manager);
+        EnsureComponent<ClockAnimationUI>(manager);
         EnsureComponent<FadeManager>(manager);
         EnsureComponent<MobileInputController>(manager);
         EnsureComponent<BazaarManager>(manager);
@@ -487,8 +492,6 @@ public class SampleSceneBootstrap : MonoBehaviour
     {
         GameObject ddolManager = null;
         GameObject sceneManager = null;
-        GameObject ddolMobileHost = null;
-        GameObject sceneMobileHost = null;
         Scene activeScene = SceneManager.GetActiveScene();
 
         GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
@@ -498,35 +501,25 @@ public class SampleSceneBootstrap : MonoBehaviour
             if (obj == null || !obj.scene.IsValid())
                 continue;
 
-            if (string.Equals(obj.name, "GameManager", StringComparison.Ordinal))
-            {
-                if (obj.scene.name == "DontDestroyOnLoad")
-                    ddolManager = obj;
-                else if (obj.scene == activeScene)
-                    sceneManager = obj;
-            }
-        }
-
-        MobileInputController[] mobileHosts = Resources.FindObjectsOfTypeAll<MobileInputController>();
-        for (int i = 0; i < mobileHosts.Length; i++)
-        {
-            MobileInputController host = mobileHosts[i];
-            if (host == null || !host.gameObject.scene.IsValid())
+            if (!string.Equals(obj.name, "GameManager", System.StringComparison.Ordinal))
                 continue;
 
-            if (host.gameObject.scene.name == "DontDestroyOnLoad")
-                ddolMobileHost = host.gameObject;
-            else if (host.gameObject.scene == activeScene)
-                sceneMobileHost = host.gameObject;
+            if (obj.scene.name == "DontDestroyOnLoad")
+                ddolManager = obj;
+            else if (obj.scene == activeScene)
+                sceneManager = obj;
         }
 
         if (ddolManager != null)
             return ddolManager;
+
         if (sceneManager != null)
+        {
+            DontDestroyOnLoad(sceneManager.transform.root.gameObject);
             return sceneManager;
-        if (ddolMobileHost != null)
-            return ddolMobileHost;
-        return sceneMobileHost;
+        }
+
+        return null;
     }
 
     private static T EnsureComponent<T>(GameObject target) where T : Component

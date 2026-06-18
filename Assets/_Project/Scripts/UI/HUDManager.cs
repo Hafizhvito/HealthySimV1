@@ -15,6 +15,7 @@ public class HUDManager : MonoBehaviour
     [SerializeField] private Image energyBarFill;
     [SerializeField] private Image energyBarWarningFill;
     [SerializeField] private Image energyBarChipFill;
+    [SerializeField] private TextMeshProUGUI energyValueText;
     [SerializeField] private GameObject warningPanel;
 
     [Header("Mood Bar")]
@@ -41,9 +42,10 @@ public class HUDManager : MonoBehaviour
     [SerializeField] private float caloriesLerpSpeed = 5f;
     [SerializeField] private float caloriesPulseHalfDuration = 0.1f;
     [SerializeField] private float caloriesPulseScale = 1.05f;
-    [SerializeField] private Color caloriesLowColor = new Color(0.30f, 0.78f, 0.94f);
-    [SerializeField] private Color caloriesMidColor = new Color(0.36f, 0.86f, 0.47f);
-    [SerializeField] private Color caloriesHighColor = new Color(1f, 0.74f, 0.22f);
+    [SerializeField] private float caloriesVisibleThreshold = 0.5f;
+    [SerializeField] private Color caloriesLowColor = new Color(0.36f, 0.86f, 0.47f);
+    [SerializeField] private Color caloriesMidColor = new Color(0.98f, 0.78f, 0.28f);
+    [SerializeField] private Color caloriesHighColor = new Color(0.98f, 0.45f, 0.32f);
 
     [Header("Time")]
     [SerializeField] private TextMeshProUGUI periodText;
@@ -71,11 +73,13 @@ public class HUDManager : MonoBehaviour
     private Vector3 energyBaseScale = Vector3.one;
     private Vector3 energyChipBaseScale = Vector3.one;
     private Vector3 moodBaseScale = Vector3.one;
+    private Vector3 caloriesFillBaseScale = Vector3.one;
     private RectTransform caloriesPulseTarget;
     private Vector3 caloriesPulseBaseScale = Vector3.one;
     private Coroutine caloriesPulseRoutine;
     private bool energyFillPivotInitialized;
     private bool energyChipPivotInitialized;
+    private bool caloriesFillPivotInitialized;
 
     // canvas
     private CanvasGroup canvasGroup;
@@ -195,15 +199,24 @@ public class HUDManager : MonoBehaviour
             caloriesBarFill.type = Image.Type.Filled;
             caloriesBarFill.fillMethod = Image.FillMethod.Horizontal;
             caloriesBarFill.fillOrigin = 0;
-            caloriesBarFill.fillAmount = 0f;
-            caloriesBarFill.color = GetCaloriesColor(0f);
+            caloriesBarFill.fillAmount = 1f;
+            SetCaloriesFillVisible(false);
+            caloriesFillBaseScale = caloriesBarFill.rectTransform.localScale;
+            EnsureCaloriesFillPivot();
 
-            caloriesPulseTarget = caloriesBarFill.rectTransform.parent as RectTransform;
-            if (caloriesPulseTarget == null)
-                caloriesPulseTarget = caloriesBarFill.rectTransform;
-
+            caloriesPulseTarget = caloriesBarFill.rectTransform;
             caloriesPulseBaseScale = caloriesPulseTarget.localScale;
         }
+    }
+
+    private void HandleAgeStageChanged(PlayerStats.AgeStage previous, PlayerStats.AgeStage current, int dayNumber)
+    {
+        // Target kalori berubah tiap fase — reset visual supaya proporsi bar tetap akurat.
+        previousCaloriesValue = playerStats != null ? Mathf.Max(0f, playerStats.TotalCalories) : 0f;
+        if (playerStats != null && playerStats.DailyCalorieTarget > 0f)
+            caloriesVisualPercent = Mathf.Clamp01(previousCaloriesValue / playerStats.DailyCalorieTarget);
+        else
+            caloriesVisualPercent = 0f;
     }
 
     void TryInitialize()
@@ -220,18 +233,48 @@ public class HUDManager : MonoBehaviour
             {
                 playerStats.OnEnergyStateChanged += HandleEnergyStateChange;
                 playerStats.OnPlayerFainted += HandlePlayerFainted;
+                playerStats.OnAgeStageChanged += HandleAgeStageChanged;
             }
         }
 
         if (timeManager == null)
         {
+            TimeManager.EnsureExists();
             timeManager = TimeManager.Instance;
+            if (timeManager == null)
+                timeManager = FindFirstObjectByType<TimeManager>();
+
             if (timeManager != null)
             {
                 timeManager.OnPeriodChanged += HandlePeriodChanged;
                 timeManager.OnGameTimeUp += HandleGameTimeUp;
             }
         }
+
+        EnsureTimeUiReferences();
+    }
+
+    private void EnsureTimeUiReferences()
+    {
+        if (timeRemainingText == null)
+            timeRemainingText = FindTimeHudText("TimeRemaining_Text");
+
+        if (periodText == null)
+            periodText = FindTimeHudText("Period_Text");
+    }
+
+    private static TextMeshProUGUI FindTimeHudText(string childName)
+    {
+        GameObject canvasObj = GameObject.Find("HUD_Canvas");
+        if (canvasObj == null)
+            return null;
+
+        Transform panel = canvasObj.transform.Find("Time_Panel");
+        if (panel == null)
+            return null;
+
+        Transform text = panel.Find(childName);
+        return text != null ? text.GetComponent<TextMeshProUGUI>() : null;
     }
 
     void Update()
@@ -270,11 +313,14 @@ public class HUDManager : MonoBehaviour
         EnsureEnergyFillPivot();
 
         if (energyNormalized > 0.60f)
-            energyBarFill.color = new Color(0.4f, 0.9f, 0.4f);
+            energyBarFill.color = colorNormal;
         else if (energyNormalized > 0.30f)
-            energyBarFill.color = new Color(1.0f, 0.85f, 0.1f);
+            energyBarFill.color = colorWarning;
         else
-            energyBarFill.color = new Color(0.95f, 0.3f, 0.2f);
+            energyBarFill.color = colorCritical;
+
+        if (energyValueText != null)
+            energyValueText.text = $"{Mathf.RoundToInt(energyNormalized * 100f)}%";
 
         if (isDraining)
             energyChipDelayTimer = energyChipDelay;
@@ -379,13 +425,16 @@ public class HUDManager : MonoBehaviour
         float maxCalories = ResolveCaloriesMax();
         float currentCalories = Mathf.Max(0f, playerStats.TotalCalories);
         float targetFillAmount = Mathf.Clamp01(currentCalories / maxCalories);
+        bool hasCalories = currentCalories >= caloriesVisibleThreshold;
 
         caloriesVisualPercent = Mathf.Lerp(
             caloriesVisualPercent,
-            targetFillAmount,
+            hasCalories ? targetFillAmount : 0f,
             Mathf.Clamp01(Time.deltaTime * Mathf.Max(0.01f, caloriesLerpSpeed)));
 
-        if (Mathf.Abs(targetFillAmount - caloriesVisualPercent) < 0.0005f)
+        if (!hasCalories)
+            caloriesVisualPercent = 0f;
+        else if (Mathf.Abs(targetFillAmount - caloriesVisualPercent) < 0.0005f)
             caloriesVisualPercent = targetFillAmount;
 
         if (caloriesBarFill != null)
@@ -393,8 +442,24 @@ public class HUDManager : MonoBehaviour
             caloriesBarFill.type = Image.Type.Filled;
             caloriesBarFill.fillMethod = Image.FillMethod.Horizontal;
             caloriesBarFill.fillOrigin = 0;
-            caloriesBarFill.fillAmount = caloriesVisualPercent;
-            caloriesBarFill.color = GetCaloriesColor(caloriesVisualPercent);
+            caloriesBarFill.fillAmount = 1f;
+
+            EnsureCaloriesFillPivot();
+            Vector3 fillScale = caloriesFillBaseScale;
+            fillScale.x *= Mathf.Clamp01(caloriesVisualPercent);
+            caloriesBarFill.rectTransform.localScale = fillScale;
+
+            if (hasCalories)
+            {
+                caloriesBarFill.color = GetCaloriesColor(caloriesVisualPercent);
+                SetCaloriesFillVisible(true);
+            }
+            else
+            {
+                fillScale.x = 0f;
+                caloriesBarFill.rectTransform.localScale = fillScale;
+                SetCaloriesFillVisible(false);
+            }
         }
 
         if (currentCalories > previousCaloriesValue + 0.01f)
@@ -405,11 +470,49 @@ public class HUDManager : MonoBehaviour
         if (caloriesText != null)
         {
             caloriesText.text = string.Format(
-                "Kalori: {0:0} / {1:0} kcal",
+                "Kalori {0:0} / {1:0} kcal",
                 playerStats.TotalCalories,
                 playerStats.DailyCalorieTarget
             );
+            ApplyCaloriesTextStyle(hasCalories, caloriesVisualPercent);
         }
+    }
+
+    private void EnsureCaloriesFillPivot()
+    {
+        if (caloriesFillPivotInitialized || caloriesBarFill == null)
+            return;
+
+        caloriesBarFill.rectTransform.pivot = new Vector2(0f, 0.5f);
+        caloriesFillPivotInitialized = true;
+    }
+    private void SetCaloriesFillVisible(bool visible)
+    {
+        if (caloriesBarFill == null)
+            return;
+
+        Color color = visible ? GetCaloriesColor(caloriesVisualPercent) : caloriesBarFill.color;
+        color.a = visible ? 0.92f : 0f;
+        caloriesBarFill.color = color;
+    }
+
+    private void ApplyCaloriesTextStyle(bool hasCalories, float fillPercent)
+    {
+        if (caloriesText == null)
+            return;
+
+        caloriesText.outlineColor = new Color(0f, 0f, 0f, 0.88f);
+        caloriesText.outlineWidth = 0.16f;
+
+        if (!hasCalories)
+        {
+            caloriesText.color = new Color(0.93f, 0.95f, 0.98f, 1f);
+            return;
+        }
+
+        caloriesText.color = fillPercent > 0.45f
+            ? new Color(0.08f, 0.1f, 0.14f, 1f)
+            : new Color(0.98f, 0.99f, 1f, 1f);
     }
 
     private float ResolveCaloriesMax()
@@ -475,16 +578,24 @@ public class HUDManager : MonoBehaviour
         else
             c = caloriesHighColor;
 
-        c.a = 0.90f;
+        c.a = 0.92f;
         return c;
     }
 
     void UpdateTimeDisplay()
     {
-        if (timeManager == null) return;
+        EnsureTimeUiReferences();
 
-        if (timeRemainingText != null)
-            timeRemainingText.text = timeManager.GetFormattedTimeRemaining();
+        if (timeManager == null)
+        {
+            TimeManager.EnsureExists();
+            timeManager = TimeManager.Instance;
+        }
+
+        if (timeManager == null || timeRemainingText == null)
+            return;
+
+        timeRemainingText.text = timeManager.GetFormattedTimeRemaining();
 
         if (periodText != null)
             periodText.text = timeManager.GetDayPeriodLabelIndonesia();
@@ -560,6 +671,7 @@ public class HUDManager : MonoBehaviour
         {
             playerStats.OnEnergyStateChanged -= HandleEnergyStateChange;
             playerStats.OnPlayerFainted -= HandlePlayerFainted;
+            playerStats.OnAgeStageChanged -= HandleAgeStageChanged;
         }
         if (timeManager != null)
         {

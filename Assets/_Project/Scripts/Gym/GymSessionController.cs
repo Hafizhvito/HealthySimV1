@@ -75,10 +75,11 @@ public class GymSessionController : MonoBehaviour
         yield return StartCoroutine(PlayDialogueAndWait(preDialogue));
 
         bool animationDone = false;
+        float targetEndHour = activeSession.endHour;
         clockUI.PlayTimeSkipAnimation(
             "Sesi Latihan",
             activeSession.startHour,
-            activeSession.endHour,
+            targetEndHour,
             trainingAnimationDuration,
             () => animationDone = true);
 
@@ -86,6 +87,7 @@ public class GymSessionController : MonoBehaviour
             yield return null;
 
         progression.ApplyResult(activeSession);
+        GymProgressionSystem.SyncGameClockAfterGym(activeSession);
         PlayerStats.Instance?.RegisterHealthScore(10f);
 
         DialogueGraphData postDialogue = trainerDialogueController.BuildPostTrainingDialogue(activeSession);
@@ -98,10 +100,10 @@ public class GymSessionController : MonoBehaviour
     {
         SetGymSessionLock(true);
 
-        bool animationDone = false;
         int startHour = activeSession.startHour;
         int endHour = startHour + Mathf.Max(1, faintSkipHours);
 
+        bool animationDone = false;
         clockUI.PlayTimeSkipAnimation(
             "Pingsan saat latihan",
             startHour,
@@ -112,8 +114,12 @@ public class GymSessionController : MonoBehaviour
         while (!animationDone)
             yield return null;
 
+        if (TimeManager.Instance != null)
+            TimeManager.Instance.SetTimeByHour(endHour);
+
         progression.CompleteFaintSession(activeSession);
         ExitToMainScene();
+        yield break;
     }
 
     private bool ResolveSceneDependencies()
@@ -132,10 +138,7 @@ public class GymSessionController : MonoBehaviour
         }
 
         if (clockUI == null)
-            clockUI = FindFirstObjectByType<ClockAnimationUI>();
-
-        if (clockUI == null)
-            clockUI = FindFirstObjectByType<ClockAnimationUI>(FindObjectsInactive.Include);
+            clockUI = ClockAnimationUI.EnsureInstance();
 
         if (clockUI == null)
         {

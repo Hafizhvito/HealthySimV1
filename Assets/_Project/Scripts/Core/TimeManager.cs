@@ -1,11 +1,18 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(-200)]
 public class TimeManager : MonoBehaviour
 {
     public static TimeManager Instance { get; private set; }
+
+    private static readonly string[] NonGameplayScenes =
+    {
+        "MainMenu", "InputMenu", "LoadingScreen"
+    };
     private static readonly string[] DayNamesIndonesia =
     {
         "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"
@@ -57,6 +64,51 @@ public class TimeManager : MonoBehaviour
     private bool sleepReminderShowing;
     private Coroutine sleepReminderFadeRoutine;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void AutoEnsureForGameplayScene()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        if (string.IsNullOrEmpty(scene.name) || IsNonGameplayScene(scene.name))
+            return;
+
+        EnsureExists();
+    }
+
+    public static void EnsureExists()
+    {
+        if (Instance != null)
+            return;
+
+        TimeManager existing = FindFirstObjectByType<TimeManager>();
+        if (existing != null)
+            return;
+
+        GameObject host = GameObject.Find("GameManager");
+        if (host == null)
+        {
+            host = new GameObject("GameManager");
+            Object.DontDestroyOnLoad(host);
+        }
+        else if (host.scene.name != "DontDestroyOnLoad")
+        {
+            Object.DontDestroyOnLoad(host.transform.root.gameObject);
+        }
+
+        host.AddComponent<TimeManager>();
+        Debug.Log("[TimeManager] Runtime bootstrap created GameManager + TimeManager.");
+    }
+
+    private static bool IsNonGameplayScene(string sceneName)
+    {
+        for (int i = 0; i < NonGameplayScenes.Length; i++)
+        {
+            if (string.Equals(sceneName, NonGameplayScenes[i], System.StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -65,7 +117,18 @@ public class TimeManager : MonoBehaviour
             return;
         }
         Instance = this;
+
+        GameObject root = transform.root.gameObject;
+        if (root.scene.name != "DontDestroyOnLoad")
+            DontDestroyOnLoad(root);
+
         SyncPeriodThresholdsFromTotalDuration();
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     void OnValidate()
@@ -104,6 +167,10 @@ public class TimeManager : MonoBehaviour
         currentDayNumber = 1;
         currentDayOfWeekIndex = 0;
         ResetSleepReminderState();
+
+        if (SessionTimeSkipPresenter.Instance != null)
+            SessionTimeSkipPresenter.Instance.ClearPending();
+
         OnDayChanged?.Invoke(currentDayNumber, GetDayNameIndonesia());
     }
 
@@ -189,7 +256,7 @@ public class TimeManager : MonoBehaviour
         float hour = Mathf.Clamp(CurrentHour, 0f, 24f);
         int hourInt = Mathf.FloorToInt(hour);
         int minuteInt = Mathf.FloorToInt((hour - hourInt) * 60f);
-        return string.Format("{0:00}.{1:00}", hourInt, minuteInt);
+        return string.Format("{0:00}:{1:00}", hourInt, minuteInt);
     }
 
     private void HandleSleepReminder()

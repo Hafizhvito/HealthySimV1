@@ -714,6 +714,7 @@ public class IntroCutsceneController : MonoBehaviour
 
     private void CompleteCutscene()
     {
+        RestoreGameplayState();
         IsPlayingCutscene = false;
         IsAnyCutscenePlaying = false;
         OnCutsceneCompleted?.Invoke();

@@ -103,8 +103,11 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] [Range(0f, 200f)] private float highSugarEstimateThreshold = 45f;
     [SerializeField] private string wakeWarningLateWakePenalty = "Kamu bangun dengan badan terasa berat. Pola hidupmu mulai berdampak...";
 
-    [Header("Optional References")]
+    [Header("Wake Spawn")]
+    [Tooltip("Drag BedSpawnPoint child di atas kasur. Atur posisi/rotasi di Scene view.")]
     [SerializeField] private Transform bedSpawnPoint;
+
+    [Header("Optional References")]
     [SerializeField] private TimeManager timeManagerOverride;
     [SerializeField] private PlayerStats playerStatsOverride;
     [SerializeField] private FadeManager fadeManagerOverride;
@@ -243,122 +246,155 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (forcedSleep)
             wasForced = true;
 
-        if (playerController != null)
-            playerController.LockInput(sleepLockSource);
-
-        bool alreadyFaded = false;
-        if (forcedSleep && fadeManager != null)
+        bool sleepInputLocked = false;
+        try
         {
-            ShowWakeMessage(ForcedSleepMessage, Mathf.Max(1f, fadeDuration + 0.4f));
-            bool fadeToBlackDone = false;
-            fadeManager.FadeToBlack(fadeDuration, () => fadeToBlackDone = true);
-            yield return new WaitUntil(() => fadeToBlackDone);
-            alreadyFaded = true;
-        }
+            if (playerController != null)
+            {
+                playerController.LockInput(sleepLockSource);
+                sleepInputLocked = true;
+            }
 
-        if (!forcedSleep && enablePreSleepCinematic)
-            yield return StartCoroutine(PlayPreSleepCinematic());
+            bool alreadyFaded = false;
+            if (forcedSleep && fadeManager != null)
+            {
+                ShowWakeMessage(ForcedSleepMessage, Mathf.Max(1f, fadeDuration + 0.4f));
+                bool fadeToBlackDone = false;
+                fadeManager.FadeToBlack(fadeDuration, () => fadeToBlackDone = true);
+                yield return new WaitUntil(() => fadeToBlackDone);
+                alreadyFaded = true;
+            }
 
-        if (fadeManager != null && !alreadyFaded)
-        {
-            bool fadeToBlackDone = false;
-            fadeManager.FadeToBlack(fadeDuration, () => fadeToBlackDone = true);
-            yield return new WaitUntil(() => fadeToBlackDone);
-        }
+            if (!forcedSleep && enablePreSleepCinematic)
+                yield return StartCoroutine(PlayPreSleepCinematic());
 
-        HidePreSleepCinematic();
+            if (fadeManager != null && !alreadyFaded)
+            {
+                bool fadeToBlackDone = false;
+                fadeManager.FadeToBlack(fadeDuration, () => fadeToBlackDone = true);
+                yield return new WaitUntil(() => fadeToBlackDone);
+            }
 
-        int wakeHour = ResolveWakeHour(disturbedSleep, lateWakePenaltyTriggered);
+            HidePreSleepCinematic();
 
-        if (clockUi != null)
-        {
-            bool clockDone = false;
-            clockUi.PlayTimeSkipAnimation("Istirahat Malam", 21, wakeHour, clockSkipDuration, () => clockDone = true);
-            yield return new WaitUntil(() => clockDone);
-        }
+            int wakeHour = ResolveWakeHour(disturbedSleep, lateWakePenaltyTriggered);
 
-        // ── Apply recovery + evaluate health score ───────────
-        DailyHealthResult dailyEvalResult = null;
-        ApplyRecovery(playerStats, disturbedSleep, energyBeforeSleep,
-                    workedYesterday, lastWorkSession, lastWorkHadBonus,
-                    trainedYesterday, lastGymSession, overworkedYesterday, out dailyEvalResult);
+            if (clockUi != null)
+            {
+                bool clockDone = false;
+                clockUi.PlayTimeSkipAnimation("Istirahat Malam", 21, wakeHour, clockSkipDuration, () => clockDone = true);
+                yield return new WaitUntil(() => clockDone);
+            }
 
-        // ── Advance day ──────────────────────────────────────
-        timeManager.AdvanceToNextDayFromSleep();
-        if (BazaarManager.Instance != null)
-            BazaarManager.Instance.TrySpawnBazaar(timeManager.CurrentDayNumber);
-        timeManager.SetTimeByHour(wakeHour);
-        string     wakeDayName    = timeManager.GetDayNameIndonesia();
-        bool ageStageChanged = playerStats.SyncDayAndTryAdvanceAgeStage(
-            timeManager.CurrentDayNumber,
-            out PlayerStats.AgeStage previousAgeStage,
-            out PlayerStats.AgeStage newAgeStage);
+            // ── Apply recovery + evaluate health score ───────────
+            DailyHealthResult dailyEvalResult = null;
+            ApplyRecovery(playerStats, disturbedSleep, energyBeforeSleep,
+                        workedYesterday, lastWorkSession, lastWorkHadBonus,
+                        trainedYesterday, lastGymSession, overworkedYesterday, out dailyEvalResult);
 
-        if (workSessionManager != null)
-            workSessionManager.NotifyDayResetFromSleep();
+            // ── Advance day ──────────────────────────────────────
+            timeManager.AdvanceToNextDayFromSleep();
+            if (BazaarManager.Instance != null)
+                BazaarManager.Instance.TrySpawnBazaar(timeManager.CurrentDayNumber);
+            timeManager.SetTimeByHour(wakeHour);
+            string     wakeDayName    = timeManager.GetDayNameIndonesia();
+            bool ageStageChanged = playerStats.SyncDayAndTryAdvanceAgeStage(
+                timeManager.CurrentDayNumber,
+                out PlayerStats.AgeStage previousAgeStage,
+                out PlayerStats.AgeStage newAgeStage);
 
-        if (gymProgressionSystem != null)
-            gymProgressionSystem.NotifyDayResetFromSleep();
+            if (workSessionManager != null)
+                workSessionManager.NotifyDayResetFromSleep();
 
-        float baseDrainModifier = ApplyNextDayMovementDrainModifier(playerStats, trainedYesterday, adaptationBeforeSleep, fatigueBeforeSleep);
+            if (gymProgressionSystem != null)
+                gymProgressionSystem.NotifyDayResetFromSleep();
 
-        if (wasForced)
-            ApplyBegadangPenalty(playerStats, baseDrainModifier);
+            float baseDrainModifier = ApplyNextDayMovementDrainModifier(playerStats, trainedYesterday, adaptationBeforeSleep, fatigueBeforeSleep);
 
-        if (lateWakePenaltyTriggered)
-            ApplyLateWakePenalty(playerStats);
+            if (wasForced)
+                ApplyBegadangPenalty(playerStats, baseDrainModifier);
 
-        MoveInteractorToBedSpawn(interactor);
-        Debug.Log($"[SleepBedInteractable] {sleepingLogText} Hari {wakeDayName}.");
+            if (lateWakePenaltyTriggered)
+                ApplyLateWakePenalty(playerStats);
 
-        if (enableWakeEyeOpenCinematic)
-            PrepareWakeEyeOpenCinematic(wakeDayName);
+            MoveInteractorToBedSpawn(interactor);
+            Debug.Log($"[SleepBedInteractable] {sleepingLogText} Hari {wakeDayName}.");
 
-        if (fadeManager != null)
-        {
-            bool fadeFromBlackDone = false;
-            fadeManager.FadeFromBlack(fadeDuration, () => fadeFromBlackDone = true);
-            yield return new WaitUntil(() => fadeFromBlackDone);
-        }
+            if (enableWakeEyeOpenCinematic)
+                PrepareWakeEyeOpenCinematic(wakeDayName);
 
-        if (enableWakeEyeOpenCinematic)
-            yield return StartCoroutine(PlayWakeEyeOpenCinematic(wakeDayName));
+            if (fadeManager != null)
+            {
+                bool fadeFromBlackDone = false;
+                fadeManager.FadeFromBlack(fadeDuration, () => fadeFromBlackDone = true);
+                yield return new WaitUntil(() => fadeFromBlackDone);
+            }
 
-        if (playerController != null)
-            playerController.UnlockInput(sleepLockSource);
+            if (enableWakeEyeOpenCinematic)
+                yield return StartCoroutine(PlayWakeEyeOpenCinematic(wakeDayName));
 
-        if (ageStageChanged)
-        {
-            yield return StartCoroutine(ShowAgingNotificationRoutine(newAgeStage, scoreBeforeTransition));
-        }
+            ClearPostSleepMovementBlockers(playerController, playerStats);
 
-        int triggerDay = EndingManager.Instance != null
-            ? EndingManager.Instance.EndingTriggerDay
-            : 10;
-        bool allowEarlyEnding = triggerDay < 10;
-        bool seniorTransition = ageStageChanged && newAgeStage == PlayerStats.AgeStage.Senior;
+            if (playerController != null)
+            {
+                playerController.UnlockInput(sleepLockSource);
+                sleepInputLocked = false;
+            }
 
-        if (timeManager.CurrentDayNumber >= triggerDay && (seniorTransition || allowEarlyEnding))
-        {
+            if (ageStageChanged)
+            {
+                yield return StartCoroutine(ShowAgingNotificationRoutine(newAgeStage, scoreBeforeTransition));
+            }
+
+            int triggerDay = EndingManager.Instance != null
+                ? EndingManager.Instance.EndingTriggerDay
+                : 10;
+            bool allowEarlyEnding = triggerDay < 10;
+            bool seniorTransition = ageStageChanged && newAgeStage == PlayerStats.AgeStage.Senior;
+
+            if (timeManager.CurrentDayNumber >= triggerDay && (seniorTransition || allowEarlyEnding))
+            {
+                if (EndingManager.Instance != null)
+                    EndingManager.Instance.TriggerEnding();
+                else
+                    Debug.LogWarning("[SleepBedInteractable] EndingManager.Instance null — ending not triggered.");
+            }
+
+            // ── Wake message dengan hasil evaluator ──────────────
+            ShowWakeMessage(
+                BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep,
+                                 disturbedSleep, lateWakePenaltyTriggered, dailyEvalResult),
+                wakeMessageDuration);
+
             if (EndingManager.Instance != null)
-                EndingManager.Instance.TriggerEnding();
-            else
-                Debug.LogWarning("[SleepBedInteractable] EndingManager.Instance null — ending not triggered.");
+                EndingManager.Instance.NotifySleepCompleted(timeManager.CurrentDayNumber);
+
+            EvaluateCharacterModelSwap(interactor);
         }
-
-        // ── Wake message dengan hasil evaluator ──────────────
-        ShowWakeMessage(
-            BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep,
-                             disturbedSleep, lateWakePenaltyTriggered, dailyEvalResult),
-            wakeMessageDuration);
-
-        if (EndingManager.Instance != null)
-            EndingManager.Instance.NotifySleepCompleted(timeManager.CurrentDayNumber);
-
-        EvaluateCharacterModelSwap(interactor);
+        finally
+        {
+            if (sleepInputLocked && playerController != null)
+                playerController.UnlockInput(sleepLockSource);
+        }
 
         forceSleepTriggered = false;
         sleepRoutine = null;
+    }
+
+    private static void ClearPostSleepMovementBlockers(PlayerController playerController, PlayerStats playerStats)
+    {
+        if (playerStats != null)
+            playerStats.ResetFaintState();
+
+        FaintNotificationController faintPanel =
+            FindFirstObjectByType<FaintNotificationController>(FindObjectsInactive.Include);
+        if (faintPanel != null)
+            faintPanel.DismissForSleepWake();
+        else if (Time.timeScale == 0f)
+            Time.timeScale = 1f;
+
+        if (playerController != null)
+            playerController.UnlockMovement("EnergySystem_Fainted");
     }
 
     private void EvaluateCharacterModelSwap(GameObject interactor)
@@ -392,6 +428,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         float recovery     = Mathf.Max(0f, targetEnergy - stats.CurrentEnergy);
         if (recovery > 0.01f)
             stats.AddFood(recovery, 0f, 0f, 0f, 0f);
+
+        stats.ResetFaintState();
 
         // 2. Evaluasi harian dengan snapshot — bukan baca langsung dari manager
         evalResult = DailyHealthEvaluator.Evaluate(
@@ -566,8 +604,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             return;
 
         Transform spawn = ResolveSpawnPoint();
-        interactor.transform.position = spawn.position;
-        interactor.transform.rotation = spawn.rotation;
+        interactor.transform.SetPositionAndRotation(spawn.position, spawn.rotation);
 
         Rigidbody rb = interactor.GetComponent<Rigidbody>();
         if (rb != null)
