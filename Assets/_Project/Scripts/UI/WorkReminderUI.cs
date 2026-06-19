@@ -7,26 +7,27 @@ using UnityEngine.SceneManagement;
 public class WorkReminderUI : MonoBehaviour
 {
     [SerializeField] private float showDelaySeconds = 1.5f;
-    [SerializeField] private float autoDismissSeconds = 6f;
     [SerializeField] private float fadeDuration = 0.3f;
+    [SerializeField] private string dailyHealthReminderText = "Jangan lupa gym dan makan sehat hari ini.";
 
     private const float ReminderTitleFontSize = 26f;
     private const float ReminderBodyFontSize = 20f;
     private const float ReminderWarningFontSize = 18f;
     private const float ReminderButtonFontSize = 20f;
+    private const float ReminderPanelWidth = 520f;
 
     private Canvas hudCanvas;
     private CanvasGroup reminderGroup;
     private RectTransform reminderPanel;
     private RectTransform hudStatusPanel;
     private TextMeshProUGUI timeText;
+    private TextMeshProUGUI healthReminderText;
     private TextMeshProUGUI energyWarningText;
     private Button dismissButton;
     private TextMeshProUGUI hudWorkIndicator;
     private TextMeshProUGUI hudMoneyIndicator;
     private TextMeshProUGUI hudGymIndicator;
     private bool reminderHasShownOnce;
-    private Coroutine dismissRoutine;
     private Coroutine resumeRoutine;
     private bool reminderSuppressedByTutorial;
     private bool reminderDismissed;
@@ -93,18 +94,16 @@ public class WorkReminderUI : MonoBehaviour
 
         RefreshReminderContent();
         yield return StartCoroutine(FadePanel(1f, fadeDuration));
-
-        if (dismissRoutine != null)
-            StopCoroutine(dismissRoutine);
-        dismissRoutine = StartCoroutine(AutoDismissAfterDelay());
+        SetReminderPanelInteractive(true);
     }
 
-    private IEnumerator AutoDismissAfterDelay()
+    private void SetReminderPanelInteractive(bool interactive)
     {
-        yield return new WaitForSecondsRealtime(autoDismissSeconds);
-        yield return StartCoroutine(FadePanel(0f, fadeDuration));
-        reminderDismissed = true;
-        dismissRoutine = null;
+        if (reminderGroup == null)
+            return;
+
+        reminderGroup.interactable = interactive;
+        reminderGroup.blocksRaycasts = interactive;
     }
 
     private void HandleTutorialSuppression()
@@ -122,12 +121,7 @@ public class WorkReminderUI : MonoBehaviour
                 reminderGroup.interactable = false;
                 reminderGroup.blocksRaycasts = false;
                 reminderSuppressedByTutorial = true;
-
-                if (dismissRoutine != null)
-                {
-                    StopCoroutine(dismissRoutine);
-                    dismissRoutine = null;
-                }
+                SetReminderPanelInteractive(false);
             }
 
             return;
@@ -166,11 +160,7 @@ public class WorkReminderUI : MonoBehaviour
 
         RefreshReminderContent();
         yield return StartCoroutine(FadePanel(1f, fadeDuration));
-
-        if (dismissRoutine != null)
-            StopCoroutine(dismissRoutine);
-
-        dismissRoutine = StartCoroutine(AutoDismissAfterDelay());
+        SetReminderPanelInteractive(true);
         resumeRoutine = null;
     }
 
@@ -199,6 +189,8 @@ public class WorkReminderUI : MonoBehaviour
                 reminderGroup = existingPanel.GetComponent<CanvasGroup>();
                 if (timeText == null)
                     timeText = existingPanel.Find("TimeText")?.GetComponent<TextMeshProUGUI>();
+                if (healthReminderText == null)
+                    healthReminderText = existingPanel.Find("HealthReminderText")?.GetComponent<TextMeshProUGUI>();
                 if (energyWarningText == null)
                     energyWarningText = existingPanel.Find("EnergyWarning")?.GetComponent<TextMeshProUGUI>();
                 if (dismissButton == null)
@@ -297,45 +289,131 @@ public class WorkReminderUI : MonoBehaviour
             ApplyReadableHudText(hudGymIndicator);
 
         ConfigureGymIndicatorLayout();
+        EnsureHealthReminderLine();
         ApplyReminderPanelTypography();
+    }
+
+    private void EnsureHealthReminderLine()
+    {
+        if (reminderPanel == null || healthReminderText != null)
+            return;
+
+        healthReminderText = CreateTmp(
+            "HealthReminderText",
+            reminderPanel,
+            ReminderBodyFontSize,
+            FontStyles.Bold,
+            new Color32(200, 238, 210, 255));
+        ApplyReadableHudText(healthReminderText);
+        healthReminderText.outlineWidth = 0.18f;
+        healthReminderText.alignment = TextAlignmentOptions.Center;
+        healthReminderText.text = dailyHealthReminderText;
     }
 
     private void ApplyReminderPanelTypography()
     {
-        if (reminderPanel != null)
-            reminderPanel.sizeDelta = new Vector2(520f, 220f);
-
         TextMeshProUGUI title = reminderPanel != null
             ? reminderPanel.Find("Title")?.GetComponent<TextMeshProUGUI>()
             : null;
         if (title != null)
         {
             title.fontSize = ReminderTitleFontSize;
-            title.rectTransform.sizeDelta = new Vector2(460f, 38f);
+            title.fontStyle = FontStyles.Bold;
+            ApplyReadableHudText(title);
         }
 
         if (timeText != null)
         {
             timeText.fontSize = ReminderBodyFontSize;
-            timeText.rectTransform.sizeDelta = new Vector2(480f, 36f);
+            timeText.fontStyle = FontStyles.Bold;
+            ApplyReadableHudText(timeText);
+        }
+
+        if (healthReminderText != null)
+        {
+            healthReminderText.fontSize = ReminderBodyFontSize;
+            healthReminderText.fontStyle = FontStyles.Bold;
+            healthReminderText.color = new Color32(200, 238, 210, 255);
+            ApplyReadableHudText(healthReminderText);
+            healthReminderText.outlineWidth = 0.18f;
         }
 
         if (energyWarningText != null)
         {
             energyWarningText.fontSize = ReminderWarningFontSize;
-            energyWarningText.rectTransform.sizeDelta = new Vector2(480f, 48f);
+            energyWarningText.fontStyle = FontStyles.Bold;
+            ApplyReadableHudText(energyWarningText);
         }
 
         if (dismissButton != null)
         {
-            RectTransform buttonRect = dismissButton.GetComponent<RectTransform>();
-            if (buttonRect != null)
-                buttonRect.sizeDelta = new Vector2(200f, 44f);
-
             TextMeshProUGUI label = dismissButton.transform.Find("Label")?.GetComponent<TextMeshProUGUI>();
             if (label != null)
+            {
                 label.fontSize = ReminderButtonFontSize;
+                label.fontStyle = FontStyles.Bold;
+            }
         }
+
+        ConfigureReminderPanelLayout();
+    }
+
+    private void ConfigureReminderPanelLayout()
+    {
+        if (reminderPanel == null)
+            return;
+
+        bool showEnergyWarning = energyWarningText != null && energyWarningText.gameObject.activeSelf;
+        float y = 14f;
+
+        TextMeshProUGUI title = reminderPanel.Find("Title")?.GetComponent<TextMeshProUGUI>();
+        if (title != null)
+            SetReminderLineLayout(title.rectTransform, ref y, 34f);
+
+        if (timeText != null)
+        {
+            y += 6f;
+            SetReminderLineLayout(timeText.rectTransform, ref y, 32f);
+        }
+
+        if (healthReminderText != null && healthReminderText.gameObject.activeSelf)
+        {
+            y += 6f;
+            SetReminderLineLayout(healthReminderText.rectTransform, ref y, 30f);
+        }
+
+        if (showEnergyWarning && energyWarningText != null)
+        {
+            y += 8f;
+            SetReminderLineLayout(energyWarningText.rectTransform, ref y, 44f);
+        }
+
+        const float buttonHeight = 46f;
+        const float bottomPad = 14f;
+        reminderPanel.sizeDelta = new Vector2(ReminderPanelWidth, y + 10f + buttonHeight + bottomPad);
+
+        if (dismissButton != null)
+        {
+            RectTransform buttonRect = dismissButton.GetComponent<RectTransform>();
+            buttonRect.anchorMin = new Vector2(0.5f, 0f);
+            buttonRect.anchorMax = new Vector2(0.5f, 0f);
+            buttonRect.pivot = new Vector2(0.5f, 0f);
+            buttonRect.anchoredPosition = new Vector2(0f, bottomPad);
+            buttonRect.sizeDelta = new Vector2(220f, buttonHeight);
+        }
+    }
+
+    private static void SetReminderLineLayout(RectTransform rect, ref float y, float height)
+    {
+        if (rect == null)
+            return;
+
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -y);
+        rect.sizeDelta = new Vector2(480f, height);
+        y += height;
     }
 
     private void CreateStatusPanel()
@@ -382,7 +460,7 @@ public class WorkReminderUI : MonoBehaviour
         reminderPanel.anchorMin = new Vector2(0.5f, 0.5f);
         reminderPanel.anchorMax = new Vector2(0.5f, 0.5f);
         reminderPanel.pivot = new Vector2(0.5f, 0.5f);
-        reminderPanel.sizeDelta = new Vector2(520f, 220f);
+        reminderPanel.sizeDelta = new Vector2(520f, 260f);
 
         Image panelImage = panelObj.GetComponent<Image>();
         panelImage.color = new Color(20f / 255f, 20f / 255f, 20f / 255f, 180f / 255f);
@@ -393,37 +471,32 @@ public class WorkReminderUI : MonoBehaviour
 
         reminderGroup = panelObj.GetComponent<CanvasGroup>();
         reminderGroup.alpha = 0f;
+        reminderGroup.interactable = false;
+        reminderGroup.blocksRaycasts = false;
 
         CreateReminderTexts(panelObj.transform);
         CreateDismissButton(panelObj.transform);
+        ConfigureReminderPanelLayout();
     }
 
     private void CreateReminderTexts(Transform parent)
     {
         TextMeshProUGUI title = CreateTmp("Title", parent, ReminderTitleFontSize, FontStyles.Bold, new Color(1f, 232f / 255f, 160f / 255f, 1f));
+        ApplyReadableHudText(title);
         title.text = "Hari Kerja";
-        RectTransform titleRect = title.rectTransform;
-        titleRect.anchorMin = new Vector2(0.5f, 1f);
-        titleRect.anchorMax = new Vector2(0.5f, 1f);
-        titleRect.pivot = new Vector2(0.5f, 1f);
-        titleRect.anchoredPosition = new Vector2(0f, -20f);
-        titleRect.sizeDelta = new Vector2(460f, 38f);
 
-        timeText = CreateTmp("TimeText", parent, ReminderBodyFontSize, FontStyles.Normal, Color.white);
-        RectTransform timeRect = timeText.rectTransform;
-        timeRect.anchorMin = new Vector2(0.5f, 1f);
-        timeRect.anchorMax = new Vector2(0.5f, 1f);
-        timeRect.pivot = new Vector2(0.5f, 1f);
-        timeRect.anchoredPosition = new Vector2(0f, -72f);
-        timeRect.sizeDelta = new Vector2(480f, 36f);
+        timeText = CreateTmp("TimeText", parent, ReminderBodyFontSize, FontStyles.Bold, Color.white);
+        ApplyReadableHudText(timeText);
 
-        energyWarningText = CreateTmp("EnergyWarning", parent, ReminderWarningFontSize, FontStyles.Normal, new Color(1f, 153f / 255f, 102f / 255f, 1f));
-        RectTransform warningRect = energyWarningText.rectTransform;
-        warningRect.anchorMin = new Vector2(0.5f, 1f);
-        warningRect.anchorMax = new Vector2(0.5f, 1f);
-        warningRect.pivot = new Vector2(0.5f, 1f);
-        warningRect.anchoredPosition = new Vector2(0f, -112f);
-        warningRect.sizeDelta = new Vector2(480f, 48f);
+        healthReminderText = CreateTmp("HealthReminderText", parent, ReminderBodyFontSize, FontStyles.Bold, new Color32(200, 238, 210, 255));
+        ApplyReadableHudText(healthReminderText);
+        healthReminderText.outlineWidth = 0.18f;
+        healthReminderText.alignment = TextAlignmentOptions.Center;
+        healthReminderText.text = dailyHealthReminderText;
+
+        energyWarningText = CreateTmp("EnergyWarning", parent, ReminderWarningFontSize, FontStyles.Bold, new Color(1f, 153f / 255f, 102f / 255f, 1f));
+        ApplyReadableHudText(energyWarningText);
+        energyWarningText.gameObject.SetActive(false);
     }
 
     private void CreateDismissButton(Transform parent)
@@ -434,8 +507,8 @@ public class WorkReminderUI : MonoBehaviour
         rect.anchorMin = new Vector2(0.5f, 0f);
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
-        rect.anchoredPosition = new Vector2(0f, 18f);
-        rect.sizeDelta = new Vector2(200f, 44f);
+        rect.anchoredPosition = new Vector2(0f, 14f);
+        rect.sizeDelta = new Vector2(220f, 46f);
 
         Image img = btnObj.GetComponent<Image>();
         img.color = new Color(0.18f, 0.18f, 0.22f, 0.95f);
@@ -608,6 +681,9 @@ public class WorkReminderUI : MonoBehaviour
         if (timeText != null)
             timeText.text = "Jam kerja hari ini: " + GetWorkHoursText();
 
+        if (healthReminderText != null)
+            healthReminderText.text = dailyHealthReminderText;
+
         float energy = PlayerStats.Instance != null ? PlayerStats.Instance.EnergyPercent : 1f;
         bool showWarning = energy < 0.60f;
 
@@ -616,6 +692,8 @@ public class WorkReminderUI : MonoBehaviour
             energyWarningText.gameObject.SetActive(showWarning);
             energyWarningText.text = "Energimu belum penuh — makan dulu sebelum kerja!";
         }
+
+        ConfigureReminderPanelLayout();
     }
 
     private string GetWorkHoursText()
@@ -659,9 +737,7 @@ public class WorkReminderUI : MonoBehaviour
             resumeRoutine = null;
         }
 
-        if (dismissRoutine != null)
-            StopCoroutine(dismissRoutine);
-
+        SetReminderPanelInteractive(false);
         StartCoroutine(FadePanel(0f, fadeDuration));
     }
 
@@ -683,6 +759,9 @@ public class WorkReminderUI : MonoBehaviour
         }
 
         reminderGroup.alpha = target;
+
+        if (target <= 0.001f)
+            SetReminderPanelInteractive(false);
     }
 
     private static TextMeshProUGUI CreateTmp(string name, Transform parent, float fontSize, FontStyles style, Color color)
