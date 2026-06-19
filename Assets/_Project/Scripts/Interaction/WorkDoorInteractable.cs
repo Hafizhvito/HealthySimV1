@@ -159,7 +159,7 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
 
         TextMeshPro tmp = textObj.AddComponent<TextMeshPro>();
         tmp.text = text;
-        tmp.fontSize = 3f;
+        tmp.fontSize = 3.8f;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = new Color(1f, 0.92f, 0.68f, 1f);
 

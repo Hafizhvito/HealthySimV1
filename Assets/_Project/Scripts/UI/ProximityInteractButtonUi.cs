@@ -132,7 +132,7 @@ public static class ProximityInteractButtonUi
 
         TextMeshProUGUI label = labelGo.GetComponent<TextMeshProUGUI>();
         label.text = "Interaksi";
-        label.fontSize = 20f;
+        label.fontSize = 23f;
         label.fontStyle = FontStyles.Bold;
         label.color = Color.white;
         label.alignment = TextAlignmentOptions.Center;

@@ -72,17 +72,18 @@ public class HUDAutoSetup : MonoBehaviour
         caloriesText.rectTransform.offsetMax = new Vector2(-10f, -4f);
         caloriesText.rectTransform.SetSiblingIndex(2);
 
-        RectTransform timePanel = EnsurePanel(canvas.transform, "Time_Panel", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(300f, 60f));
+        RectTransform timePanel = EnsurePanel(canvas.transform, "Time_Panel", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -36f), new Vector2(340f, 72f));
+        ApplyPanelChrome(timePanel, new Color32(10, 14, 20, 225));
         TextMeshProUGUI periodText = EnsureText(timePanel, "Period_Text", "Pagi", 22, Color.white, TextAlignmentOptions.Center);
         SetTextStyle(periodText, FontStyles.Bold);
-        ApplyHudTextStyle(periodText);
-        SetupSubTextRect(periodText.rectTransform, new Vector2(0f, -12f), new Vector2(300f, 28f));
+        ApplyHudTextStyle(periodText, 0.16f);
+        SetupSubTextRect(periodText.rectTransform, new Vector2(0f, -14f), new Vector2(320f, 30f));
         TextMeshProUGUI timeText = EnsureText(timePanel, "TimeRemaining_Text", "06:00", 18, new Color32(255, 240, 150, 255), TextAlignmentOptions.Center);
-        ApplyHudTextStyle(timeText);
-        SetupSubTextRect(timeText.rectTransform, new Vector2(0f, -38f), new Vector2(300f, 24f));
+        ApplyHudTextStyle(timeText, 0.16f);
+        SetupSubTextRect(timeText.rectTransform, new Vector2(0f, -42f), new Vector2(320f, 26f));
 
         RectTransform warningPanel = EnsurePanel(canvas.transform, "Warning_Panel", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -200f), new Vector2(500f, 60f));
-        TextMeshProUGUI warningText = EnsureText(warningPanel, "Warning_Text", "ENERGI RENDAH! Segera makan!", 24, new Color32(255, 140, 0, 255), TextAlignmentOptions.Center);
+        TextMeshProUGUI warningText = EnsureText(warningPanel, "Warning_Text", "ENERGI RENDAH! Segera makan!", 28, new Color32(255, 140, 0, 255), TextAlignmentOptions.Center);
         SetTextStyle(warningText, FontStyles.Bold);
         ApplyHudTextStyle(warningText);
         StretchRect(warningText.rectTransform);

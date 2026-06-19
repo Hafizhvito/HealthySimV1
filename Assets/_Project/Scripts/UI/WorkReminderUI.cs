@@ -10,6 +10,11 @@ public class WorkReminderUI : MonoBehaviour
     [SerializeField] private float autoDismissSeconds = 6f;
     [SerializeField] private float fadeDuration = 0.3f;
 
+    private const float ReminderTitleFontSize = 26f;
+    private const float ReminderBodyFontSize = 20f;
+    private const float ReminderWarningFontSize = 18f;
+    private const float ReminderButtonFontSize = 20f;
+
     private Canvas hudCanvas;
     private CanvasGroup reminderGroup;
     private RectTransform reminderPanel;
@@ -19,6 +24,7 @@ public class WorkReminderUI : MonoBehaviour
     private Button dismissButton;
     private TextMeshProUGUI hudWorkIndicator;
     private TextMeshProUGUI hudMoneyIndicator;
+    private TextMeshProUGUI hudGymIndicator;
     private bool reminderHasShownOnce;
     private Coroutine dismissRoutine;
     private Coroutine resumeRoutine;
@@ -47,6 +53,7 @@ public class WorkReminderUI : MonoBehaviour
         HandleTutorialSuppression();
         UpdateHudWorkIndicator();
         UpdateHudMoneyIndicator();
+        UpdateHudGymIndicator();
     }
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -62,7 +69,7 @@ public class WorkReminderUI : MonoBehaviour
 
     private void EnsureUiAlive()
     {
-        bool missingUi = hudCanvas == null || hudWorkIndicator == null || hudMoneyIndicator == null;
+        bool missingUi = hudCanvas == null || hudWorkIndicator == null || hudMoneyIndicator == null || hudGymIndicator == null;
         if (missingUi)
             EnsureUi();
     }
@@ -266,6 +273,69 @@ public class WorkReminderUI : MonoBehaviour
             ApplyReadableHudText(hudMoneyIndicator);
 
         ConfigureMoneyIndicatorLayout();
+
+        if (hudGymIndicator == null)
+        {
+            Transform existingGym = hudStatusPanel != null
+                ? hudStatusPanel.Find("GymHUDIndicator")
+                : null;
+
+            if (existingGym == null)
+                existingGym = hudCanvas.transform.Find("GymHUDIndicator");
+
+            if (existingGym != null)
+            {
+                hudGymIndicator = existingGym.GetComponent<TextMeshProUGUI>();
+                if (hudStatusPanel != null && hudGymIndicator != null)
+                    hudGymIndicator.rectTransform.SetParent(hudStatusPanel, false);
+            }
+
+            if (hudGymIndicator == null)
+                CreateGymHudIndicator();
+        }
+        else
+            ApplyReadableHudText(hudGymIndicator);
+
+        ConfigureGymIndicatorLayout();
+        ApplyReminderPanelTypography();
+    }
+
+    private void ApplyReminderPanelTypography()
+    {
+        if (reminderPanel != null)
+            reminderPanel.sizeDelta = new Vector2(520f, 220f);
+
+        TextMeshProUGUI title = reminderPanel != null
+            ? reminderPanel.Find("Title")?.GetComponent<TextMeshProUGUI>()
+            : null;
+        if (title != null)
+        {
+            title.fontSize = ReminderTitleFontSize;
+            title.rectTransform.sizeDelta = new Vector2(460f, 38f);
+        }
+
+        if (timeText != null)
+        {
+            timeText.fontSize = ReminderBodyFontSize;
+            timeText.rectTransform.sizeDelta = new Vector2(480f, 36f);
+        }
+
+        if (energyWarningText != null)
+        {
+            energyWarningText.fontSize = ReminderWarningFontSize;
+            energyWarningText.rectTransform.sizeDelta = new Vector2(480f, 48f);
+        }
+
+        if (dismissButton != null)
+        {
+            RectTransform buttonRect = dismissButton.GetComponent<RectTransform>();
+            if (buttonRect != null)
+                buttonRect.sizeDelta = new Vector2(200f, 44f);
+
+            TextMeshProUGUI label = dismissButton.transform.Find("Label")?.GetComponent<TextMeshProUGUI>();
+            if (label != null)
+                label.fontSize = ReminderButtonFontSize;
+        }
     }
 
     private void CreateStatusPanel()
@@ -288,7 +358,7 @@ public class WorkReminderUI : MonoBehaviour
         hudStatusPanel.anchorMax = new Vector2(0f, 1f);
         hudStatusPanel.pivot = new Vector2(0f, 1f);
         hudStatusPanel.anchoredPosition = new Vector2(36f, -142f);
-        hudStatusPanel.sizeDelta = new Vector2(348f, 88f);
+        hudStatusPanel.sizeDelta = new Vector2(348f, 120f);
 
         Image bg = hudStatusPanel.GetComponent<Image>();
         if (bg == null)
@@ -312,7 +382,7 @@ public class WorkReminderUI : MonoBehaviour
         reminderPanel.anchorMin = new Vector2(0.5f, 0.5f);
         reminderPanel.anchorMax = new Vector2(0.5f, 0.5f);
         reminderPanel.pivot = new Vector2(0.5f, 0.5f);
-        reminderPanel.sizeDelta = new Vector2(480f, 200f);
+        reminderPanel.sizeDelta = new Vector2(520f, 220f);
 
         Image panelImage = panelObj.GetComponent<Image>();
         panelImage.color = new Color(20f / 255f, 20f / 255f, 20f / 255f, 180f / 255f);
@@ -330,30 +400,30 @@ public class WorkReminderUI : MonoBehaviour
 
     private void CreateReminderTexts(Transform parent)
     {
-        TextMeshProUGUI title = CreateTmp("Title", parent, 22f, FontStyles.Bold, new Color(1f, 232f / 255f, 160f / 255f, 1f));
+        TextMeshProUGUI title = CreateTmp("Title", parent, ReminderTitleFontSize, FontStyles.Bold, new Color(1f, 232f / 255f, 160f / 255f, 1f));
         title.text = "Hari Kerja";
         RectTransform titleRect = title.rectTransform;
         titleRect.anchorMin = new Vector2(0.5f, 1f);
         titleRect.anchorMax = new Vector2(0.5f, 1f);
         titleRect.pivot = new Vector2(0.5f, 1f);
         titleRect.anchoredPosition = new Vector2(0f, -20f);
-        titleRect.sizeDelta = new Vector2(420f, 32f);
+        titleRect.sizeDelta = new Vector2(460f, 38f);
 
-        timeText = CreateTmp("TimeText", parent, 16f, FontStyles.Normal, Color.white);
+        timeText = CreateTmp("TimeText", parent, ReminderBodyFontSize, FontStyles.Normal, Color.white);
         RectTransform timeRect = timeText.rectTransform;
         timeRect.anchorMin = new Vector2(0.5f, 1f);
         timeRect.anchorMax = new Vector2(0.5f, 1f);
         timeRect.pivot = new Vector2(0.5f, 1f);
-        timeRect.anchoredPosition = new Vector2(0f, -70f);
-        timeRect.sizeDelta = new Vector2(440f, 30f);
+        timeRect.anchoredPosition = new Vector2(0f, -72f);
+        timeRect.sizeDelta = new Vector2(480f, 36f);
 
-        energyWarningText = CreateTmp("EnergyWarning", parent, 14f, FontStyles.Normal, new Color(1f, 153f / 255f, 102f / 255f, 1f));
+        energyWarningText = CreateTmp("EnergyWarning", parent, ReminderWarningFontSize, FontStyles.Normal, new Color(1f, 153f / 255f, 102f / 255f, 1f));
         RectTransform warningRect = energyWarningText.rectTransform;
         warningRect.anchorMin = new Vector2(0.5f, 1f);
         warningRect.anchorMax = new Vector2(0.5f, 1f);
         warningRect.pivot = new Vector2(0.5f, 1f);
-        warningRect.anchoredPosition = new Vector2(0f, -105f);
-        warningRect.sizeDelta = new Vector2(440f, 40f);
+        warningRect.anchoredPosition = new Vector2(0f, -112f);
+        warningRect.sizeDelta = new Vector2(480f, 48f);
     }
 
     private void CreateDismissButton(Transform parent)
@@ -365,7 +435,7 @@ public class WorkReminderUI : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
         rect.anchoredPosition = new Vector2(0f, 18f);
-        rect.sizeDelta = new Vector2(180f, 40f);
+        rect.sizeDelta = new Vector2(200f, 44f);
 
         Image img = btnObj.GetComponent<Image>();
         img.color = new Color(0.18f, 0.18f, 0.22f, 0.95f);
@@ -374,7 +444,7 @@ public class WorkReminderUI : MonoBehaviour
         dismissButton.onClick.RemoveAllListeners();
         dismissButton.onClick.AddListener(OnDismissClicked);
 
-        TextMeshProUGUI label = CreateTmp("Label", btnObj.transform, 16f, FontStyles.Bold, new Color(1f, 0.95f, 0.8f, 1f));
+        TextMeshProUGUI label = CreateTmp("Label", btnObj.transform, ReminderButtonFontSize, FontStyles.Bold, new Color(1f, 0.95f, 0.8f, 1f));
         label.text = "Oke, mengerti";
         RectTransform labelRect = label.rectTransform;
         labelRect.anchorMin = Vector2.zero;
@@ -424,9 +494,32 @@ public class WorkReminderUI : MonoBehaviour
         rect.anchorMin = new Vector2(0f, 1f);
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(14f, -48f);
+        rect.anchoredPosition = new Vector2(14f, -84f);
         rect.sizeDelta = new Vector2(-24f, 32f);
         hudMoneyIndicator.alignment = TextAlignmentOptions.TopLeft;
+    }
+
+    private void CreateGymHudIndicator()
+    {
+        Transform parent = hudStatusPanel != null ? hudStatusPanel : hudCanvas.transform;
+        hudGymIndicator = CreateTmp("GymHUDIndicator", parent, 18f, FontStyles.Bold, new Color32(245, 248, 252, 255));
+        ApplyReadableHudText(hudGymIndicator);
+        ConfigureGymIndicatorLayout();
+        hudGymIndicator.text = "Gym · " + GetGymHoursText();
+    }
+
+    private void ConfigureGymIndicatorLayout()
+    {
+        if (hudGymIndicator == null)
+            return;
+
+        RectTransform rect = hudGymIndicator.rectTransform;
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = new Vector2(14f, -48f);
+        rect.sizeDelta = new Vector2(-24f, 30f);
+        hudGymIndicator.alignment = TextAlignmentOptions.TopLeft;
     }
 
     private void UpdateHudWorkIndicator()
@@ -470,6 +563,37 @@ public class WorkReminderUI : MonoBehaviour
         hudMoneyIndicator.color = new Color32(255, 232, 150, 255);
     }
 
+    private void UpdateHudGymIndicator()
+    {
+        if (hudGymIndicator == null)
+            return;
+
+        GymProgressionSystem gym = GymProgressionSystem.Instance;
+        if (gym == null || !gym.HasTrainedToday || gym.LastSession == null)
+        {
+            hudGymIndicator.color = new Color32(245, 248, 252, 255);
+            hudGymIndicator.text = "Gym · " + GetGymHoursText();
+            return;
+        }
+
+        switch (gym.LastSession.result)
+        {
+            case GymSessionResult.Excellent:
+            case GymSessionResult.Solid:
+                hudGymIndicator.text = "Gym · selesai";
+                hudGymIndicator.color = new Color(0.62f, 0.96f, 0.68f, 1f);
+                break;
+            case GymSessionResult.Strained:
+                hudGymIndicator.text = "Gym · terforsir";
+                hudGymIndicator.color = new Color(1f, 0.78f, 0.42f, 1f);
+                break;
+            default:
+                hudGymIndicator.text = "Gym · gagal";
+                hudGymIndicator.color = new Color(1f, 0.58f, 0.58f, 1f);
+                break;
+        }
+    }
+
     private static void ApplyReadableHudText(TextMeshProUGUI text)
     {
         if (text == null)
@@ -511,6 +635,18 @@ public class WorkReminderUI : MonoBehaviour
             default:
                 return "Tutup (Malam)";
         }
+    }
+
+    private static string GetGymHoursText()
+    {
+        TimeManager.TimePeriod period = TimeManager.Instance != null
+            ? TimeManager.Instance.CurrentPeriod
+            : TimeManager.TimePeriod.Morning;
+
+        if (period == TimeManager.TimePeriod.Night)
+            return "Tutup (Malam)";
+
+        return "06.00 - 22.00";
     }
 
     private void OnDismissClicked()

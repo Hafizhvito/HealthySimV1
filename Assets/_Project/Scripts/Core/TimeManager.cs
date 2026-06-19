@@ -382,6 +382,31 @@ public class TimeManager : MonoBehaviour
             sleepReminderDismissButton.onClick.RemoveAllListeners();
             sleepReminderDismissButton.onClick.AddListener(OnSleepReminderDismissed);
         }
+
+        ApplySleepReminderTypography();
+    }
+
+    private const float SleepReminderTextFontSize = 22f;
+    private const float SleepReminderButtonFontSize = 20f;
+
+    private void ApplySleepReminderTypography()
+    {
+        if (sleepReminderPanel != null)
+            sleepReminderPanel.sizeDelta = new Vector2(560f, 200f);
+
+        if (sleepReminderText != null)
+            sleepReminderText.fontSize = SleepReminderTextFontSize;
+
+        if (sleepReminderDismissButton != null)
+        {
+            RectTransform buttonRect = sleepReminderDismissButton.GetComponent<RectTransform>();
+            if (buttonRect != null)
+                buttonRect.sizeDelta = new Vector2(200f, 44f);
+
+            TextMeshProUGUI label = sleepReminderDismissButton.transform.Find("Label")?.GetComponent<TextMeshProUGUI>();
+            if (label != null)
+                label.fontSize = SleepReminderButtonFontSize;
+        }
     }
 
     private void CreateSleepReminderPanel()
@@ -392,7 +417,7 @@ public class TimeManager : MonoBehaviour
         sleepReminderPanel.anchorMin = new Vector2(0.5f, 0.5f);
         sleepReminderPanel.anchorMax = new Vector2(0.5f, 0.5f);
         sleepReminderPanel.pivot = new Vector2(0.5f, 0.5f);
-        sleepReminderPanel.sizeDelta = new Vector2(520f, 180f);
+        sleepReminderPanel.sizeDelta = new Vector2(560f, 200f);
 
         Image panelImage = panelObj.GetComponent<Image>();
         panelImage.color = new Color(20f / 255f, 20f / 255f, 20f / 255f, 180f / 255f);
@@ -416,7 +441,7 @@ public class TimeManager : MonoBehaviour
         textObj.transform.SetParent(parent, false);
 
         sleepReminderText = textObj.GetComponent<TextMeshProUGUI>();
-        sleepReminderText.fontSize = 18f;
+        sleepReminderText.fontSize = SleepReminderTextFontSize;
         sleepReminderText.fontStyle = FontStyles.Bold;
         sleepReminderText.color = new Color(1f, 232f / 255f, 160f / 255f, 1f);
         sleepReminderText.alignment = TextAlignmentOptions.Center;
@@ -438,7 +463,7 @@ public class TimeManager : MonoBehaviour
         rect.anchorMax = new Vector2(0.5f, 0f);
         rect.pivot = new Vector2(0.5f, 0f);
         rect.anchoredPosition = new Vector2(0f, 18f);
-        rect.sizeDelta = new Vector2(180f, 40f);
+        rect.sizeDelta = new Vector2(200f, 44f);
 
         Image img = btnObj.GetComponent<Image>();
         img.color = new Color(0.18f, 0.18f, 0.22f, 0.95f);
@@ -450,7 +475,7 @@ public class TimeManager : MonoBehaviour
         GameObject labelObj = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
         labelObj.transform.SetParent(btnObj.transform, false);
         TextMeshProUGUI label = labelObj.GetComponent<TextMeshProUGUI>();
-        label.fontSize = 16f;
+        label.fontSize = SleepReminderButtonFontSize;
         label.fontStyle = FontStyles.Bold;
         label.color = new Color(1f, 0.95f, 0.8f, 1f);
         label.alignment = TextAlignmentOptions.Center;

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -119,7 +120,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private Coroutine sleepRoutine;
     private Canvas wakeCanvas;
     private CanvasGroup wakeCanvasGroup;
-    private TextMeshProUGUI wakeText;
+    private RectTransform wakePanelRect;
+    private TextMeshProUGUI wakeIntroText;
+    private TextMeshProUGUI wakeWarningsText;
+    private TextMeshProUGUI wakeSummaryText;
     private Coroutine wakeMessageRoutine;
     private Canvas sleepCinematicCanvas;
     private CanvasGroup sleepCinematicCanvasGroup;
@@ -137,6 +141,21 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private bool forceSleepTriggered;
     private const string AgingNotificationModalKey = "aging_panel";
     private const string ForcedSleepMessage = "Kamu terlalu lelah dan tertidur...";
+
+    private struct WakeMessageContent
+    {
+        public string intro;
+        public List<string> warnings;
+        public string summary;
+    }
+
+    private const float WakePanelWidth = 920f;
+    private const float WakePanelMinHeight = 104f;
+    private const float WakePanelMaxHeight = 320f;
+    private const float WakeIntroFontSize = 26f;
+    private const float WakeWarningsFontSize = 21f;
+    private const float WakeSummaryFontSize = 19f;
+    private const float SleepCinematicFontSize = 34f;
 
     private void Awake()
     {
@@ -839,7 +858,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     }
 
     // ── Wake message ─────────────────────────────────────────
-    private string BuildWakeMessage(
+    private WakeMessageContent BuildWakeMessage(
         string dayName,
         bool workedYesterday,
         float energyBeforeSleep,
@@ -847,24 +866,31 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         bool lateWakePenaltyTriggered,
         DailyHealthResult evalResult = null)
     {
-        string intro         = string.Format(wakeIntroTemplate, dayName);
-        bool   lowEnergySleep = energyBeforeSleep <= lowEnergyWarningThreshold;
+        var content = new WakeMessageContent
+        {
+            intro = string.Format(wakeIntroTemplate, dayName),
+            warnings = new List<string>(),
+            summary = string.Empty
+        };
 
-        var warnings = new System.Collections.Generic.List<string>();
+        bool lowEnergySleep = energyBeforeSleep <= lowEnergyWarningThreshold;
 
-        if (!workedYesterday)        warnings.Add(wakeWarningNoWork);
-        if (lowEnergySleep)          warnings.Add(wakeWarningLowEnergy);
-        if (disturbedSleep)          warnings.Add(wakeWarningDisturbedSleep);
-        if (lateWakePenaltyTriggered) warnings.Add(wakeWarningLateWakePenalty);
+        if (!workedYesterday)
+            content.warnings.Add(wakeWarningNoWork);
+        if (lowEnergySleep)
+            content.warnings.Add(wakeWarningLowEnergy);
+        if (disturbedSleep)
+            content.warnings.Add(wakeWarningDisturbedSleep);
+        if (lateWakePenaltyTriggered)
+            content.warnings.Add(wakeWarningLateWakePenalty);
 
-        // Overall note dari evaluator (misal "Hari yang baik. Terus konsisten.")
         if (evalResult != null && !string.IsNullOrEmpty(evalResult.overallNote))
-            warnings.Add(evalResult.overallNote);
+            content.summary = evalResult.overallNote;
 
-        if (warnings.Count > 0)
-            return intro + "\n" + string.Join("\n", warnings);
+        if (content.warnings.Count == 0 && string.IsNullOrEmpty(content.summary))
+            content.summary = "Istirahatmu cukup. Lanjutkan harimu dengan pilihan sehat.";
 
-        return intro + "\nIstirahatmu cukup. Lanjutkan harimu dengan pilihan sehat.";
+        return content;
     }
 
     // ── Aging notification ───────────────────────────────────
@@ -1060,10 +1086,19 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private void ShowWakeMessage(string message, float duration)
     {
+        ShowWakeMessage(new WakeMessageContent { intro = message }, duration);
+    }
+
+    private void ShowWakeMessage(WakeMessageContent content, float duration)
+    {
         EnsureWakeUi();
-        if (wakeText == null || wakeCanvasGroup == null) return;
-        if (wakeMessageRoutine != null) StopCoroutine(wakeMessageRoutine);
-        wakeMessageRoutine = StartCoroutine(ShowWakeMessageRoutine(message, duration));
+        if (wakeCanvasGroup == null || wakeIntroText == null)
+            return;
+
+        if (wakeMessageRoutine != null)
+            StopCoroutine(wakeMessageRoutine);
+
+        wakeMessageRoutine = StartCoroutine(ShowWakeMessageRoutine(content, duration));
     }
 
     private IEnumerator PlayPreSleepCinematic()
@@ -1218,7 +1253,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         sleepCinematicText                   = textObj.GetComponent<TextMeshProUGUI>();
         sleepCinematicText.alignment         = TextAlignmentOptions.Center;
-        sleepCinematicText.fontSize          = 30f;
+        sleepCinematicText.fontSize          = SleepCinematicFontSize;
         sleepCinematicText.color             = new Color(0.98f, 0.95f, 0.86f, 1f);
         sleepCinematicText.textWrappingMode  = TextWrappingModes.Normal;
         sleepCinematicText.text              = string.Empty;
@@ -1226,62 +1261,260 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         sleepCinematicCanvas.gameObject.SetActive(false);
     }
 
-    private IEnumerator ShowWakeMessageRoutine(string message, float duration)
+    private IEnumerator ShowWakeMessageRoutine(WakeMessageContent content, float duration)
     {
-        wakeText.text              = message;
-        wakeCanvasGroup.alpha      = 1f;
+        ApplyWakeMessageContent(content);
+        wakeCanvasGroup.alpha = 1f;
         wakeCanvasGroup.blocksRaycasts = false;
         yield return new WaitForSecondsRealtime(Mathf.Max(0.5f, duration));
-        wakeCanvasGroup.alpha      = 0f;
-        wakeMessageRoutine         = null;
+        wakeCanvasGroup.alpha = 0f;
+        wakeMessageRoutine = null;
+    }
+
+    private void ApplyWakeMessageContent(WakeMessageContent content)
+    {
+        if (wakeIntroText != null)
+        {
+            wakeIntroText.text = content.intro ?? string.Empty;
+            wakeIntroText.gameObject.SetActive(!string.IsNullOrWhiteSpace(wakeIntroText.text));
+        }
+
+        if (wakeWarningsText != null)
+        {
+            var lines = new List<string>();
+            if (content.warnings != null)
+            {
+                for (int i = 0; i < content.warnings.Count; i++)
+                {
+                    string line = FormatWakeWarningLine(content.warnings[i]);
+                    if (!string.IsNullOrWhiteSpace(line))
+                        lines.Add(line);
+                }
+            }
+
+            wakeWarningsText.text = lines.Count > 0 ? string.Join("\n", lines) : string.Empty;
+            wakeWarningsText.gameObject.SetActive(lines.Count > 0);
+        }
+
+        if (wakeSummaryText != null)
+        {
+            wakeSummaryText.text = content.summary ?? string.Empty;
+            wakeSummaryText.gameObject.SetActive(!string.IsNullOrWhiteSpace(wakeSummaryText.text));
+        }
+
+        RefreshWakePanelLayout();
+    }
+
+    private static string FormatWakeWarningLine(string warning)
+    {
+        if (string.IsNullOrWhiteSpace(warning))
+            return string.Empty;
+
+        const string prefix = "Peringatan: ";
+        if (warning.StartsWith(prefix, System.StringComparison.Ordinal))
+            return "• " + warning.Substring(prefix.Length);
+
+        return "• " + warning;
+    }
+
+    private void RefreshWakePanelLayout()
+    {
+        if (wakePanelRect == null)
+            return;
+
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(wakePanelRect);
+        float preferredHeight = LayoutUtility.GetPreferredHeight(wakePanelRect);
+        wakePanelRect.sizeDelta = new Vector2(
+            WakePanelWidth,
+            Mathf.Clamp(preferredHeight, WakePanelMinHeight, WakePanelMaxHeight));
     }
 
     private void EnsureWakeUi()
     {
-        if (wakeCanvas != null && wakeCanvasGroup != null && wakeText != null)
+        if (wakeCanvas != null && wakeCanvasGroup != null && wakeIntroText != null)
+        {
+            ConfigureWakePanelChrome();
+            ApplyWakeTextTypography();
             return;
+        }
 
         if (TryBindExistingWakeUi())
+        {
+            EnsureWakePanelChildren();
+            ConfigureWakePanelChrome();
+            ApplyWakeTextTypography();
             return;
+        }
 
         GameObject canvasObj = new GameObject("SleepWakeCanvas",
             typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
 
-        wakeCanvas              = canvasObj.GetComponent<Canvas>();
-        wakeCanvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+        wakeCanvas = canvasObj.GetComponent<Canvas>();
+        wakeCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
         wakeCanvas.sortingOrder = 120;
 
         CanvasScaler scaler = canvasObj.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
 
         canvasObj.GetComponent<GraphicRaycaster>().enabled = false;
-        wakeCanvasGroup       = canvasObj.GetComponent<CanvasGroup>();
+        wakeCanvasGroup = canvasObj.GetComponent<CanvasGroup>();
         wakeCanvasGroup.alpha = 0f;
 
-        GameObject panelObj  = new GameObject("WakePanel", typeof(RectTransform), typeof(Image));
-        RectTransform panelRect = panelObj.GetComponent<RectTransform>();
-        panelRect.SetParent(canvasObj.transform, false);
-        panelRect.anchorMin  = new Vector2(0.5f, 0.87f);
-        panelRect.anchorMax  = new Vector2(0.5f, 0.87f);
-        panelRect.pivot      = new Vector2(0.5f, 0.5f);
-        panelRect.sizeDelta  = new Vector2(980f, 140f);
-        panelObj.GetComponent<Image>().color = new Color(0.06f, 0.08f, 0.12f, 0.78f);
+        GameObject panelObj = new GameObject("WakePanel", typeof(RectTransform), typeof(Image), typeof(Outline), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        wakePanelRect = panelObj.GetComponent<RectTransform>();
+        wakePanelRect.SetParent(canvasObj.transform, false);
+        wakePanelRect.anchorMin = new Vector2(0.5f, 0.72f);
+        wakePanelRect.anchorMax = new Vector2(0.5f, 0.72f);
+        wakePanelRect.pivot = new Vector2(0.5f, 0.5f);
+        wakePanelRect.sizeDelta = new Vector2(WakePanelWidth, WakePanelMinHeight);
 
-        GameObject textObj  = new GameObject("WakeText", typeof(RectTransform), typeof(TextMeshProUGUI));
-        RectTransform textRect = textObj.GetComponent<RectTransform>();
-        textRect.SetParent(panelObj.transform, false);
-        textRect.anchorMin = new Vector2(0.05f, 0.12f);
-        textRect.anchorMax = new Vector2(0.95f, 0.88f);
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
+        Image panelImage = panelObj.GetComponent<Image>();
+        panelImage.color = new Color32(10, 14, 20, 230);
 
-        wakeText                  = textObj.GetComponent<TextMeshProUGUI>();
-        wakeText.alignment        = TextAlignmentOptions.Center;
-        wakeText.fontSize         = 26f;
-        wakeText.color            = new Color(0.98f, 0.94f, 0.84f, 1f);
-        wakeText.textWrappingMode = TextWrappingModes.Normal;
-        wakeText.text             = string.Empty;
+        Outline outline = panelObj.GetComponent<Outline>();
+        outline.effectColor = new Color(1f, 1f, 1f, 0.16f);
+        outline.effectDistance = new Vector2(1f, -1f);
+
+        VerticalLayoutGroup layout = panelObj.GetComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(22, 22, 18, 18);
+        layout.spacing = 8f;
+        layout.childAlignment = TextAnchor.UpperCenter;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
+
+        ContentSizeFitter fitter = panelObj.GetComponent<ContentSizeFitter>();
+        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        wakeIntroText = CreateWakeLineText("WakeIntroText", panelObj.transform, WakeIntroFontSize, FontStyles.Bold, new Color32(245, 248, 252, 255), TextAlignmentOptions.Center);
+        wakeWarningsText = CreateWakeLineText("WakeWarningsText", panelObj.transform, WakeWarningsFontSize, FontStyles.Normal, new Color32(255, 176, 112, 255), TextAlignmentOptions.Center);
+        wakeSummaryText = CreateWakeLineText("WakeSummaryText", panelObj.transform, WakeSummaryFontSize, FontStyles.Italic, new Color32(196, 204, 214, 255), TextAlignmentOptions.Center);
+        ApplyWakeTextTypography();
+    }
+
+    private void EnsureWakePanelChildren()
+    {
+        if (wakePanelRect == null)
+            return;
+
+        if (wakeIntroText == null)
+        {
+            Transform legacy = wakePanelRect.Find("WakeText");
+            wakeIntroText = legacy != null ? legacy.GetComponent<TextMeshProUGUI>() : null;
+        }
+
+        if (wakeWarningsText == null)
+            wakeWarningsText = wakePanelRect.Find("WakeWarningsText")?.GetComponent<TextMeshProUGUI>();
+
+        if (wakeSummaryText == null)
+            wakeSummaryText = wakePanelRect.Find("WakeSummaryText")?.GetComponent<TextMeshProUGUI>();
+
+        if (wakeIntroText == null)
+            wakeIntroText = CreateWakeLineText("WakeIntroText", wakePanelRect, WakeIntroFontSize, FontStyles.Bold, new Color32(245, 248, 252, 255), TextAlignmentOptions.Center);
+
+        if (wakeWarningsText == null)
+            wakeWarningsText = CreateWakeLineText("WakeWarningsText", wakePanelRect, WakeWarningsFontSize, FontStyles.Normal, new Color32(255, 176, 112, 255), TextAlignmentOptions.Center);
+
+        if (wakeSummaryText == null)
+            wakeSummaryText = CreateWakeLineText("WakeSummaryText", wakePanelRect, WakeSummaryFontSize, FontStyles.Italic, new Color32(196, 204, 214, 255), TextAlignmentOptions.Center);
+
+        ApplyWakeTextTypography();
+
+        if (wakePanelRect.GetComponent<VerticalLayoutGroup>() == null)
+        {
+            VerticalLayoutGroup layout = wakePanelRect.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(22, 22, 18, 18);
+            layout.spacing = 8f;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+        }
+
+        if (wakePanelRect.GetComponent<ContentSizeFitter>() == null)
+        {
+            ContentSizeFitter fitter = wakePanelRect.gameObject.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+    }
+
+    private void ConfigureWakePanelChrome()
+    {
+        if (wakePanelRect == null)
+            return;
+
+        wakePanelRect.anchorMin = new Vector2(0.5f, 0.72f);
+        wakePanelRect.anchorMax = new Vector2(0.5f, 0.72f);
+        wakePanelRect.pivot = new Vector2(0.5f, 0.5f);
+
+        Image panelImage = wakePanelRect.GetComponent<Image>();
+        if (panelImage == null)
+            panelImage = wakePanelRect.gameObject.AddComponent<Image>();
+        panelImage.color = new Color32(10, 14, 20, 230);
+
+        Outline outline = wakePanelRect.GetComponent<Outline>();
+        if (outline == null)
+            outline = wakePanelRect.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(1f, 1f, 1f, 0.16f);
+        outline.effectDistance = new Vector2(1f, -1f);
+    }
+
+    private void ApplyWakeTextTypography()
+    {
+        ApplyWakeLineTypography(wakeIntroText, WakeIntroFontSize, FontStyles.Bold);
+        ApplyWakeLineTypography(wakeWarningsText, WakeWarningsFontSize, FontStyles.Normal);
+        ApplyWakeLineTypography(wakeSummaryText, WakeSummaryFontSize, FontStyles.Italic);
+    }
+
+    private static void ApplyWakeLineTypography(TextMeshProUGUI text, float fontSize, FontStyles style)
+    {
+        if (text == null)
+            return;
+
+        text.fontSize = fontSize;
+        text.fontStyle = style;
+
+        LayoutElement layoutElement = text.GetComponent<LayoutElement>();
+        if (layoutElement != null)
+        {
+            layoutElement.minHeight = fontSize + 10f;
+            layoutElement.preferredWidth = WakePanelWidth - 44f;
+        }
+    }
+
+    private static TextMeshProUGUI CreateWakeLineText(
+        string name,
+        Transform parent,
+        float fontSize,
+        FontStyles style,
+        Color32 color,
+        TextAlignmentOptions alignment)
+    {
+        GameObject textObj = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+        textObj.transform.SetParent(parent, false);
+
+        TextMeshProUGUI text = textObj.GetComponent<TextMeshProUGUI>();
+        text.fontSize = fontSize;
+        text.fontStyle = style;
+        text.color = color;
+        text.alignment = alignment;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.outlineColor = new Color(0f, 0f, 0f, 0.9f);
+        text.outlineWidth = 0.14f;
+        text.text = string.Empty;
+
+        LayoutElement layoutElement = textObj.GetComponent<LayoutElement>();
+        layoutElement.minHeight = fontSize + 10f;
+        layoutElement.preferredWidth = WakePanelWidth - 44f;
+
+        return text;
     }
 
     private bool TryBindExistingPreSleepUi()
@@ -1318,15 +1551,28 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         {
             wakeCanvas = binder.canvas != null ? binder.canvas : canvasObj.GetComponent<Canvas>();
             wakeCanvasGroup = binder.canvasGroup != null ? binder.canvasGroup : canvasObj.GetComponent<CanvasGroup>();
-            wakeText = binder.wakeText;
-            return wakeCanvas != null && wakeCanvasGroup != null && wakeText != null;
+            wakeIntroText = binder.wakeIntroText != null ? binder.wakeIntroText : binder.wakeText;
+            wakeWarningsText = binder.wakeWarningsText;
+            wakeSummaryText = binder.wakeSummaryText;
+            wakePanelRect = binder.wakePanel != null
+                ? binder.wakePanel
+                : wakeIntroText != null ? wakeIntroText.transform.parent as RectTransform : null;
+            return wakeCanvas != null && wakeCanvasGroup != null && wakeIntroText != null;
         }
 
         wakeCanvas = canvasObj.GetComponent<Canvas>();
         wakeCanvasGroup = canvasObj.GetComponent<CanvasGroup>();
-        Transform textTransform = canvasObj.transform.Find("WakePanel/WakeText");
-        wakeText = textTransform != null ? textTransform.GetComponent<TextMeshProUGUI>() : null;
+        Transform panelTransform = canvasObj.transform.Find("WakePanel");
+        wakePanelRect = panelTransform as RectTransform;
 
-        return wakeCanvas != null && wakeCanvasGroup != null && wakeText != null;
+        Transform introTransform = panelTransform != null ? panelTransform.Find("WakeIntroText") : null;
+        if (introTransform == null && panelTransform != null)
+            introTransform = panelTransform.Find("WakeText");
+
+        wakeIntroText = introTransform != null ? introTransform.GetComponent<TextMeshProUGUI>() : null;
+        wakeWarningsText = panelTransform != null ? panelTransform.Find("WakeWarningsText")?.GetComponent<TextMeshProUGUI>() : null;
+        wakeSummaryText = panelTransform != null ? panelTransform.Find("WakeSummaryText")?.GetComponent<TextMeshProUGUI>() : null;
+
+        return wakeCanvas != null && wakeCanvasGroup != null && wakeIntroText != null;
     }
 }

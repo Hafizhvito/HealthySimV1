@@ -248,32 +248,44 @@ public class UniversalInteractionController : MonoBehaviour
 
     private void EnsureHintUI()
     {
-        if (hintCanvas != null && hintText != null)
+        if (hintCanvas == null || hintText == null)
+        {
+            var canvasObj = new GameObject("InteractionHintCanvas");
+            hintCanvas = canvasObj.AddComponent<Canvas>();
+            hintCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            var scaler = canvasObj.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            canvasObj.AddComponent<GraphicRaycaster>();
+
+            var textObj = new GameObject("InteractionHintText");
+            textObj.transform.SetParent(canvasObj.transform, false);
+
+            RectTransform rect = textObj.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.05f);
+            rect.anchorMax = new Vector2(0.5f, 0.05f);
+            rect.sizeDelta = new Vector2(600f, 64f);
+            rect.anchoredPosition = Vector2.zero;
+
+            hintText = textObj.AddComponent<TextMeshProUGUI>();
+            hintText.alignment = TextAlignmentOptions.Center;
+            hintText.color = new Color(1f, 0.96f, 0.82f, 1f);
+            hintText.textWrappingMode = TextWrappingModes.Normal;
+        }
+
+        ApplyHintTypography();
+    }
+
+    private void ApplyHintTypography()
+    {
+        if (hintText == null)
             return;
 
-        var canvasObj = new GameObject("InteractionHintCanvas");
-        hintCanvas = canvasObj.AddComponent<Canvas>();
-        hintCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-
-        var scaler = canvasObj.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1080f, 1920f);
-        canvasObj.AddComponent<GraphicRaycaster>();
-
-        var textObj = new GameObject("InteractionHintText");
-        textObj.transform.SetParent(canvasObj.transform, false);
-
-        RectTransform rect = textObj.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.05f);
-        rect.anchorMax = new Vector2(0.5f, 0.05f);
-        rect.sizeDelta = new Vector2(520f, 56f);
-        rect.anchoredPosition = Vector2.zero;
-
-        hintText = textObj.AddComponent<TextMeshProUGUI>();
-        hintText.alignment = TextAlignmentOptions.Center;
-        hintText.fontSize = 20f;
-        hintText.color = new Color(1f, 0.96f, 0.82f, 1f);
-        hintText.textWrappingMode = TextWrappingModes.Normal;
+        hintText.fontSize = 24f;
+        RectTransform rect = hintText.rectTransform;
+        if (rect != null)
+            rect.sizeDelta = new Vector2(600f, 64f);
     }
 
     private void UpdateHint()

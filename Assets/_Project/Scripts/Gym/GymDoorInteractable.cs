@@ -179,7 +179,7 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
         TextMeshPro tmp = textObj.AddComponent<TextMeshPro>();
         tmp.text = text;
-        tmp.fontSize = 3f;
+        tmp.fontSize = 3.8f;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = new Color(0.78f, 0.95f, 0.82f, 1f);
 
