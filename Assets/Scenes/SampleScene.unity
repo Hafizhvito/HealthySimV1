@@ -22967,6 +22967,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DoctorSriDialogueController
   doctorDisplayName: dr. Sri Wuryanti, MS, Sp.GK
+  hospitalBackground: {fileID: 0}
 --- !u!114 &211446432
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -22983,9 +22984,9 @@ MonoBehaviour:
   npcName: dr. Sri Wuryanti
   dialogueController: {fileID: 211446431}
   hospitalDoorModel: {fileID: 0}
-  doctorPortraitSprite: {fileID: 0}
   doorOpenSound: {fileID: 0}
   hospitalOverlay: {fileID: 198455536}
+  consultationHours: 1
 --- !u!65 &211446433
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -25371,6 +25372,10 @@ MonoBehaviour:
   healthIndicatorPulseSpeed: 2.1
   healthIndicatorMinAlpha: 0.5
   healthIndicatorColor: {r: 0.75, g: 0.25, b: 1, a: 1}
+  showHospitalArrow: 1
+  arrowHeight: 2.9
+  arrowScale: 0.55
+  arrowColor: {r: 0.3, g: 0.9, b: 1, a: 1}
 --- !u!4 &237787407 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 5388624719327353983, guid: 49121edd22c328c47a8918cf7e48e4ee, type: 3}
@@ -128661,58 +128666,58 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1997686236}
     m_Modifications:
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalPosition.y
       value: -1.49
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalPosition.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalRotation.w
       value: -0.00000004371139
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalRotation.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalRotation.y
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalRotation.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5481669548617104346, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+    - target: {fileID: 919132149155446097, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
       propertyPath: m_Name
-      value: normal woman c
+      value: strong-man-a
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+  m_SourcePrefab: {fileID: 100100000, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
 --- !u!4 &1204420913 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 5481669548617104344, guid: 532a2fc3185beb5458e02f15f6ed2886, type: 3}
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: e333cda59afd1344aaa3c889c47776e4, type: 3}
   m_PrefabInstance: {fileID: 1204420912}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1205169794 stripped
@@ -232500,6 +232505,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DoctorSriDialogueController
   doctorDisplayName: dr. Sri Wuryanti, MS, Sp.GK
+  hospitalBackground: {fileID: 0}
 --- !u!114 &2007939247
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -232516,9 +232522,9 @@ MonoBehaviour:
   npcName: dr. Sri Wuryanti
   dialogueController: {fileID: 2007939246}
   hospitalDoorModel: {fileID: 0}
-  doctorPortraitSprite: {fileID: 0}
   doorOpenSound: {fileID: 0}
   hospitalOverlay: {fileID: 198455536}
+  consultationHours: 1
 --- !u!1001 &2008116773
 PrefabInstance:
   m_ObjectHideFlags: 0
