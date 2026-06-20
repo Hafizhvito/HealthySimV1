@@ -267,6 +267,9 @@ public class NpcDialogueMenuController : MonoBehaviour
 
         activeNpc.ApplyConsequence(choice.consequence);
 
+        if (activeNpc is NpcRestaurantInteractable restaurantNpc)
+            restaurantNpc.HandleFoodChoice(choice);
+
         string nextNodeId = choice.nextNodeId;
         bool closeAfterFollowUp = activeNode != null && activeNode.isConversationEnd;
         bool hasFollowUp = activeNode != null && !string.IsNullOrWhiteSpace(activeNode.npcFollowUpText);

@@ -72,7 +72,6 @@ public class FoodChoiceMenuController : MonoBehaviour
     private GUIStyle thumbnailPlaceholderStyle;
 
     private bool isHomeFoodMode;
-    private bool foodMenuModalActive;
     private float homePriceMultiplier = 1f;
     private bool homeQuickDrinkEnabled;
     private string homeQuickDrinkName = "Air Dingin";
@@ -125,12 +124,8 @@ public class FoodChoiceMenuController : MonoBehaviour
         if (TimeManager.Instance != null)
             TimeManager.Instance.PauseTime();
 
-        foodMenuModalActive = false;
         if (ModalStateManager.Instance != null)
-        {
             ModalStateManager.Instance.OpenModal("FoodMenu");
-            foodMenuModalActive = true;
-        }
 
         Debug.Log($"[FoodMenu] Dibuka: {currentLocationName} ({currentFoods.Count} item)");
     }
@@ -185,8 +180,6 @@ public class FoodChoiceMenuController : MonoBehaviour
     {
         if (ModalStateManager.Instance != null)
             ModalStateManager.Instance.ForceCloseModal("FoodMenu");
-
-        foodMenuModalActive = false;
 
         PlayerController player = FindFirstObjectByType<PlayerController>();
         if (player != null)

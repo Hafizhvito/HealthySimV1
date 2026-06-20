@@ -598,6 +598,9 @@ public class PlayerStats : MonoBehaviour
 
         if (newState != currentEnergyState)
         {
+            if (currentEnergyState == EnergyState.Fainted && newState != EnergyState.Fainted)
+                ReleaseFaintMovementLock();
+
             currentEnergyState = newState;
             OnEnergyStateChanged?.Invoke(currentEnergyState);
         }
@@ -636,20 +639,44 @@ public class PlayerStats : MonoBehaviour
 
         FaintNotificationController faintPanel = FindFirstObjectByType<FaintNotificationController>(FindObjectsInactive.Include);
         if (faintPanel != null)
+        {
             faintPanel.ShowPanel();
+        }
         else
+        {
             Debug.LogWarning("[PlayerStats] FaintNotificationController tidak ditemukan di scene.");
+            ResetFaintState();
+        }
     }
 
     public void ResetFaintState()
     {
-        if (currentEnergyState != EnergyState.Fainted)
-            return;
+        bool wasFainted = currentEnergyState == EnergyState.Fainted;
 
         faintRespawnHandled = false;
         faintTimer = 0f;
-        currentEnergyState = EnergyState.Normal;
-        OnEnergyStateChanged?.Invoke(currentEnergyState);
+
+        if (wasFainted)
+        {
+            currentEnergyState = EnergyState.Normal;
+            OnEnergyStateChanged?.Invoke(currentEnergyState);
+        }
+
+        ReleaseFaintMovementLock();
+    }
+
+    private static void ReleaseFaintMovementLock()
+    {
+        EnergySystem energySystem = Object.FindFirstObjectByType<EnergySystem>(FindObjectsInactive.Include);
+        if (energySystem != null)
+        {
+            energySystem.CompleteFaintRecovery();
+            return;
+        }
+
+        PlayerController player = Object.FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+        if (player != null)
+            player.ForceUnlockInput(EnergySystem.FaintLockKey);
     }
 
     static void TeleportPlayerToRespawn()
@@ -695,6 +722,10 @@ public class PlayerStats : MonoBehaviour
         }
 
         player.transform.SetPositionAndRotation(respawnTransform.position, respawnTransform.rotation);
+
+        Rigidbody body = player.GetComponent<Rigidbody>();
+        if (body != null)
+            body.linearVelocity = Vector3.zero;
     }
 
     void CalculateBMI()

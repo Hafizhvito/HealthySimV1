@@ -268,6 +268,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         bool sleepInputLocked = false;
         try
         {
+            ResetGameplayStateBeforeSleep(playerController);
+
             if (playerController != null)
             {
                 playerController.LockInput(sleepLockSource);
@@ -352,13 +354,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             if (enableWakeEyeOpenCinematic)
                 yield return StartCoroutine(PlayWakeEyeOpenCinematic(wakeDayName));
 
-            ClearPostSleepMovementBlockers(playerController, playerStats);
-
-            if (playerController != null)
-            {
-                playerController.UnlockInput(sleepLockSource);
-                sleepInputLocked = false;
-            }
+            RestoreGameplayAfterSleep(playerController, playerStats);
+            sleepInputLocked = false;
 
             if (ageStageChanged)
             {
@@ -394,28 +391,54 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         }
         finally
         {
-            if (sleepInputLocked && playerController != null)
-                playerController.UnlockInput(sleepLockSource);
+            if (sleepInputLocked)
+                RestoreGameplayAfterSleep(playerController, playerStats);
         }
 
         forceSleepTriggered = false;
         sleepRoutine = null;
     }
 
-    private static void ClearPostSleepMovementBlockers(PlayerController playerController, PlayerStats playerStats)
+    private static void ResetGameplayStateBeforeSleep(PlayerController playerController)
     {
-        if (playerStats != null)
-            playerStats.ResetFaintState();
+        if (ModalStateManager.Instance != null)
+            ModalStateManager.Instance.ForceResetAllModals();
+        else if (playerController != null)
+            playerController.ForceResetLock();
+
+        Time.timeScale = 1f;
 
         FaintNotificationController faintPanel =
             FindFirstObjectByType<FaintNotificationController>(FindObjectsInactive.Include);
-        if (faintPanel != null)
-            faintPanel.DismissForSleepWake();
-        else if (Time.timeScale == 0f)
-            Time.timeScale = 1f;
+        faintPanel?.DismissForSleepWake();
+
+        if (FadeManager.Instance != null)
+            FadeManager.Instance.ReleaseInputBlock();
+    }
+
+    private static void RestoreGameplayAfterSleep(PlayerController playerController, PlayerStats playerStats)
+    {
+        Time.timeScale = 1f;
+
+        if (playerStats != null)
+            playerStats.ResetFaintState();
+
+        EnergySystem energySystem =
+            FindFirstObjectByType<EnergySystem>(FindObjectsInactive.Include);
+        energySystem?.CompleteFaintRecovery();
+
+        FaintNotificationController faintPanel =
+            FindFirstObjectByType<FaintNotificationController>(FindObjectsInactive.Include);
+        faintPanel?.DismissForSleepWake();
+
+        if (FadeManager.Instance != null)
+            FadeManager.Instance.ReleaseInputBlock();
 
         if (playerController != null)
-            playerController.UnlockMovement("EnergySystem_Fainted");
+        {
+            playerController.ForceUnlockInput("SleepTransition");
+            playerController.ForceUnlockInput(EnergySystem.FaintLockKey);
+        }
     }
 
     private void EvaluateCharacterModelSwap(GameObject interactor)

@@ -287,7 +287,7 @@ public class HospitalDoorInteractable : MonoBehaviour, IInteractable, IDialogueA
         bodyText.fontSize = 15f;
         bodyText.color = new Color(0.18f, 0.22f, 0.24f, 1f);
         bodyText.alignment = TextAlignmentOptions.TopLeft;
-        bodyText.enableWordWrapping = true;
+        bodyText.textWrappingMode = TextWrappingModes.Normal;
         bodyText.richText = true;
         bodyText.lineSpacing = 2f;
 
@@ -331,7 +331,7 @@ public class HospitalDoorInteractable : MonoBehaviour, IInteractable, IDialogueA
             if (c != null) return c;
         }
 
-        Canvas[] all = FindObjectsOfType<Canvas>();
+        Canvas[] all = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
         for (int i = 0; i < all.Length; i++)
         {
             if (all[i].renderMode == RenderMode.ScreenSpaceOverlay)

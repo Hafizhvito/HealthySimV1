@@ -65,6 +65,28 @@ public class NpcVisualModelSlot : MonoBehaviour
         ConfigureVisualTransform(spawnedVisual.transform);
     }
 
+    public void RebuildFromPrefab()
+    {
+        EnsureVisualRoot();
+        if (visualRoot == null)
+            return;
+
+        ClearSpawnedVisual();
+        for (int i = visualRoot.childCount - 1; i >= 0; i--)
+        {
+            Transform child = visualRoot.GetChild(i);
+            if (child == null)
+                continue;
+
+            if (Application.isPlaying)
+                Destroy(child.gameObject);
+            else
+                DestroyImmediate(child.gameObject);
+        }
+
+        ApplyVisual();
+    }
+
     public void ClearSpawnedVisual()
     {
         if (spawnedVisual == null)

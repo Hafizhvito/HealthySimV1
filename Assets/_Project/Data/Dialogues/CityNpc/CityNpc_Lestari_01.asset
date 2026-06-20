@@ -1,0 +1,98 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5aa518e4af5578b49bceaf67d84d4250, type: 3}
+  m_Name: CityNpc_Lestari_01
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueGraphData
+  npcId: city_lestari
+  npcDisplayName: Lestari
+  initialTrust: 25
+  startNodeId: start
+  backgroundSprite: {fileID: 0}
+  backgroundResourcePath: 
+  nodes:
+  - nodeId: start
+    fallbackLine: Selamat siang! Jangan lupa cek kesehatan rutin ya, minimal setahun
+      sekali.
+    variationPool: []
+    choices:
+    - choiceText: Cek apa aja biasanya?
+      nextNodeId: detail
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Terakhir cek udah lama banget...
+      nextNodeId: lama
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Mbak kerja di RS sini ya?
+      nextNodeId: tanya
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: detail
+    fallbackLine: Minimal cek darah lengkap, gula darah, kolesterol, sama tensi.
+      Kalau umur di atas 40, tambah cek jantung.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Lebih baik ketahuan awal daripada telat. Pencegahan itu lebih
+      murah dari pengobatan!
+    isConversationEnd: 0
+    isTerminal: 1
+  - nodeId: lama
+    fallbackLine: Wah, jangan ditunda-tunda ya. Banyak penyakit yang ga ada gejalanya
+      di awal.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Mumpung RS-nya deket, coba jadwalin minggu depan. Ga ribet kok
+      prosesnya!
+    isConversationEnd: 0
+    isTerminal: 1
+  - nodeId: tanya
+    fallbackLine: Iya, aku perawat di UGD. Shift pagi, siang jalan-jalan sebentar
+      buat istirahat.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Makanya aku suka ngingetin orang buat jaga kesehatan. Soalnya
+      di UGD sering liat yang telat dateng...
+    isConversationEnd: 0
+    isTerminal: 1

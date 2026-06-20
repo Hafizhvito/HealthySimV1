@@ -111,6 +111,13 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
             }
             else
             {
+                NpcWanderController wanderCtrl = GetComponent<NpcWanderController>();
+                if (wanderCtrl != null)
+                {
+                    wanderCtrl.PauseWander();
+                    wanderCtrl.FaceTarget(interactor.transform);
+                }
+
                 TutorialContextualUI.HasTalkedToNPC = true;
             }
 
@@ -150,6 +157,10 @@ public class NpcDialogueInteractable : MonoBehaviour, IInteractable, IDialogueAc
 
         if (cameraSystem != null)
             cameraSystem.DialogueZoomOut();
+
+        NpcWanderController wanderCtrl = GetComponent<NpcWanderController>();
+        if (wanderCtrl != null)
+            wanderCtrl.ResumeWander();
 
         TryGrantSocialRecovery();
     }

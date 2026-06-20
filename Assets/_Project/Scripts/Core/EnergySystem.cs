@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class EnergySystem : MonoBehaviour
@@ -12,7 +13,10 @@ public class EnergySystem : MonoBehaviour
 
     private PlayerStats stats;
     private Rigidbody rb;
-    private bool hasFainted = false;
+    private bool hasFainted;
+    private Coroutine respawnRoutine;
+
+    public const string FaintLockKey = "EnergySystem_Fainted";
 
     void Awake()
     {
@@ -59,23 +63,48 @@ public class EnergySystem : MonoBehaviour
 
     void HandleFaint()
     {
-        if (hasFainted) return;
+        if (hasFainted)
+            return;
+
         hasFainted = true;
         Debug.Log("Player fainted!");
 
-        // Disable player input temporarily
         if (playerController != null)
-            playerController.LockMovement("EnergySystem_Fainted");
+            playerController.LockMovement(FaintLockKey);
 
-        // Respawn after delay
-        Invoke(nameof(Respawn), respawnDelay);
+        if (respawnRoutine != null)
+            StopCoroutine(respawnRoutine);
+
+        respawnRoutine = StartCoroutine(RespawnAfterDelay());
+    }
+
+    IEnumerator RespawnAfterDelay()
+    {
+        yield return new WaitForSecondsRealtime(respawnDelay);
+        respawnRoutine = null;
+        Respawn();
+    }
+
+    /// <summary>
+    /// Cancels pending auto-respawn and releases the faint movement lock.
+    /// Called when the faint panel is dismissed or faint state is reset.
+    /// </summary>
+    public void CompleteFaintRecovery()
+    {
+        if (respawnRoutine != null)
+        {
+            StopCoroutine(respawnRoutine);
+            respawnRoutine = null;
+        }
+
+        hasFainted = false;
+        ReleaseMovementLock();
     }
 
     void Respawn()
     {
         hasFainted = false;
 
-        // Move to respawn point if set, otherwise stay
         if (respawnPoint != null)
         {
             if (playerController != null)
@@ -86,15 +115,17 @@ public class EnergySystem : MonoBehaviour
                 transform.position = respawnPoint.position;
         }
 
-        // Restore some energy
         if (stats != null)
             stats.AddFood(faintRecoveryEnergy, 0f, -10f, 0f, 0f);
 
-        // Re-enable player input
-        if (playerController != null)
-            playerController.UnlockMovement("EnergySystem_Fainted");
-
+        ReleaseMovementLock();
         Debug.Log("Player respawned with " + faintRecoveryEnergy + " energy.");
+    }
+
+    private void ReleaseMovementLock()
+    {
+        if (playerController != null)
+            playerController.ForceUnlockInput(FaintLockKey);
     }
 
     void OnDestroy()

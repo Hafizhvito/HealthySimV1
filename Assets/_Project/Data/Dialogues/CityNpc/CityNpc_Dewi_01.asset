@@ -1,0 +1,94 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5aa518e4af5578b49bceaf67d84d4250, type: 3}
+  m_Name: CityNpc_Dewi_01
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueGraphData
+  npcId: city_dewi
+  npcDisplayName: Dewi
+  initialTrust: 25
+  startNodeId: start
+  backgroundSprite: {fileID: 0}
+  backgroundResourcePath: 
+  nodes:
+  - nodeId: start
+    fallbackLine: Lagi mikirin menu makan malem nih. Pengen yang sehat tapi anak-anak
+      doyan...
+    variationPool: []
+    choices:
+    - choiceText: Coba bikin sayur yang tampilannya menarik.
+      nextNodeId: sayur
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Buah buat dessert aja, Bu.
+      nextNodeId: buah
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Anak-anak suka apa biasanya?
+      nextNodeId: tanya
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: sayur
+    fallbackLine: Oh iya ya! Kayak bento gitu ya, ditata lucu-lucu? Bisa dicoba itu!
+    variationPool: []
+    choices: []
+    npcFollowUpText: Makasih idenya! Nanti aku coba bikin wortel bentuk bintang haha.
+    isConversationEnd: 0
+    isTerminal: 1
+  - nodeId: buah
+    fallbackLine: Bener juga! Mangga sama pisang lagi murah minggu ini.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Oke, nanti bikin salad buah aja. Simple tapi tetep sehat!
+    isConversationEnd: 0
+    isTerminal: 1
+  - nodeId: tanya
+    fallbackLine: Ayam goreng mulu... Tapi kan ga sehat kalau tiap hari. Dilema emak-emak,
+      deh.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Ya sudah, nanti aku coba ayam panggang aja. Tetep ayam tapi
+      lebih sehat.
+    isConversationEnd: 0
+    isTerminal: 1

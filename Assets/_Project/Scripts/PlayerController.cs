@@ -93,6 +93,7 @@ public class PlayerController : MonoBehaviour
     private Material hospitalArrowMaterial;
     private Transform hospitalTarget;
     private PhysicsMaterial runtimeLowFrictionMaterial;
+    private float vehicleImmunityEndTime;
 
     private Vector3 moveDir;
     private Vector3 desiredMoveDir;
@@ -153,6 +154,7 @@ public class PlayerController : MonoBehaviour
         cachedCameraRight = Vector3.Cross(Vector3.up, cachedCameraForward).normalized;
         lastStepAssistTime = -999f;
 
+        vehicleImmunityEndTime = Time.time + 2f;
         EnsureFatigueIndicatorBuilt();
         EnsureHealthIndicatorBuilt();
     }
@@ -927,11 +929,30 @@ public class PlayerController : MonoBehaviour
     void OnCollisionEnter(Collision collision)
     {
         RegisterSteepWallContact(collision);
+        HandleVehicleCollision(collision);
     }
 
     void OnCollisionStay(Collision collision)
     {
         RegisterSteepWallContact(collision);
+    }
+
+    private void HandleVehicleCollision(Collision collision)
+    {
+        if (Time.time < vehicleImmunityEndTime)
+            return;
+
+        if (collision.gameObject.GetComponent<TrafficVehicleController>() == null)
+            return;
+
+        if (PlayerStats.Instance == null)
+            return;
+
+        if (PlayerStats.Instance.CurrentEnergyState == PlayerStats.EnergyState.Fainted)
+            return;
+
+        vehicleImmunityEndTime = Time.time + 3f;
+        PlayerStats.Instance.FaintAndRespawn();
     }
 
     public bool IsGrounded() => isGrounded;

@@ -314,7 +314,7 @@ public class HealthAlertPanelController : MonoBehaviour
         bodyText.fontSize = 15f;
         bodyText.color = new Color(0.18f, 0.22f, 0.24f, 1f);
         bodyText.alignment = TextAlignmentOptions.TopLeft;
-        bodyText.enableWordWrapping = true;
+        bodyText.textWrappingMode = TextWrappingModes.Normal;
         bodyText.lineSpacing = 2f;
 
         GameObject btnObj = new GameObject("ContinueButton", typeof(RectTransform), typeof(Image), typeof(Button));

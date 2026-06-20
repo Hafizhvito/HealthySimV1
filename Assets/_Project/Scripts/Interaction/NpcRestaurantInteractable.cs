@@ -18,6 +18,10 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
     [SerializeField] private float socialMoodGain = 0.5f;
     [SerializeField] private float socialEnergyCooldown = 45f;
 
+    [Header("Menu Restoran (Hybrid)")]
+    [SerializeField] private FoodPickupInteractable restaurantFoodSource;
+    [SerializeField] private int maxMenuChoicesInDialogue = 6;
+
     private Collider cachedCollider;
     private CameraSystem cameraSystem;
     private DialogueCatalogProvider dialogueCatalogProvider;
@@ -25,6 +29,7 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
     private DialogueGraphData returnVisitFallbackGraph;
     private bool isMenuCloseSubscribed;
     private float nextSocialRewardTime = -999f;
+    private readonly Dictionary<string, FoodData> foodOrdersByNextNode = new Dictionary<string, FoodData>();
 
     void Awake()
     {
@@ -37,6 +42,9 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
 
         firstVisitFallbackGraph = BuildFirstVisitGraph();
         returnVisitFallbackGraph = BuildReturnVisitGraph();
+
+        if (restaurantFoodSource == null)
+            restaurantFoodSource = FindRestaurantFoodSource();
     }
 
     void OnEnable()
@@ -93,6 +101,13 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
             return;
         }
 
+        NpcWanderController wanderCtrl = GetComponent<NpcWanderController>();
+        if (wanderCtrl != null)
+        {
+            wanderCtrl.PauseWander();
+            wanderCtrl.FaceTarget(interactor.transform);
+        }
+
         hasVisitedRestaurant = true;
     }
 
@@ -121,6 +136,23 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
         return result;
     }
 
+    public void HandleFoodChoice(DialogueChoiceData choice)
+    {
+        if (choice == null || restaurantFoodSource == null)
+            return;
+
+        if (!foodOrdersByNextNode.TryGetValue(choice.nextNodeId, out FoodData food) || food == null)
+            return;
+
+        if (!restaurantFoodSource.TryPurchaseFood(food, out int chargedPrice))
+        {
+            Debug.LogWarning($"[NPCRestoran] Uang tidak cukup untuk {food.foodName}.");
+            return;
+        }
+
+        Debug.Log($"[NPCRestoran] Pesanan {food.foodName} (Rp{chargedPrice}) via dialog.");
+    }
+
     public void ApplyConsequence(DialogueConsequence consequence)
     {
         if (consequence == null)
@@ -138,6 +170,7 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
     private DialogueGraphData ResolveDialogueGraph()
     {
         string targetId = hasVisitedRestaurant ? returnVisitNpcId : firstVisitNpcId;
+        DialogueGraphData template = null;
 
         if (dialogueCatalogProvider != null)
         {
@@ -151,18 +184,204 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
                 if (!string.Equals(data.npcId, targetId, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                if (string.IsNullOrWhiteSpace(data.npcDisplayName))
-                    data.npcDisplayName = npcName;
-
-                return data;
+                template = data;
+                break;
             }
         }
 
-        DialogueGraphData fallback = hasVisitedRestaurant ? returnVisitFallbackGraph : firstVisitFallbackGraph;
-        if (fallback != null)
-            fallback.npcDisplayName = npcName;
+        if (template == null)
+            template = hasVisitedRestaurant ? returnVisitFallbackGraph : firstVisitFallbackGraph;
 
-        return fallback;
+        DialogueGraphData runtime = CloneGraph(template);
+        if (runtime != null)
+            runtime.npcDisplayName = npcName;
+
+        InjectMenuFromFoodPickup(runtime);
+        return runtime;
+    }
+
+    private DialogueGraphData CloneGraph(DialogueGraphData source)
+    {
+        if (source == null)
+            return null;
+
+        DialogueGraphData clone = ScriptableObject.CreateInstance<DialogueGraphData>();
+        clone.npcId = source.npcId;
+        clone.npcDisplayName = source.npcDisplayName;
+        clone.initialTrust = source.initialTrust;
+        clone.startNodeId = source.startNodeId;
+        clone.backgroundSprite = source.backgroundSprite;
+        clone.backgroundResourcePath = source.backgroundResourcePath;
+        clone.nodes = new List<DialogueNodeData>();
+
+        if (source.nodes == null)
+            return clone;
+
+        for (int i = 0; i < source.nodes.Count; i++)
+        {
+            DialogueNodeData node = source.nodes[i];
+            if (node == null)
+                continue;
+
+            DialogueNodeData copy = new DialogueNodeData
+            {
+                nodeId = node.nodeId,
+                fallbackLine = node.fallbackLine,
+                variationPool = node.variationPool != null ? new List<string>(node.variationPool) : new List<string>(),
+                npcFollowUpText = node.npcFollowUpText,
+                isConversationEnd = node.isConversationEnd,
+                isTerminal = node.isTerminal,
+                choices = new List<DialogueChoiceData>()
+            };
+
+            if (node.choices != null)
+            {
+                for (int c = 0; c < node.choices.Count; c++)
+                    copy.choices.Add(CloneChoice(node.choices[c]));
+            }
+
+            clone.nodes.Add(copy);
+        }
+
+        return clone;
+    }
+
+    private static DialogueChoiceData CloneChoice(DialogueChoiceData source)
+    {
+        if (source == null)
+            return null;
+
+        DialogueConsequence cons = source.consequence;
+        DialogueConsequence consCopy = cons == null ? null : new DialogueConsequence
+        {
+            energyDelta = cons.energyDelta,
+            moodDelta = cons.moodDelta,
+            calorieDelta = cons.calorieDelta,
+            trustDelta = cons.trustDelta,
+            trackerAction = cons.trackerAction
+        };
+
+        DialogueCondition gate = source.gate;
+        DialogueCondition gateCopy = gate == null ? null : new DialogueCondition
+        {
+            useGate = gate.useGate,
+            minEnergyPercent = gate.minEnergyPercent,
+            minMoodPercent = gate.minMoodPercent,
+            minTrust = gate.minTrust,
+            allowedPeriods = gate.allowedPeriods != null
+                ? new List<TimeManager.TimePeriod>(gate.allowedPeriods)
+                : new List<TimeManager.TimePeriod>()
+        };
+
+        return new DialogueChoiceData
+        {
+            choiceText = source.choiceText,
+            nextNodeId = source.nextNodeId,
+            consequence = consCopy,
+            gate = gateCopy
+        };
+    }
+
+    private void InjectMenuFromFoodPickup(DialogueGraphData graph)
+    {
+        if (graph == null)
+            return;
+
+        foodOrdersByNextNode.Clear();
+
+        if (restaurantFoodSource == null)
+            restaurantFoodSource = FindRestaurantFoodSource();
+
+        List<FoodData> foods = restaurantFoodSource != null
+            ? restaurantFoodSource.GetAvailableFoodChoices()
+            : new List<FoodData>();
+
+        if (foods.Count == 0)
+            return;
+
+        const string menuNodeId = "menu_catalog";
+        DialogueNodeData menuNode = graph.GetNode(menuNodeId);
+        if (menuNode == null)
+        {
+            menuNode = new DialogueNodeData { nodeId = menuNodeId };
+            graph.nodes.Add(menuNode);
+        }
+
+        menuNode.fallbackLine = $"Nih menu hari ini — ada {foods.Count} pilihan. Mau pesen apa?";
+        menuNode.npcFollowUpText = string.Empty;
+        menuNode.isConversationEnd = false;
+        menuNode.isTerminal = false;
+        menuNode.choices = new List<DialogueChoiceData>();
+
+        int count = Mathf.Min(maxMenuChoicesInDialogue, foods.Count);
+        for (int i = 0; i < count; i++)
+        {
+            FoodData food = foods[i];
+            if (food == null)
+                continue;
+
+            string pickId = $"food_pick_{i}";
+            int price = restaurantFoodSource.GetDisplayPrice(food);
+            foodOrdersByNextNode[pickId] = food;
+
+            graph.nodes.Add(new DialogueNodeData
+            {
+                nodeId = pickId,
+                fallbackLine = $"Siap, {food.foodName} ya. Sebentar diantar.",
+                choices = new List<DialogueChoiceData>(),
+                npcFollowUpText = string.Empty,
+                isConversationEnd = true,
+                isTerminal = true
+            });
+
+            menuNode.choices.Add(CreateChoice(
+                $"Pesen {food.foodName} (Rp{price})",
+                pickId,
+                0f, 0f, 1f));
+        }
+
+        menuNode.choices.Add(CreateChoice("Belum jadi, nanti dulu.", "end_order", 0f, 0.5f, 0f));
+
+        AddChoiceToNode(graph, "start", CreateChoice("Tunjukin menu hari ini.", menuNodeId, 0f, 0.5f, 1f));
+        AddChoiceToNode(graph, "n2_browse", CreateChoice("Lihat menu lengkap.", menuNodeId, 0f, 0f, 0f));
+    }
+
+    private static void AddChoiceToNode(DialogueGraphData graph, string nodeId, DialogueChoiceData choice)
+    {
+        if (graph == null || choice == null)
+            return;
+
+        DialogueNodeData node = graph.GetNode(nodeId);
+        if (node == null)
+            return;
+
+        if (node.choices == null)
+            node.choices = new List<DialogueChoiceData>();
+
+        for (int i = 0; i < node.choices.Count; i++)
+        {
+            if (node.choices[i] != null &&
+                string.Equals(node.choices[i].choiceText, choice.choiceText, StringComparison.OrdinalIgnoreCase))
+                return;
+        }
+
+        node.choices.Add(choice);
+    }
+
+    private FoodPickupInteractable FindRestaurantFoodSource()
+    {
+        FoodPickupInteractable[] sources = FindObjectsByType<FoodPickupInteractable>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+        for (int i = 0; i < sources.Length; i++)
+        {
+            FoodPickupInteractable source = sources[i];
+            if (source != null &&
+                string.Equals(source.gameObject.name, "Interactable_Food_Restaurant", StringComparison.OrdinalIgnoreCase))
+                return source;
+        }
+
+        return sources.Length > 0 ? sources[0] : null;
     }
 
     private DialogueGraphData BuildFirstVisitGraph()
@@ -418,6 +637,10 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
     {
         if (cameraSystem != null)
             cameraSystem.DialogueZoomOut();
+
+        NpcWanderController wanderCtrl = GetComponent<NpcWanderController>();
+        if (wanderCtrl != null)
+            wanderCtrl.ResumeWander();
 
         TryGrantSocialRecovery();
     }

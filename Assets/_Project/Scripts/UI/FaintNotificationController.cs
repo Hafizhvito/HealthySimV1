@@ -83,6 +83,9 @@ public class FaintNotificationController : MonoBehaviour
         Time.timeScale = 1f;
         HideImmediate();
         isShowing = false;
+
+        if (PlayerStats.Instance != null)
+            PlayerStats.Instance.ResetFaintState();
     }
 
     private void BindContinueButton()

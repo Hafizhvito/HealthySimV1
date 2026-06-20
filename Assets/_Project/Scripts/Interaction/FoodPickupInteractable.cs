@@ -257,6 +257,35 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
         return true;
     }
 
+    public int GetDisplayPrice(FoodData food)
+    {
+        return GetOutletPrice(food);
+    }
+
+    public bool TryPurchaseFood(FoodData food, out int chargedPrice)
+    {
+        chargedPrice = 0;
+        if (food == null || PlayerStats.Instance == null)
+            return false;
+
+        if (!TrySpendForFood(food, out chargedPrice))
+            return false;
+
+        PlayerStats.Instance.AddFood(
+            food.energyRestored, food.calories, food.moodEffect, food.protein, food.fat);
+
+        if (PlayerActionTracker.Instance != null)
+        {
+            PlayerActionTracker.Instance.Track(
+                food.isHealthy
+                    ? PlayerActionTracker.ActionType.HealthyFoodTaken
+                    : PlayerActionTracker.ActionType.UnhealthyFoodTaken,
+                gameObject.name);
+        }
+
+        return true;
+    }
+
     private int GetOutletPrice(FoodData food)
     {
         if (food == null)

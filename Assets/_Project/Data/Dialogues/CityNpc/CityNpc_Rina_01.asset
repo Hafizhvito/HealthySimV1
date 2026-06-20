@@ -1,0 +1,96 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5aa518e4af5578b49bceaf67d84d4250, type: 3}
+  m_Name: CityNpc_Rina_01
+  m_EditorClassIdentifier: Assembly-CSharp::DialogueGraphData
+  npcId: city_rina
+  npcDisplayName: Rina
+  initialTrust: 15
+  startNodeId: start
+  backgroundSprite: {fileID: 0}
+  backgroundResourcePath: 
+  nodes:
+  - nodeId: start
+    fallbackLine: Hai! Kamu tau nggak, jalan kaki 30 menit sehari itu udah cukup
+      buat jaga kesehatan jantung lho!
+    variationPool: []
+    choices:
+    - choiceText: Beneran? Aku jarang olahraga...
+      nextNodeId: jarang
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Iya, aku suka jalan pagi!
+      nextNodeId: suka
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    - choiceText: Kamu mahasiswa kesehatan ya?
+      nextNodeId: tanya
+      consequence:
+        energyDelta: 0
+        moodDelta: 0
+        calorieDelta: 0
+        trustDelta: 0
+        trackerAction: 4
+      gate:
+        useGate: 0
+        minEnergyPercent: 0
+        minMoodPercent: 0
+        minTrust: 0
+        allowedPeriods: 
+    npcFollowUpText: 
+    isConversationEnd: 0
+    isTerminal: 0
+  - nodeId: jarang
+    fallbackLine: Ga harus olahraga berat kok! Mulai dari jalan kaki santai aja udah
+      bagus.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Yang penting konsisten. Seminggu 3-4 kali aja udah berasa bedanya!
+    isConversationEnd: 0
+    isTerminal: 1
+  - nodeId: suka
+    fallbackLine: "Wah, bagus banget! Jalan pagi itu double benefit \u2014 olahraga
+      plus kena sinar matahari buat vitamin D."
+    variationPool: []
+    choices: []
+    npcFollowUpText: Keep it up ya!
+    isConversationEnd: 0
+    isTerminal: 1
+  - nodeId: tanya
+    fallbackLine: Iya, semester 6 di FK. Lagi skripsi tentang gaya hidup urban dan
+      kesehatan.
+    variationPool: []
+    choices: []
+    npcFollowUpText: Makanya aku suka sharing info kesehatan, hehe. Lumayan buat
+      data juga!
+    isConversationEnd: 0
+    isTerminal: 1

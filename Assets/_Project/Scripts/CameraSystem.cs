@@ -767,6 +767,7 @@ public class CameraSystem : MonoBehaviour
         StopStartupCinematic();
         CacheDialogueZoomDefaults();
         isDialogueZoomed = true;
+        SuppressCameraInputForDialogue(true);
         StartDialogueZoomTween(zoomIn: true);
     }
 
@@ -775,7 +776,55 @@ public class CameraSystem : MonoBehaviour
         CacheDialogueZoomDefaults();
         isDialogueZoomed = false;
         StopDialogueDrift();
+        SuppressCameraInputForDialogue(false);
         StartDialogueZoomTween(zoomIn: false);
+    }
+
+    private float savedDampingX, savedDampingY, savedDampingZ;
+    private bool dialogueDampingSaved;
+
+    private void SuppressCameraInputForDialogue(bool suppress)
+    {
+        SetInputControllersEnabled(tppEnabled: !suppress, fppEnabled: !suppress);
+
+        if (orbitalFollow != null)
+        {
+            var tracker = orbitalFollow.TrackerSettings;
+            if (suppress)
+            {
+                if (!dialogueDampingSaved)
+                {
+                    savedDampingX = tracker.PositionDamping.x;
+                    savedDampingY = tracker.PositionDamping.y;
+                    savedDampingZ = tracker.PositionDamping.z;
+                    dialogueDampingSaved = true;
+                }
+                float highDamp = 2f;
+                tracker.PositionDamping = new Vector3(highDamp, highDamp, highDamp);
+            }
+            else if (dialogueDampingSaved)
+            {
+                tracker.PositionDamping = new Vector3(savedDampingX, savedDampingY, savedDampingZ);
+                dialogueDampingSaved = false;
+            }
+            orbitalFollow.TrackerSettings = tracker;
+        }
+
+        if (tppDeoccluder != null)
+        {
+            CinemachineDeoccluder.ObstacleAvoidance avoidance = tppDeoccluder.AvoidObstacles;
+            if (suppress)
+            {
+                avoidance.DampingWhenOccluded = 1.5f;
+                avoidance.SmoothingTime = 0.8f;
+            }
+            else
+            {
+                avoidance.DampingWhenOccluded = deoccluderDampingWhenOccluded;
+                avoidance.SmoothingTime = deoccluderSmoothingTime;
+            }
+            tppDeoccluder.AvoidObstacles = avoidance;
+        }
     }
 
     private void CacheDialogueZoomDefaults()
