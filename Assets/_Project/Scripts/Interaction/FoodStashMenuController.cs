@@ -82,7 +82,14 @@ public class FoodStashMenuController : MonoBehaviour
         GUILayout.Label($"Item tersimpan: {count}");
         GUILayout.Space(8f);
 
-        scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Height(360f));
+        scrollPosition = GUILayout.BeginScrollView(
+            scrollPosition,
+            false,
+            false,
+            GUIStyle.none,
+            GUIStyle.none,
+            GUIStyle.none,
+            GUILayout.Height(360f));
 
         if (foods == null || foods.Count == 0)
         {

@@ -4,65 +4,171 @@ using UnityEngine;
 public class DoctorSriDialogueController : MonoBehaviour
 {
     [SerializeField] private string doctorDisplayName = "dr. Sri Wuryanti, MS, Sp.GK";
+    [SerializeField] private Sprite hospitalBackground;
+
+    private const string BgResourcePath = "Backgrounds/bg_hospital";
+
+    public bool IsHealthAlertActive => PlayerStats.Instance != null
+        && PlayerStats.Instance.HealthScoreThisPhase < 40f
+        && !PlayerStats.Instance.VisitedHospitalToday;
 
     public DialogueGraphData BuildConsultationDialogue(float healthScore, float dailyFat, float dailyProtein)
     {
         DialogueGraphData graph = ScriptableObject.CreateInstance<DialogueGraphData>();
         graph.npcId = "npc_doctor_sri";
         graph.npcDisplayName = doctorDisplayName;
-        graph.startNodeId = "node_0";
+        graph.startNodeId = "greeting";
+        graph.backgroundSprite = hospitalBackground;
+        if (hospitalBackground == null)
+            graph.backgroundResourcePath = BgResourcePath;
 
-        string opener;
-        if (healthScore >= 70f)
-            opener = "Selamat datang. Saya sudah melihat pola hidupmu belakangan ini — kondisi gizimu sangat baik! Pertahankan konsistensi ini.";
-        else if (healthScore >= 50f)
-            opener = "Kondisi gizimu cukup baik, namun ada beberapa hal yang perlu diperhatikan. Asupan nutrisi harianmu perlu sedikit penyesuaian.";
-        else if (healthScore >= 30f)
-            opener = "Kondisi gizimu mulai mengkhawatirkan. Tubuhmu memberikan sinyal yang tidak boleh diabaikan. Kita perlu bicara serius.";
-        else
-            opener = "Kondisi gizimu buruk. Jika pola ini terus berlanjut, risiko penyakit serius akan sangat meningkat. Ini harus segera diperbaiki.";
+        bool critical = healthScore < 30f;
+        bool warning = healthScore < 50f;
+        bool healthy = healthScore >= 70f;
+        bool alertActive = IsHealthAlertActive;
 
-        if (dailyFat > 65f)
-            opener += " Lemak harianmu terlalu tinggi — batasi gorengan dan makanan berlemak.";
+        var nodes = new List<DialogueNodeData>();
 
-        if (dailyProtein < 40f)
-            opener += " Protein harianmu kurang — tambahkan telur, tahu, tempe, atau ikan.";
-
-        string advice;
-        if (healthScore >= 70f)
-            advice = "Terus jaga pola makan seimbang dan rutin berolahraga. Tubuh yang sehat adalah investasi terbaik untuk masa depanmu.";
-        else if (healthScore >= 50f)
-            advice = "Perbanyak sayuran dan protein. Kurangi makanan tinggi lemak dan gula. Olahraga minimal 3x seminggu sudah cukup.";
-        else if (healthScore >= 30f)
-            advice = "Mulai dari hal kecil — pilih makanan bergizi, tidur cukup, dan jangan lewatkan olahraga. Konsistensi itu kuncinya.";
-        else
-            advice = "Prioritaskan perubahan sekarang. Mulai dengan makan teratur, pilih makanan bergizi, dan hindari junk food sepenuhnya.";
-
-        graph.nodes = new List<DialogueNodeData>
+        // Node 1: Greeting
+        nodes.Add(new DialogueNodeData
         {
-            new DialogueNodeData
+            nodeId = "greeting",
+            fallbackLine = BuildGreeting(healthScore, critical, warning, healthy),
+            choices = new List<DialogueChoiceData>
             {
-                nodeId = "node_0",
-                fallbackLine = opener,
-                choices = new List<DialogueChoiceData>
-                {
-                    new DialogueChoiceData { choiceText = "(Serius) Apa yang harus saya lakukan, Dok?", nextNodeId = "node_1" },
-                    new DialogueChoiceData { choiceText = "(Santai) Terima kasih atas informasinya, Dok.", nextNodeId = "node_1" }
-                },
-                isConversationEnd = false,
-                isTerminal = false
-            },
-            new DialogueNodeData
-            {
-                nodeId = "node_1",
-                fallbackLine = advice,
-                npcFollowUpText = "Jaga kesehatanmu baik-baik. Pintu klinik selalu terbuka untukmu.",
-                choices = new List<DialogueChoiceData>(),
-                isConversationEnd = true,
-                isTerminal = true
+                new DialogueChoiceData { choiceText = "Bagaimana kondisi saya, Dok?", nextNodeId = "diagnosis" }
             }
-        };
+        });
 
+        // Node 2: Diagnosis
+        nodes.Add(new DialogueNodeData
+        {
+            nodeId = "diagnosis",
+            fallbackLine = BuildDiagnosis(healthScore, dailyFat, dailyProtein, critical, warning),
+            choices = new List<DialogueChoiceData>
+            {
+                new DialogueChoiceData { choiceText = "Apa yang harus saya perhatikan?", nextNodeId = "detail" }
+            }
+        });
+
+        // Node 3: Detailed explanation
+        nodes.Add(new DialogueNodeData
+        {
+            nodeId = "detail",
+            fallbackLine = BuildDetailedExplanation(healthScore, dailyFat, dailyProtein, critical, warning),
+            choices = new List<DialogueChoiceData>
+            {
+                new DialogueChoiceData
+                {
+                    choiceText = alertActive ? "Saya akan berusaha lebih baik, Dok." : "Terima kasih atas waktunya, Dok.",
+                    nextNodeId = "closing"
+                }
+            }
+        });
+
+        // Node 4: Closing
+        nodes.Add(new DialogueNodeData
+        {
+            nodeId = "closing",
+            fallbackLine = BuildClosing(healthScore, healthy, alertActive),
+            choices = new List<DialogueChoiceData>(),
+            isConversationEnd = true,
+            isTerminal = true
+        });
+
+        graph.nodes = nodes;
         return graph;
+    }
+
+    private string BuildGreeting(float score, bool critical, bool warning, bool healthy)
+    {
+        if (critical)
+            return "Silakan duduk. Saya sudah melihat data terakhirmu dan... jujur, saya perlu bicara serius denganmu hari ini. " +
+                   "Tubuhmu sedang memberikan sinyal yang tidak boleh diabaikan.";
+
+        if (warning)
+            return "Selamat datang. Aku sudah mereview catatan kesehatanmu belakangan ini. " +
+                   "Ada beberapa hal yang perlu kita diskusikan. Bukan darurat, tapi penting untuk diperbaiki segera.";
+
+        if (healthy)
+            return "Ah, selamat datang! Senang bertemu denganmu lagi. " +
+                   "Aku sudah lihat catatan terakhirmu, dan aku punya kabar baik.";
+
+        return "Silakan masuk. Mari kita lihat bersama bagaimana perkembangan kesehatanmu. " +
+               "Setiap kunjungan ini penting, meski rasanya belum ada keluhan besar.";
+    }
+
+    private string BuildDiagnosis(float score, float fat, float protein, bool critical, bool warning)
+    {
+        var sb = new System.Text.StringBuilder();
+
+        if (critical)
+        {
+            sb.Append("Skor kesehatanmu saat ini sangat rendah. ");
+            sb.Append("Ini berarti tubuhmu sedang dalam tekanan. Nutrisi yang masuk tidak cukup mendukung aktivitas harianmu. ");
+        }
+        else if (warning)
+        {
+            sb.Append("Kondisimu belum ideal. Beberapa indikator menunjukkan pola yang perlu diperbaiki. ");
+        }
+        else
+        {
+            sb.Append("Secara umum, kondisimu cukup stabil. ");
+        }
+
+        if (fat > 65f)
+            sb.Append("Asupan lemak harianmu terlalu tinggi. Ini membebani organ pencernaanmu dan meningkatkan risiko jangka panjang. ");
+
+        if (protein < 40f)
+            sb.Append("Protein harianmu kurang. Tanpa protein yang cukup, otot dan daya tahan tubuhmu akan terus menurun. ");
+
+        if (fat <= 65f && protein >= 40f && !critical && !warning)
+            sb.Append("Asupan nutrisi makromu sudah dalam range yang baik. Lemak dan protein seimbang.");
+
+        return sb.ToString();
+    }
+
+    private string BuildDetailedExplanation(float score, float fat, float protein, bool critical, bool warning)
+    {
+        if (critical)
+        {
+            return "Begini, tubuh manusia itu seperti mesin. Kalau bahan bakarnya salah atau kurang, " +
+                   "lama-lama mesinnya rusak. Yang terjadi padamu sekarang: energimu menurun, " +
+                   "daya tahan tubuh melemah, dan kalau pola ini berlanjut... " +
+                   "risiko penyakit serius seperti diabetes atau hipertensi akan meningkat drastis. " +
+                   "Ini bukan menakut-nakuti, ini fakta medis.";
+        }
+
+        if (warning)
+        {
+            return "Saya lihat polanya belum konsisten. Kadang makan baik, kadang tidak. " +
+                   "Kadang gerak, kadang tidak. Tubuh butuh rutinitas, bukan kesempurnaan, " +
+                   "tapi konsistensi. Mulai dari satu kebiasaan kecil yang bisa kamu jaga setiap hari. " +
+                   "Misalnya, pastikan ada protein di setiap makan.";
+        }
+
+        return "Yang penting sekarang: pertahankan. Banyak orang merasa sudah sehat lalu lengah. " +
+               "Kebiasaan baik itu seperti tabungan. Hasilnya baru terasa jangka panjang, " +
+               "tapi kalau berhenti menabung, saldo akan turun lebih cepat dari yang dibayangkan.";
+    }
+
+    private string BuildClosing(float score, bool healthy, bool alertActive)
+    {
+        if (alertActive)
+        {
+            return "Baik. Aku akan buatkan catatan rekomendasi untukmu. " +
+                   "Baca pelan-pelan dan coba terapkan mulai hari ini. " +
+                   "Ingat: perubahan kecil yang konsisten jauh lebih powerful dari perubahan besar yang hanya sehari. " +
+                   "Pintuku selalu terbuka kalau kamu butuh konsultasi lagi.";
+        }
+
+        if (healthy)
+        {
+            return "Terus pertahankan yang sudah kamu lakukan. Kamu membuktikan bahwa pilihan sehari-hari itu penting. " +
+                   "Sampai jumpa di kunjungan berikutnya. Jaga kesehatanmu.";
+        }
+
+        return "Jaga dirimu baik-baik. Kalau merasa ada yang tidak beres, jangan tunda untuk datang kembali. " +
+               "Kesehatan itu bukan tentang sempurna, tapi tentang sadar dan terus berusaha.";
     }
 }

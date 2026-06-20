@@ -30,6 +30,7 @@ public class NpcDialogueMenuController : MonoBehaviour
     [Header("Panel Referensi")]
     [SerializeField] private RectTransform dialoguePanel;
     [SerializeField] private Image gradientOverlay;
+    [SerializeField] private Image dialogueBackgroundImage;
     [SerializeField] private Image letterboxTop;
     [SerializeField] private Image letterboxBottom;
     [SerializeField] private RectTransform npcSpeechArea;
@@ -173,6 +174,7 @@ public class NpcDialogueMenuController : MonoBehaviour
         pendingCloseAfterFollowUp = false;
 
         PauseGameplay();
+        ApplyDialogueBackground(graph);
         UpdateNpcHeader();
         RenderNode();
         PlayOpenAnimation();
@@ -651,6 +653,8 @@ public class NpcDialogueMenuController : MonoBehaviour
         if (dialogueText != null)
             dialogueText.text = string.Empty;
 
+        ClearDialogueBackground();
+
         activeNpc = null;
         activeGraph = null;
         activeNode = null;
@@ -1010,7 +1014,68 @@ public class NpcDialogueMenuController : MonoBehaviour
         if (!string.IsNullOrWhiteSpace(graph.npcId) && graph.npcId.IndexOf("restoran", StringComparison.OrdinalIgnoreCase) >= 0)
             return "Penjaga Resto";
 
+        if (!string.IsNullOrWhiteSpace(graph.npcId)
+            && (graph.npcId.IndexOf("doctor_sri", StringComparison.OrdinalIgnoreCase) >= 0
+                || graph.npcId.IndexOf("dr_ending", StringComparison.OrdinalIgnoreCase) >= 0))
+            return "Dokter Spesialis Gizi Klinik";
+
+        if (!string.IsNullOrWhiteSpace(graph.npcId) && graph.npcId.IndexOf("trainer", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "Personal Trainer";
+
         return "Warga Kota";
+    }
+
+    private void ApplyDialogueBackground(DialogueGraphData graph)
+    {
+        if (graph == null) return;
+
+        Sprite bg = graph.backgroundSprite;
+        if (bg == null && !string.IsNullOrEmpty(graph.backgroundResourcePath))
+            bg = Resources.Load<Sprite>(graph.backgroundResourcePath);
+
+        if (bg == null)
+        {
+            ClearDialogueBackground();
+            return;
+        }
+
+        EnsureBackgroundImage();
+        if (dialogueBackgroundImage != null)
+        {
+            dialogueBackgroundImage.sprite = bg;
+            dialogueBackgroundImage.color = Color.white;
+            dialogueBackgroundImage.gameObject.SetActive(true);
+        }
+    }
+
+    private void ClearDialogueBackground()
+    {
+        if (dialogueBackgroundImage != null)
+        {
+            dialogueBackgroundImage.sprite = null;
+            dialogueBackgroundImage.gameObject.SetActive(false);
+        }
+    }
+
+    private void EnsureBackgroundImage()
+    {
+        if (dialogueBackgroundImage != null) return;
+        if (dialoguePanel == null) return;
+
+        GameObject bgObj = new GameObject("DialogueBackground", typeof(RectTransform), typeof(Image));
+        RectTransform bgRect = bgObj.GetComponent<RectTransform>();
+        bgRect.SetParent(dialoguePanel, false);
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        bgRect.SetAsFirstSibling();
+
+        dialogueBackgroundImage = bgObj.GetComponent<Image>();
+        dialogueBackgroundImage.preserveAspect = false;
+        dialogueBackgroundImage.raycastTarget = false;
+        dialogueBackgroundImage.color = Color.white;
+        bgObj.SetActive(false);
     }
 
     private void PauseGameplay()

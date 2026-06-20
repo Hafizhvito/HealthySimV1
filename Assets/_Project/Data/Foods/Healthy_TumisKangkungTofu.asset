@@ -1,31 +1,30 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
----
-!u!114 &11400000
+--- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: { fileID: 0 }
-  m_PrefabInstance: { fileID: 0 }
-  m_PrefabAsset: { fileID: 0 }
-  m_GameObject: { fileID: 0 }
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script:
-    { fileID: 11500000, guid: 679df606234031d41a0d6a0ffd67a089, type: 3 }
+  m_Script: {fileID: 11500000, guid: 679df606234031d41a0d6a0ffd67a089, type: 3}
   m_Name: Healthy_TumisKangkungTofu
   m_EditorClassIdentifier: Assembly-CSharp::FoodData
   foodName: Tumis Kangkung Tahu
-  description: Tumis sayur ringan dengan tahu, cocok makan siang.
-  icon: { fileID: 0 }
-  calories: 300
-  energyRestored: 17
-  moodEffect: 6
+  description: Sayuran hijau dan tahu, rendah kalori.
+  icon: {fileID: 21300000, guid: 1039b5701f76b6c4e90b3c78b436bac1, type: 3}
+  calories: 200
+  energyRestored: 14
+  moodEffect: 5
   fat: 9
   protein: 12
-  carbohydrate: 35
+  carbohydrate: 20
+  sugar: 3
   category: 0
   isHealthy: 1
-  price: 15
+  price: 22
   availableMorning: 0
   availableAfternoon: 1
   availableEvening: 1

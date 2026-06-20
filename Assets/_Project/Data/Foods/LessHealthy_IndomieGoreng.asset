@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 679df606234031d41a0d6a0ffd67a089, type: 3}
+  m_Name: LessHealthy_IndomieGoreng
+  m_EditorClassIdentifier: Assembly-CSharp::FoodData
+  foodName: Indomie Goreng
+  description: Mie instan goreng, sodium dan lemak tinggi.
+  icon: {fileID: 21300000, guid: 635280c79af6f764086df538ac932c74, type: 3}
+  calories: 380
+  energyRestored: 16
+  moodEffect: 4
+  fat: 14
+  protein: 9
+  carbohydrate: 52
+  sugar: 3
+  category: 4
+  isHealthy: 0
+  price: 22
+  availableMorning: 0
+  availableAfternoon: 1
+  availableEvening: 1
+  availableNight: 1

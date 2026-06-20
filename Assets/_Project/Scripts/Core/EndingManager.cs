@@ -123,39 +123,91 @@ public class EndingManager : MonoBehaviour
     {
         DialogueGraphData graph = ScriptableObject.CreateInstance<DialogueGraphData>();
         graph.npcId          = "dr_ending";
-        graph.npcDisplayName = "Dr. Hana";
+        graph.npcDisplayName = "dr. Sri Wuryanti, MS, Sp.GK";
         graph.startNodeId    = "start";
+        graph.backgroundResourcePath = "Backgrounds/bg_hospital";
 
-        // Node 1 — pembuka
-        DialogueNodeData node1 = new DialogueNodeData();
-        node1.nodeId       = "start";
-        node1.fallbackLine = BuildDoctorOpening(type, gender);
-        DialogueChoiceData c1 = new DialogueChoiceData();
-        c1.choiceText  = "Lanjut >";
-        c1.nextNodeId  = "phase_review";
-        node1.choices  = new System.Collections.Generic.List<DialogueChoiceData> { c1 };
+        var nodes = new System.Collections.Generic.List<DialogueNodeData>();
+
+        // Node 1 — pembuka hangat
+        nodes.Add(new DialogueNodeData
+        {
+            nodeId = "start",
+            fallbackLine = BuildDoctorOpening(type, gender),
+            choices = new System.Collections.Generic.List<DialogueChoiceData>
+            {
+                new DialogueChoiceData { choiceText = "Bagaimana hasilnya, Dok?", nextNodeId = "phase_review" }
+            }
+        });
 
         // Node 2 — review per fase
-        DialogueNodeData node2 = new DialogueNodeData();
-        node2.nodeId       = "phase_review";
-        node2.fallbackLine = BuildPhaseReview(type, youthScore, adultScore, seniorScore);
-        DialogueChoiceData c2 = new DialogueChoiceData();
-        c2.choiceText  = "Lanjut >";
-        c2.nextNodeId  = "conclusion";
-        node2.choices  = new System.Collections.Generic.List<DialogueChoiceData> { c2 };
+        nodes.Add(new DialogueNodeData
+        {
+            nodeId = "phase_review",
+            fallbackLine = BuildPhaseReview(type, youthScore, adultScore, seniorScore),
+            choices = new System.Collections.Generic.List<DialogueChoiceData>
+            {
+                new DialogueChoiceData { choiceText = "Apa kesimpulannya, Dok?", nextNodeId = "conclusion" }
+            }
+        });
 
-        // Node 3 — kesimpulan + saran
-        DialogueNodeData node3 = new DialogueNodeData();
-        node3.nodeId            = "conclusion";
-        node3.fallbackLine      = BuildDoctorConclusion(type, gender);
-        node3.isConversationEnd = true;
-        DialogueChoiceData c3 = new DialogueChoiceData();
-        c3.choiceText  = "Terima kasih, Dok.";
-        c3.nextNodeId  = string.Empty;
-        node3.choices  = new System.Collections.Generic.List<DialogueChoiceData> { c3 };
+        // Node 3 — kesimpulan klinis
+        nodes.Add(new DialogueNodeData
+        {
+            nodeId = "conclusion",
+            fallbackLine = BuildDoctorConclusion(type, gender),
+            choices = new System.Collections.Generic.List<DialogueChoiceData>
+            {
+                new DialogueChoiceData { choiceText = "Ada pesan terakhir untuk saya?", nextNodeId = "farewell" }
+            }
+        });
 
-        graph.nodes = new System.Collections.Generic.List<DialogueNodeData> { node1, node2, node3 };
+        // Node 4 — pesan penutup (story-driven)
+        nodes.Add(new DialogueNodeData
+        {
+            nodeId = "farewell",
+            fallbackLine = BuildDoctorFarewell(type, gender),
+            choices = new System.Collections.Generic.List<DialogueChoiceData>
+            {
+                new DialogueChoiceData { choiceText = "Terima kasih atas segalanya, Dok.", nextNodeId = "" }
+            },
+            isConversationEnd = true,
+            isTerminal = true
+        });
+
+        graph.nodes = nodes;
         return graph;
+    }
+
+    private static string BuildDoctorFarewell(EndingType type, PlayerStats.Gender gender)
+    {
+        bool isFemale = gender == PlayerStats.Gender.Female;
+
+        return type switch
+        {
+            EndingType.Good =>
+                "Kamu sudah membuktikan sesuatu yang penting: bahwa pilihan kecil setiap hari bisa mengubah hidup. " +
+                "Banyak orang tahu teorinya, tapi kamu menjalaninya. " +
+                (isFemale
+                    ? "Sebagai perempuan, tubuhmu merespons dengan indah terhadap konsistensi. Pertahankan."
+                    : "Tubuhmu sekarang ada di titik terbaiknya. Jangan berhenti.") +
+                " Ini bukan akhir, ini awal dari kebiasaan yang akan menemanimu seumur hidup.",
+
+            EndingType.Neutral =>
+                "Perjalananmu belum sempurna, dan itu tidak apa-apa. Yang penting, kamu punya kesadaran. " +
+                "Mulai dari sini, kamu bisa memilih: terus seperti ini, atau naik satu level. " +
+                "Satu perubahan kecil per minggu, itu sudah cukup. " +
+                "Pintu klinik ini selalu terbuka untukmu.",
+
+            EndingType.Bad =>
+                "Aku tahu ini berat. Tapi fakta bahwa kamu duduk di sini, mendengarkan, itu sudah langkah pertama. " +
+                "Tubuh manusia punya kemampuan luar biasa untuk pulih, asal diberi kesempatan. " +
+                "Mulai dari besok, satu hal saja: makan teratur. Kemudian tidur cukup. Kemudian bergerak. " +
+                "Pelan-pelan. Tidak ada yang memintamu sempurna dalam sehari. " +
+                "Tapi tolong, jangan abaikan tubuhmu lebih lama lagi.",
+
+            _ => "Jaga dirimu. Sampai jumpa."
+        };
     }
 
     private static string BuildDoctorOpening(EndingType type, PlayerStats.Gender gender)
@@ -165,22 +217,27 @@ public class EndingManager : MonoBehaviour
         return type switch
         {
             EndingType.Good => isFemale
-                                ? "Selamat datang kembali. Kabar baik: hasil pemeriksaanmu sangat stabil. " +
-                                    "Kebiasaan kecil yang kamu jaga tiap hari benar-benar bekerja."
-                                : "Selamat datang kembali. Hasil pemeriksaanmu bagus dan konsisten. " +
-                                    "Tubuh merespons ketika pola hidup dijaga rutin.",
+                ? "Selamat datang kembali. Aku sudah selesai menganalisa semua data kesehatanmu dari awal hingga sekarang. " +
+                  "Dan... aku punya kabar yang sangat baik. Kebiasaan kecil yang kamu jaga tiap hari benar-benar bekerja. " +
+                  "Tubuhmu merespons dengan indah."
+                : "Selamat datang kembali. Aku sudah menganalisa seluruh riwayat kesehatanmu. " +
+                  "Hasil pemeriksaanmu bagus dan konsisten. Ini bukan kebetulan. " +
+                  "Ini hasil dari pilihan-pilihan yang kamu buat setiap hari.",
 
             EndingType.Neutral => isFemale
-                                ? "Silakan duduk. Ada yang sudah baik, tapi ritme harianmu belum stabil. " +
-                                    "Ini belum darurat, tapi perlu konsisten diperbaiki."
-                                : "Silakan duduk. Hasilnya campuran: ada kemajuan, ada kebiasaan yang masih bocor. " +
-                                    "Kita bisa rapikan pelan-pelan.",
+                ? "Silakan duduk. Aku sudah meninjau semua datamu dari fase pertama hingga sekarang. " +
+                  "Ada yang sudah baik, tapi ritme harianmu belum sepenuhnya stabil. " +
+                  "Ini belum darurat, tapi kita perlu bicara tentang apa yang bisa diperbaiki."
+                : "Silakan duduk. Aku sudah melihat seluruh perjalanan kesehatanmu. " +
+                  "Hasilnya campuran: ada kemajuan di beberapa area, tapi ada kebiasaan yang masih bocor di sana-sini. " +
+                  "Kita bisa rapikan ini bersama.",
 
             EndingType.Bad =>
-                "Terima kasih sudah datang. Saya akan bicara jujur: tubuhmu sedang kewalahan. " +
-                "Ada tanda yang perlu ditangani lebih serius mulai sekarang.",
+                "Terima kasih sudah datang. Aku akan bicara jujur denganmu hari ini, karena menurutku kamu berhak tahu. " +
+                "Aku sudah menganalisa semua data dari awal perjalananmu hingga sekarang, dan... " +
+                "tubuhmu sedang kewalahan. Ada tanda-tanda yang perlu ditangani serius mulai hari ini.",
 
-            _ => "Silakan duduk. Mari kita bahas kondisimu."
+            _ => "Silakan duduk. Mari kita bahas perjalanan kesehatanmu bersama."
         };
     }
 
@@ -299,9 +356,9 @@ public class EndingManager : MonoBehaviour
         SetAccentColor(type, panelRoot);
 
         string narrative = GetNarrative(type, gender);
-        // string diseaseInfo = BuildDiseaseInfoSection(PlayerStats.Instance);
-        // if (!string.IsNullOrEmpty(diseaseInfo))
-        //     narrative = narrative + "\n\n" + diseaseInfo;
+        string diseaseInfo = BuildDiseaseInfoSection(PlayerStats.Instance, type);
+        if (!string.IsNullOrEmpty(diseaseInfo))
+            narrative = narrative + "\n\n" + diseaseInfo;
         float  visible   = 0f;
         const float cps  = 50f;
 
@@ -448,38 +505,63 @@ public class EndingManager : MonoBehaviour
         public float Score;
     }
 
-    private static string BuildDiseaseInfoSection(PlayerStats stats)
+    private static string BuildDiseaseInfoSection(PlayerStats stats, EndingType endingType)
     {
         if (stats == null || stats.TotalDaysEvaluated <= 0)
-            return "Info kesehatan:\nData harian belum cukup untuk membuat kesimpulan yang spesifik.";
+            return string.Empty;
 
         var risks = BuildDiseaseRisks(stats);
         risks.Sort((a, b) => b.Score.CompareTo(a.Score));
 
         const float riskThreshold = 0.35f;
-        bool hasRisk = risks.Count > 0 && risks[0].Score >= riskThreshold;
-        int count = Mathf.Min(3, risks.Count);
+        const float warningThreshold = 0.20f;
 
-        string header = hasRisk
-            ? "Info penyakit yang perlu diperhatikan:"
-            : "Info kesehatan: belum ada indikasi kuat, tapi ada area yang perlu dijaga:";
+        if (endingType == EndingType.Good)
+        {
+            bool anyMild = risks.Count > 0 && risks[0].Score >= warningThreshold;
+            if (!anyMild)
+                return "Tubuhmu dalam kondisi baik. Tidak ada indikasi risiko penyakit yang berarti. Pertahankan.";
 
-        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            return "Meskipun kondisimu secara umum baik, tetap jaga pola hidupmu agar risiko kesehatan tetap rendah di masa depan.";
+        }
+
+        int count = 0;
+        for (int i = 0; i < risks.Count && count < 3; i++)
+        {
+            if (risks[i].Score >= warningThreshold) count++;
+        }
+        if (count == 0)
+            return string.Empty;
+
+        string header = endingType == EndingType.Bad
+            ? "Risiko penyakit yang muncul dari pola hidupmu:"
+            : "Beberapa area kesehatan yang perlu diperhatikan:";
+
+        var sb = new System.Text.StringBuilder();
         sb.Append(header);
 
-        for (int i = 0; i < count; i++)
+        int shown = 0;
+        for (int i = 0; i < risks.Count && shown < count; i++)
         {
             DiseaseRisk risk = risks[i];
-            sb.Append("\n- ");
+            if (risk.Score < warningThreshold) continue;
+
+            sb.Append("\n\n• ");
             sb.Append(risk.Name);
-            sb.Append(": ");
+            if (risk.Score >= riskThreshold)
+                sb.Append(" [risiko tinggi]");
+            sb.Append("\n  ");
             sb.Append(risk.Description);
             if (!string.IsNullOrEmpty(risk.Reason))
             {
                 sb.Append("\n  ");
                 sb.Append(risk.Reason);
             }
+            shown++;
         }
+
+        if (endingType == EndingType.Bad)
+            sb.Append("\n\nDi dunia nyata, pola hidup seperti ini bisa memicu penyakit kronis. Tapi selalu ada kesempatan untuk berubah.");
 
         return sb.ToString();
     }

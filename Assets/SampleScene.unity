@@ -122607,7 +122607,7 @@ MonoBehaviour:
   normalWakeHour: 7
   disturbedWakeHour: 8
   lateWakeHour: 9
-  requireNightToSleep: 0
+  requireNightToSleep: 1
   clockSkipDuration: 2.8
   fadeDuration: 0.35
   sleepLockSource: SleepTransition

@@ -9,6 +9,8 @@ public class DialogueGraphData : ScriptableObject
     public string npcDisplayName = "Warga Kota";
     [Range(0f, 100f)] public float initialTrust = 50f;
     public string startNodeId = "start";
+    public Sprite backgroundSprite;
+    public string backgroundResourcePath;
     public List<DialogueNodeData> nodes = new List<DialogueNodeData>();
 
     public DialogueNodeData GetNode(string nodeId)
@@ -63,17 +65,7 @@ public class DialogueChoiceData
         if (string.IsNullOrWhiteSpace(choiceText))
             return "Pilihan";
 
-        string source = choiceText.Trim();
-        int open = source.IndexOf('(');
-        int close = source.IndexOf(')');
-        if (open == 0 && close > 1)
-        {
-            string tone = source.Substring(1, close - 1).Trim().ToUpperInvariant();
-            string body = source.Substring(close + 1).Trim();
-            return $"[{tone}] {body}";
-        }
-
-        return source;
+        return choiceText.Trim();
     }
 }
 

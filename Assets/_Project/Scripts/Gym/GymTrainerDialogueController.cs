@@ -10,55 +10,44 @@ public class GymTrainerDialogueController : MonoBehaviour
         DialogueGraphData graph = ScriptableObject.CreateInstance<DialogueGraphData>();
         graph.npcId = "npc_trainer";
         graph.npcDisplayName = trainerDisplayName;
-        graph.startNodeId = "node_0";
+        graph.startNodeId = "greeting";
 
-        string opener;
-        string followUp;
+        var nodes = new List<DialogueNodeData>();
 
-        switch (session.tierAtStart)
+        string greeting = BuildPreGreeting(session);
+        string explanation = BuildPreExplanation(session);
+        string motivation = BuildPreMotivation(session);
+
+        nodes.Add(new DialogueNodeData
         {
-            case GymTier.Advanced:
-                opener = "Mantap, fondasi kamu udah kuat. Hari ini kita fokus teknik supaya progres tetap naik tanpa buang energi.";
-                followUp = "Jaga kontrol napas dan tempo. Kualitas gerakan lebih penting daripada ego.";
-                break;
-            case GymTier.Regular:
-                opener = "Ritme latihanmu sudah kebentuk. Kita dorong sedikit intensitas, tapi jangan sampai form berantakan.";
-                followUp = "Kalau mulai goyang, turunkan tempo sebentar lalu lanjut rapi.";
-                break;
-            default:
-                opener = "Bagus udah konsisten datang. Hari ini fokus gerakan dasar dulu biar tubuh adaptasinya aman.";
-                followUp = "Ingat, progres cepat itu hasil dari repetisi rapi, bukan asal ngebut.";
-                break;
-        }
-
-        if (session.energyAtStart < 0.35f)
-            opener = "Energi kamu lagi tipis. Kita tetap jalan, tapi volumenya harus dijaga biar tidak overfatigue.";
-
-        graph.nodes = new List<DialogueNodeData>
-        {
-            new DialogueNodeData
+            nodeId = "greeting",
+            fallbackLine = greeting,
+            choices = new List<DialogueChoiceData>
             {
-                nodeId = "node_0",
-                fallbackLine = opener,
-                choices = new List<DialogueChoiceData>
-                {
-                    new DialogueChoiceData { choiceText = "(Siap) Gas, Coach. Saya ikutin ritmenya.", nextNodeId = "node_1" },
-                    new DialogueChoiceData { choiceText = "(Tenang) Oke, saya fokus kualitas dulu.", nextNodeId = "node_1" }
-                },
-                isConversationEnd = false,
-                isTerminal = false
-            },
-            new DialogueNodeData
-            {
-                nodeId = "node_1",
-                fallbackLine = "Sip. Kita mulai sesi sekarang.",
-                npcFollowUpText = followUp,
-                choices = new List<DialogueChoiceData>(),
-                isConversationEnd = true,
-                isTerminal = true
+                new DialogueChoiceData { choiceText = "Apa rencana hari ini, Coach?", nextNodeId = "explanation" }
             }
-        };
+        });
 
+        nodes.Add(new DialogueNodeData
+        {
+            nodeId = "explanation",
+            fallbackLine = explanation,
+            choices = new List<DialogueChoiceData>
+            {
+                new DialogueChoiceData { choiceText = "Siap, kita mulai.", nextNodeId = "motivation" }
+            }
+        });
+
+        nodes.Add(new DialogueNodeData
+        {
+            nodeId = "motivation",
+            fallbackLine = motivation,
+            choices = new List<DialogueChoiceData>(),
+            isConversationEnd = true,
+            isTerminal = true
+        });
+
+        graph.nodes = nodes;
         return graph;
     }
 
@@ -67,24 +56,22 @@ public class GymTrainerDialogueController : MonoBehaviour
         DialogueGraphData graph = ScriptableObject.CreateInstance<DialogueGraphData>();
         graph.npcId = "npc_trainer_post";
         graph.npcDisplayName = trainerDisplayName;
-        graph.startNodeId = "node_0";
+        graph.startNodeId = "result";
 
-        string resultLine;
-        switch (session.result)
+        var nodes = new List<DialogueNodeData>();
+
+        string resultLine = BuildPostResult(session);
+        string closingLine = BuildPostClosing(session);
+
+        nodes.Add(new DialogueNodeData
         {
-            case GymSessionResult.Excellent:
-                resultLine = "Performa kamu bagus banget hari ini. Adaptasi naik dengan fatigue yang masih terkontrol.";
-                break;
-            case GymSessionResult.Strained:
-                resultLine = "Sesi ini agak berat buat kondisi kamu sekarang. Tetap dapat progres, tapi fatigue naik cukup tinggi.";
-                break;
-            case GymSessionResult.Solid:
-                resultLine = "Latihan rapi dan konsisten. Progresnya stabil dan ini yang kita cari untuk jangka panjang.";
-                break;
-            default:
-                resultLine = "Sesi belum kebaca sempurna, tapi tetap kita catat sebagai latihan hari ini.";
-                break;
-        }
+            nodeId = "result",
+            fallbackLine = resultLine,
+            choices = new List<DialogueChoiceData>
+            {
+                new DialogueChoiceData { choiceText = "Ada catatan lain, Coach?", nextNodeId = "closing" }
+            }
+        });
 
         string summary = string.Format(
             "Tier: {0} | Adaptasi +{1:0.0} | Fatigue +{2:0.0}",
@@ -92,32 +79,121 @@ public class GymTrainerDialogueController : MonoBehaviour
             Mathf.Max(0f, session.adaptationGain),
             Mathf.Max(0f, session.fatigueGain));
 
-        graph.nodes = new List<DialogueNodeData>
+        nodes.Add(new DialogueNodeData
         {
-            new DialogueNodeData
-            {
-                nodeId = "node_0",
-                fallbackLine = resultLine,
-                npcFollowUpText = summary,
-                choices = new List<DialogueChoiceData>(),
-                isConversationEnd = true,
-                isTerminal = true
-            }
-        };
+            nodeId = "closing",
+            fallbackLine = closingLine,
+            npcFollowUpText = summary,
+            choices = new List<DialogueChoiceData>(),
+            isConversationEnd = true,
+            isTerminal = true
+        });
 
+        graph.nodes = nodes;
         return graph;
+    }
+
+    private string BuildPreGreeting(GymSessionData session)
+    {
+        if (session.energyAtStart < 0.35f)
+            return "Hei, kamu datang. Aku lihat energi kamu lagi tipis hari ini. " +
+                   "Kita tetap latihan, tapi aku akan sesuaikan volumenya supaya tubuhmu tidak dipaksa berlebihan.";
+
+        switch (session.tierAtStart)
+        {
+            case GymTier.Advanced:
+                return "Wah, datang lagi. Fondasi kamu udah kuat sekarang, gerakannya lebih terkontrol. " +
+                       "Hari ini kita fokus ke teknik dan efisiensi, bukan sekedar angkat beban.";
+            case GymTier.Regular:
+                return "Hei, ritme latihanmu udah mulai kebentuk. Aku bisa lihat progresnya dari sesi-sesi terakhir. " +
+                       "Hari ini kita dorong sedikit intensitasnya.";
+            default:
+                return "Bagus, kamu datang lagi. Konsistensi itu yang paling penting di awal. " +
+                       "Hari ini kita tetap fokus ke gerakan dasar, bangun fondasi yang kuat dulu.";
+        }
+    }
+
+    private string BuildPreExplanation(GymSessionData session)
+    {
+        if (session.energyAtStart < 0.35f)
+            return "Kita akan kurangi set dan repetisi. Yang penting tetap gerak, tapi jangan sampai collapse. " +
+                   "Tubuh butuh sinyal bahwa kita masih aktif, bukan sinyal bahwa kita sedang menyiksa diri.";
+
+        switch (session.tierAtStart)
+        {
+            case GymTier.Advanced:
+                return "Di level ini, yang bikin beda bukan berapa berat yang kamu angkat, tapi kontrol napas dan tempo. " +
+                       "Kualitas gerakan selalu lebih penting daripada ego.";
+            case GymTier.Regular:
+                return "Kita naikkan sedikit bebannya, tapi form tetap prioritas. " +
+                       "Kalau mulai goyang, turunkan tempo sebentar, lalu lanjut rapi. " +
+                       "Progres yang stabil lebih baik dari progres yang ngebut lalu cedera.";
+            default:
+                return "Fokus hari ini: gerakan compound dasar. Squat, push, pull. " +
+                       "Jangan terburu-buru naikkan beban. Tubuhmu masih beradaptasi dan itu normal.";
+        }
+    }
+
+    private string BuildPreMotivation(GymSessionData session)
+    {
+        if (session.energyAtStart < 0.35f)
+            return "Ingat: datang saat energi rendah itu sudah achievement. Kita mulai pelan. Siap?";
+
+        switch (session.tierAtStart)
+        {
+            case GymTier.Advanced:
+                return "Oke, cukup ngobrolnya. Waktunya buktiin di lapangan. Let's go.";
+            case GymTier.Regular:
+                return "Sip, kamu udah ngerti ritmenya. Kita jalan sekarang. Fokus dan nikmati prosesnya.";
+            default:
+                return "Ingat, progres cepat itu hasil dari repetisi yang rapi, bukan asal ngebut. Yuk mulai.";
+        }
+    }
+
+    private string BuildPostResult(GymSessionData session)
+    {
+        switch (session.result)
+        {
+            case GymSessionResult.Excellent:
+                return "Performa kamu bagus banget hari ini. Gerakannya terkontrol, tempo rapi, dan kamu push sampai batas yang tepat. " +
+                       "Adaptasi naik signifikan dengan fatigue yang masih terkontrol.";
+            case GymSessionResult.Strained:
+                return "Sesi ini agak berat buat kondisi kamu sekarang. Aku bisa lihat di pertengahan kamu mulai struggle. " +
+                       "Tetap dapat progres, tapi fatigue-nya naik cukup tinggi. Besok pastikan istirahat cukup.";
+            case GymSessionResult.Solid:
+                return "Latihan rapi dan konsisten. Tidak ada yang wow tapi juga tidak ada yang gagal. " +
+                       "Ini yang kita cari untuk jangka panjang: progres stabil tanpa burnout.";
+            default:
+                return "Sesi tadi belum optimal, tapi kita tetap catat sebagai latihan hari ini. " +
+                       "Yang penting kamu datang dan bergerak.";
+        }
+    }
+
+    private string BuildPostClosing(GymSessionData session)
+    {
+        switch (session.result)
+        {
+            case GymSessionResult.Excellent:
+                return "Kalau bisa pertahankan ritme ini, kamu akan naik tier dalam waktu dekat. " +
+                       "Sekarang pulang, makan yang cukup protein, dan tidur berkualitas. Itu bagian dari latihan juga.";
+            case GymSessionResult.Strained:
+                return "Besok, kalau masih capek, ga apa skip sehari. Recovery itu bagian dari program. " +
+                       "Tapi jangan sampai satu hari jadi satu minggu, ya.";
+            case GymSessionResult.Solid:
+                return "Konsistensi beats intensitas. Ingat itu selalu. " +
+                       "Sampai ketemu di sesi berikutnya.";
+            default:
+                return "Ga setiap hari bisa perfect. Yang penting jangan berhenti. Sampai besok.";
+        }
     }
 
     private static string GetTierLabel(GymTier tier)
     {
         switch (tier)
         {
-            case GymTier.Advanced:
-                return "Advanced";
-            case GymTier.Regular:
-                return "Regular";
-            default:
-                return "Beginner";
+            case GymTier.Advanced: return "Advanced";
+            case GymTier.Regular: return "Regular";
+            default: return "Beginner";
         }
     }
 }

@@ -13,17 +13,18 @@ MonoBehaviour:
   m_Name: Healthy_SupSayur
   m_EditorClassIdentifier: Assembly-CSharp::FoodData
   foodName: Sup Sayur
-  description: Pilihan ringan yang bantu recovery setelah aktivitas.
-  icon: {fileID: 0}
-  calories: 180
-  energyRestored: 14
-  moodEffect: 5
-  fat: 5
-  protein: 8
-  carbohydrate: 22
+  description: Sup sayuran ringan, rendah kalori.
+  icon: {fileID: 21300000, guid: 622f6859c847e8a419f09bb1f737f22e, type: 3}
+  calories: 120
+  energyRestored: 12
+  moodEffect: 4
+  fat: 3
+  protein: 5
+  carbohydrate: 18
+  sugar: 3
   category: 1
   isHealthy: 1
-  price: 20
+  price: 18
   availableMorning: 0
   availableAfternoon: 1
   availableEvening: 1

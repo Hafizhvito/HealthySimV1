@@ -72,6 +72,12 @@ public class PlayerController : MonoBehaviour
     [SerializeField] [Range(0.2f, 1f)] private float healthIndicatorMinAlpha = 0.5f;
     [SerializeField] private Color healthIndicatorColor = new Color(0.75f, 0.25f, 1f, 1f);
 
+    [Header("Hospital Direction Arrow")]
+    [SerializeField] private bool showHospitalArrow = true;
+    [SerializeField] private float arrowHeight = 2.85f;
+    [SerializeField] private float arrowScale = 0.55f;
+    [SerializeField] private Color arrowColor = new Color(0.25f, 0.85f, 1f, 1f);
+
     private Rigidbody rb;
     private CapsuleCollider col;
     private Animator animator;
@@ -82,6 +88,10 @@ public class PlayerController : MonoBehaviour
     private Transform fatigueIndicatorTransform;
     private TextMeshPro healthIndicatorText;
     private Transform healthIndicatorTransform;
+    private Transform hospitalArrowTransform;
+    private MeshRenderer hospitalArrowRenderer;
+    private Material hospitalArrowMaterial;
+    private Transform hospitalTarget;
     private PhysicsMaterial runtimeLowFrictionMaterial;
 
     private Vector3 moveDir;
@@ -165,6 +175,7 @@ public class PlayerController : MonoBehaviour
 
         UpdateFatigueIndicator();
         UpdateHealthIndicator();
+        UpdateHospitalArrow();
 
         if (IsInputLocked)
         {
@@ -723,6 +734,136 @@ public class PlayerController : MonoBehaviour
             healthIndicatorTransform.gameObject.SetActive(visible);
     }
 
+    private void UpdateHospitalArrow()
+    {
+        if (!showHospitalArrow)
+        {
+            SetHospitalArrowVisible(false);
+            return;
+        }
+
+        bool healthIndicatorVisible = healthIndicatorTransform != null && healthIndicatorTransform.gameObject.activeSelf;
+        if (!healthIndicatorVisible)
+        {
+            SetHospitalArrowVisible(false);
+            return;
+        }
+
+        if (hospitalTarget == null)
+            hospitalTarget = FindHospitalTarget();
+
+        if (hospitalTarget == null)
+        {
+            SetHospitalArrowVisible(false);
+            return;
+        }
+
+        EnsureHospitalArrowBuilt();
+        if (hospitalArrowTransform == null) return;
+
+        SetHospitalArrowVisible(true);
+
+        float bob = Mathf.Sin(Time.unscaledTime * 2.5f) * 0.08f;
+        hospitalArrowTransform.position = transform.position + Vector3.up * (arrowHeight + bob);
+
+        Vector3 dir = hospitalTarget.position - transform.position;
+        dir.y = 0f;
+        if (dir.sqrMagnitude > 0.01f)
+            hospitalArrowTransform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+
+        if (hospitalArrowRenderer != null)
+        {
+            float alphaPulse = Mathf.Lerp(0.65f, 1f, Mathf.Abs(Mathf.Sin(Time.unscaledTime * 1.8f)));
+            Color c = arrowColor;
+            c.a = alphaPulse;
+            if (hospitalArrowMaterial != null)
+                hospitalArrowMaterial.color = c;
+        }
+    }
+
+    private void EnsureHospitalArrowBuilt()
+    {
+        if (hospitalArrowTransform != null)
+            return;
+
+        GameObject arrowObj = new GameObject("HospitalArrow3D");
+        arrowObj.transform.SetParent(transform, false);
+        arrowObj.transform.localPosition = new Vector3(0f, arrowHeight, 0f);
+        arrowObj.transform.localScale = Vector3.one * arrowScale;
+
+        MeshFilter meshFilter = arrowObj.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = BuildHospitalArrowMesh();
+
+        hospitalArrowRenderer = arrowObj.AddComponent<MeshRenderer>();
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null)
+            shader = Shader.Find("Unlit/Color");
+        hospitalArrowMaterial = new Material(shader);
+        hospitalArrowMaterial.color = arrowColor;
+        hospitalArrowRenderer.sharedMaterial = hospitalArrowMaterial;
+        hospitalArrowRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        hospitalArrowRenderer.receiveShadows = false;
+
+        hospitalArrowTransform = arrowObj.transform;
+        arrowObj.SetActive(false);
+    }
+
+    private static Mesh BuildHospitalArrowMesh()
+    {
+        Mesh mesh = new Mesh { name = "HospitalDirectionArrow" };
+
+        float headWidth = 0.28f;
+        float zTip = 0.42f;
+        float zNeck = 0.02f;
+        float zTail = -0.38f;
+        float shaftHalf = 0.07f;
+        float y = 0.04f;
+
+        Vector3[] verts =
+        {
+            new Vector3(0f, 0f, zTip),
+            new Vector3(-headWidth, 0f, zNeck),
+            new Vector3(headWidth, 0f, zNeck),
+            new Vector3(-shaftHalf, 0f, zNeck),
+            new Vector3(shaftHalf, 0f, zNeck),
+            new Vector3(-shaftHalf, 0f, zTail),
+            new Vector3(shaftHalf, 0f, zTail),
+            new Vector3(0f, y, zTip),
+            new Vector3(-headWidth, y, zNeck),
+            new Vector3(headWidth, y, zNeck),
+            new Vector3(-shaftHalf, y, zNeck),
+            new Vector3(shaftHalf, y, zNeck),
+            new Vector3(-shaftHalf, y, zTail),
+            new Vector3(shaftHalf, y, zTail),
+        };
+
+        int[] tris =
+        {
+            0, 1, 2, 7, 9, 8, 0, 7, 8, 0, 8, 1, 1, 8, 9, 1, 9, 2, 2, 9, 10, 2, 10, 7, 0, 2, 10, 0, 10, 7,
+            3, 5, 6, 3, 6, 4, 11, 13, 12, 11, 12, 5, 3, 11, 5, 3, 4, 11, 4, 6, 13, 4, 13, 11,
+            0, 3, 4, 0, 4, 2, 7, 11, 12, 7, 12, 8, 1, 3, 5, 1, 5, 9, 2, 10, 6, 2, 6, 4, 8, 12, 13, 8, 13, 9
+        };
+
+        mesh.vertices = verts;
+        mesh.triangles = tris;
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
+    }
+
+    private void SetHospitalArrowVisible(bool visible)
+    {
+        if (hospitalArrowTransform == null) return;
+        if (hospitalArrowTransform.gameObject.activeSelf != visible)
+            hospitalArrowTransform.gameObject.SetActive(visible);
+    }
+
+    private static Transform FindHospitalTarget()
+    {
+        HospitalDoorInteractable door = Object.FindAnyObjectByType<HospitalDoorInteractable>();
+        return door != null ? door.transform : null;
+    }
+
     private void EnsureLowFrictionColliderMaterial()
     {
         if (!autoAssignLowFrictionMaterial || col == null)
@@ -833,6 +974,18 @@ public class PlayerController : MonoBehaviour
             inputLocks.Remove(key);
         else
             inputLocks[key] = count;
+    }
+
+    public void ForceUnlockInput(string source)
+    {
+        string key = string.IsNullOrWhiteSpace(source) ? "Unknown" : source;
+        inputLocks.Remove(key);
+
+        if (IsInputLocked)
+        {
+            moveDir = Vector3.zero;
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+        }
     }
 
     public void LockMovement(string source) => LockInput(source);

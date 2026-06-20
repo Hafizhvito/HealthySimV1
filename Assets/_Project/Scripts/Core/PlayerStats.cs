@@ -54,6 +54,15 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] [HideInInspector] private int overworkedDays = 0;
     [SerializeField] [HideInInspector] private bool _visitedHospitalToday = false;
 
+    [Header("Phase-Start Snapshot (Hidden)")]
+    [SerializeField] [HideInInspector] private int phaseStartDaysEvaluated;
+    [SerializeField] [HideInInspector] private int phaseStartPoorDietDays;
+    [SerializeField] [HideInInspector] private int phaseStartHighCalorieDays;
+    [SerializeField] [HideInInspector] private int phaseStartSkippedGymDays;
+    [SerializeField] [HideInInspector] private int phaseStartSkippedWorkDays;
+    [SerializeField] [HideInInspector] private int phaseStartOverworkedDays;
+    [SerializeField] [HideInInspector] private int phaseStartDisturbedSleepDays;
+
     [Header("Streak Counters (Hidden)")]
     [SerializeField] [HideInInspector] private int gymSkipStreak  = 0;
     [SerializeField] [HideInInspector] private int workSkipStreak = 0;
@@ -113,6 +122,31 @@ public class PlayerStats : MonoBehaviour
     public int SkippedWorkDays      => skippedWorkDays;
     public int OverworkedDays       => overworkedDays;
     public bool VisitedHospitalToday => _visitedHospitalToday;
+
+    public PhaseSnapshot GetCurrentPhaseSnapshot()
+    {
+        return new PhaseSnapshot
+        {
+            daysInPhase        = Mathf.Max(1, totalDaysEvaluated - phaseStartDaysEvaluated),
+            poorDietDays       = Mathf.Max(0, poorDietDays - phaseStartPoorDietDays),
+            highCalorieDays    = Mathf.Max(0, highCalorieDays - phaseStartHighCalorieDays),
+            skippedGymDays     = Mathf.Max(0, skippedGymDays - phaseStartSkippedGymDays),
+            skippedWorkDays    = Mathf.Max(0, skippedWorkDays - phaseStartSkippedWorkDays),
+            overworkedDays     = Mathf.Max(0, overworkedDays - phaseStartOverworkedDays),
+            disturbedSleepDays = Mathf.Max(0, disturbedSleepDays - phaseStartDisturbedSleepDays)
+        };
+    }
+
+    public struct PhaseSnapshot
+    {
+        public int daysInPhase;
+        public int poorDietDays;
+        public int highCalorieDays;
+        public int skippedGymDays;
+        public int skippedWorkDays;
+        public int overworkedDays;
+        public int disturbedSleepDays;
+    }
 
     // ── Streak getters ───────────────────────────────────────
     public int GymSkipStreak         => gymSkipStreak;
@@ -387,10 +421,11 @@ public class PlayerStats : MonoBehaviour
 
         healthScoreThisPhase = 50f;
 
-        // Reset streaks on phase transition — new phase, fresh start
+        SnapshotPhaseStartCounters();
+
         gymSkipStreak  = 0;
         workSkipStreak = 0;
-        Debug.Log("[PlayerStats] Streak counters reset on phase transition.");
+        Debug.Log("[PlayerStats] Phase transition: counters snapshot taken, streaks reset.");
 
         ApplyPhaseModifiers();
 
@@ -467,6 +502,8 @@ public class PlayerStats : MonoBehaviour
 
         progressionDayCount = 1;
         currentAgeStage = AgeStage.Youth;
+
+        SnapshotPhaseStartCounters();
 
         SetPlayerData(name, height, weight);
         SetGender(gender);
@@ -673,6 +710,17 @@ public class PlayerStats : MonoBehaviour
     {
         progressionDayCount = Mathf.Max(1, dayNumber);
         currentAgeStage     = ResolveAgeStageForDay(progressionDayCount);
+    }
+
+    private void SnapshotPhaseStartCounters()
+    {
+        phaseStartDaysEvaluated     = totalDaysEvaluated;
+        phaseStartPoorDietDays      = poorDietDays;
+        phaseStartHighCalorieDays   = highCalorieDays;
+        phaseStartSkippedGymDays    = skippedGymDays;
+        phaseStartSkippedWorkDays   = skippedWorkDays;
+        phaseStartOverworkedDays    = overworkedDays;
+        phaseStartDisturbedSleepDays = disturbedSleepDays;
     }
 
     private static AgeStage ResolveAgeStageForDay(int dayNumber)

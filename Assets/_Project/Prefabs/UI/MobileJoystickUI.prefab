@@ -433,7 +433,6 @@ MonoBehaviour:
   introPriority: 80
   gameplayPriority: 50
   inactivePriority: 1
-  cutShakeAmplitude: 0.03
   streetShotHeight: 1.7
   streetShotDistance: 8
   streetShotDollySpeed: 1
@@ -470,8 +469,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WorkReminderUI
   showDelaySeconds: 1.5
-  autoDismissSeconds: 6
   fadeDuration: 0.3
+  dailyHealthReminderText: Jangan lupa gym dan makan sehat hari ini.
 --- !u!114 &3878313949412613930
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -544,36 +543,18 @@ MonoBehaviour:
   bazaarSpawnPosition: {x: -53, y: 1, z: 37}
   bazaarDiscountMultiplier: 0.5
   bazaarFoodPool:
+  - {fileID: 11400000, guid: cf8201c2affcfd34696af7ea389a8749, type: 2}
   - {fileID: 11400000, guid: fab9eb202f4ff6b4994ff1cd13cbf6ef, type: 2}
   - {fileID: 11400000, guid: fe14bcfb1f91a2a41b933ca5a9a6e9b5, type: 2}
   - {fileID: 11400000, guid: 994c1cd1c23d5b646bad819cd9d2de6e, type: 2}
-  - {fileID: 11400000, guid: 4c430479ef9759e4c9bf3fe3663f1b7b, type: 2}
-  - {fileID: 11400000, guid: 098a55c36210a004e8072853ab8b872d, type: 2}
+  - {fileID: 11400000, guid: 7c3d0bdf874f6074ab08c272d8e541eb, type: 2}
+  - {fileID: 11400000, guid: 194ba158a2d7d164b94d181fb53325db, type: 2}
+  - {fileID: 11400000, guid: 7ea37bf94d7fb5944b6c345be3228e71, type: 2}
+  - {fileID: 11400000, guid: edd08da0dfdd7bb47852007261278828, type: 2}
+  - {fileID: 11400000, guid: 6053c014ecc4e8247b637647bb36fa91, type: 2}
   - {fileID: 11400000, guid: d8c59d4602afcf74bb069e1b555d6f80, type: 2}
-  - {fileID: 11400000, guid: e03da0d2f6b1bbd4ebb886780f09bd37, type: 2}
-  - {fileID: 11400000, guid: 3b770a2245f6c4c4abe48d473ba00580, type: 2}
-  - {fileID: 11400000, guid: 9b166f2fb5cc552468e70e28f9a7e11f, type: 2}
-  - {fileID: 11400000, guid: b1973d64cf9a1f745a3f8f685b908023, type: 2}
-  - {fileID: 11400000, guid: 8c126be0378711d459c5cf15065ba48c, type: 2}
-  - {fileID: 11400000, guid: 3a85c12528af75843877a381b2418eed, type: 2}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 11400000, guid: 8002551103a548f44b3f2647709908f6, type: 2}
+  - {fileID: 11400000, guid: 1579c6b8693119a4b863661acf7b93f0, type: 2}
   bazaarObjectName: Interactable_Bazaar
 --- !u!114 &6016031756767880590
 MonoBehaviour:

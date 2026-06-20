@@ -13,14 +13,15 @@ MonoBehaviour:
   m_Name: LessHealthy_DonatCokelat
   m_EditorClassIdentifier: Assembly-CSharp::FoodData
   foodName: Donat Cokelat
-  description: Manis dan bikin mood naik cepat, tapi sugar tinggi.
-  icon: {fileID: 0}
+  description: Camilan manis tinggi gula dan lemak.
+  icon: {fileID: 21300000, guid: 33e0a86546b8e5449adbba61200e426a, type: 3}
   calories: 300
   energyRestored: 10
   moodEffect: 6
   fat: 14
   protein: 4
   carbohydrate: 38
+  sugar: 22
   category: 5
   isHealthy: 0
   price: 21

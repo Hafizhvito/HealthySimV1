@@ -251,10 +251,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         bool             lastWorkHadBonus = workSessionManager?.LastSessionHadBonus ?? false;
         GymSessionData   lastGymSession  = gymProgressionSystem?.LastSession;
         float energyBeforeSleep     = playerStats.EnergyPercent;
-        // bool  trainedYesterday      = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
         float adaptationBeforeSleep = playerStats.TrainingAdaptation;
         float fatigueBeforeSleep    = playerStats.FatigueDebt;
         float scoreBeforeTransition = playerStats.HealthScoreThisPhase;
+        PlayerStats.PhaseSnapshot phaseSnapshotBeforeTransition = playerStats.GetCurrentPhaseSnapshot();
 
         bool  overworkedYesterday   = workedYesterday && DidOverworkYesterday(workSessionManager);
         bool  poorDietYesterday     = HasPoorDietPattern();
@@ -362,7 +362,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
             if (ageStageChanged)
             {
-                yield return StartCoroutine(ShowAgingNotificationRoutine(newAgeStage, scoreBeforeTransition));
+                yield return StartCoroutine(ShowAgingNotificationRoutine(
+                    previousAgeStage, newAgeStage, scoreBeforeTransition,
+                    phaseSnapshotBeforeTransition, playerStats.PlayerGender));
             }
 
             int triggerDay = EndingManager.Instance != null
@@ -911,7 +913,12 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         return headline + "\n" + detail + "\n\n" + narrative;
     }
 
-    private IEnumerator ShowAgingNotificationRoutine(PlayerStats.AgeStage newStage, float phaseScore)
+    private IEnumerator ShowAgingNotificationRoutine(
+        PlayerStats.AgeStage previousStage,
+        PlayerStats.AgeStage newStage,
+        float phaseScore,
+        PlayerStats.PhaseSnapshot snapshot,
+        PlayerStats.Gender gender)
     {
         EnsureAgingNotificationPanel();
         if (agingPanelRoot == null || agingPanelGroup == null ||
@@ -937,7 +944,19 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             agingPanelContinueButton.onClick.AddListener(() => continueClicked = true);
             agingPanelContinueButton.interactable = false;
 
-            string narrative          = BuildAgingPanelNarrative(phaseScore);
+            PlayerStats stats = PlayerStats.Instance;
+            float carryOver = stats != null ? (stats.MaxEnergy / 100f) : 1f;
+
+            var reviewInput = new PhaseReviewBuilder.PhaseReviewInput
+            {
+                previousStage = previousStage,
+                newStage = newStage,
+                phaseScore = phaseScore,
+                snapshot = snapshot,
+                phaseCarryOverModifier = carryOver,
+                gender = gender
+            };
+            string narrative          = PhaseReviewBuilder.Build(reviewInput);
             float  visibleCharacters  = 0f;
             const float charsPerSecond = 40f;
 
@@ -975,38 +994,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         }
     }
 
-    private string BuildAgingPanelNarrative(float phaseScore)
-    {
-        bool worked    = WorkSessionManager.Instance   != null && WorkSessionManager.Instance.HasWorkedToday;
-        bool exercised = GymProgressionSystem.Instance != null && GymProgressionSystem.Instance.HasTrainedToday;
-
-        if (phaseScore > 70f && worked && exercised)
-            return "Hidupmu di fase ini seimbang — kerja, gerak, dan makan terjaga. Tubuhmu memasuki fase berikutnya dalam kondisi terbaik.";
-
-        if (phaseScore > 70f && worked && !exercised)
-            return "Pekerja keras, tapi kurang bergerak. Nutrisimu baik, namun tubuhmu butuh aktivitas fisik lebih konsisten.";
-
-        if (phaseScore > 70f && !worked && exercised)
-            return "Tubuhmu aktif dan terawat, tapi stabilitas finansialmu perlu perhatian. Keseimbangan hidup bukan hanya soal fisik.";
-
-        PlayerStats stats = PlayerStats.Instance;
-        if (stats != null && stats.CurrentAgeStage == PlayerStats.AgeStage.Senior && stats.PlayerGender == PlayerStats.Gender.Female)
-        {
-            if (phaseScore > 70f)
-                return "Kamu memasuki fase lansia sebagai perempuan — tubuhmu mulai menyesuaikan perubahan hormonal. Kebiasaan sehatmu akan sangat membantu stabilitas energi dan suasana hatimu.";
-            if (phaseScore < 40f)
-                return "Perubahan hormonal di fase lansia bisa terasa berat, apalagi jika pola hidupmu belum mendukung. Mulai perhatikan asupan dan istirahatmu lebih serius.";
-            return "Memasuki fase menopause adalah perubahan besar. Tubuhmu butuh lebih banyak perhatian — terutama pola makan dan manajemen stres.";
-        }
-
-        if (phaseScore < 40f && !worked && !exercised)
-            return "Fase ini banyak dilewatkan tanpa aktivitas berarti. Dampaknya mulai terasa — tubuhmu meminta perhatian lebih serius.";
-
-        if (phaseScore < 40f && worked)
-            return "Kamu bekerja keras, tapi pola makanmu belum mendukung. Energimu terkuras lebih dari yang seharusnya.";
-
-        return "Ada kemajuan, tapi masih banyak ruang untuk berkembang. Fase berikutnya adalah kesempatan untuk lebih konsisten.";
-    }
+    // BuildAgingPanelNarrative replaced by PhaseReviewBuilder.Build()
 
     // ── UI helpers (tidak berubah dari versi asli) ───────────
     private static TMP_FontAsset LoadAgingPanelFont(string resourcePath)

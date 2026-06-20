@@ -1,31 +1,30 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
----
-!u!114 &11400000
+--- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: { fileID: 0 }
-  m_PrefabInstance: { fileID: 0 }
-  m_PrefabAsset: { fileID: 0 }
-  m_GameObject: { fileID: 0 }
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script:
-    { fileID: 11500000, guid: 679df606234031d41a0d6a0ffd67a089, type: 3 }
+  m_Script: {fileID: 11500000, guid: 679df606234031d41a0d6a0ffd67a089, type: 3}
   m_Name: Healthy_SotoAyamBening
   m_EditorClassIdentifier: Assembly-CSharp::FoodData
   foodName: Soto Ayam Bening
-  description: Kuah hangat dengan ayam suwir, ringan untuk perut.
-  icon: { fileID: 0 }
-  calories: 320
-  energyRestored: 18
-  moodEffect: 6
-  fat: 8
-  protein: 20
-  carbohydrate: 30
+  description: Kuah bening dengan protein ayam dan sayuran.
+  icon: {fileID: 21300000, guid: 6e2b5f55b610d6743a44bbc161d1eb53, type: 3}
+  calories: 210
+  energyRestored: 15
+  moodEffect: 5
+  fat: 6
+  protein: 16
+  carbohydrate: 22
+  sugar: 2
   category: 0
   isHealthy: 1
-  price: 16
+  price: 26
   availableMorning: 1
   availableAfternoon: 1
   availableEvening: 1

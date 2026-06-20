@@ -65,6 +65,22 @@ public class ModalStateManager : MonoBehaviour
             OnModalStateChanged?.Invoke(true);
     }
 
+    public void ForceCloseModal(string modalName)
+    {
+        EnsurePlayerController();
+
+        bool wasOpen = IsAnyModalOpen;
+        string key = string.IsNullOrWhiteSpace(modalName) ? "UnknownModal" : modalName;
+
+        modalCountsBySource.Remove(key);
+
+        if (playerController != null)
+            playerController.ForceUnlockInput(key);
+
+        if (wasOpen && !IsAnyModalOpen)
+            OnModalStateChanged?.Invoke(false);
+    }
+
     public void CloseModal(string modalName)
     {
         EnsurePlayerController();
