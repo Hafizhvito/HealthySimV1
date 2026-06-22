@@ -5,8 +5,8 @@ using DG.Tweening;
 
 public class InputFormManager : MonoBehaviour
 {
-    private const float MinStartButtonWidth = 320f;
-    private const float MinStartButtonHeight = 100f;
+    private const float MinStartButtonWidth = 150f;
+    private const float MinStartButtonHeight = 150f;
 
     [Header("Panel References")]
     [SerializeField] private GameObject panelNama;
