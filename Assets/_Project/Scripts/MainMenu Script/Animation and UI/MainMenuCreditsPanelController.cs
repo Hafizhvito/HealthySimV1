@@ -16,9 +16,10 @@ public class MainMenuCreditsPanelController : MonoBehaviour
     [SerializeField] private RectTransform panelRect;
 
     [Header("Layout")]
-    [SerializeField] private Vector2 panelSize = new Vector2(980f, 700f);
-    [SerializeField] private int bodyFontSize = 19;
-    [SerializeField] private float bodyLineSpacing = 4f;
+    [SerializeField] private Vector2 panelSize = new Vector2(900f, 640f);
+    [SerializeField] private int bodyFontSize = 20;
+    [SerializeField] private float bodyLineSpacing = 2f;
+    [SerializeField] private float contentBottomPadding = 24f;
 
     private void Awake()
     {
@@ -27,10 +28,13 @@ public class MainMenuCreditsPanelController : MonoBehaviour
         PopulateCredits();
     }
 
+    private bool scrollPositionInitialized;
+
     private void OnEnable()
     {
         AutoBind();
-        RefreshScrollMetrics();
+        scrollPositionInitialized = false;
+        RefreshScrollMetrics(resetScrollPosition: true);
         StartCoroutine(RefreshScrollMetricsNextFrame());
     }
 
@@ -56,19 +60,20 @@ public class MainMenuCreditsPanelController : MonoBehaviour
                 scrollRectTransform.anchorMax = new Vector2(1f, 1f);
                 scrollRectTransform.pivot = new Vector2(0.5f, 1f);
                 scrollRectTransform.anchoredPosition = Vector2.zero;
-                scrollRectTransform.sizeDelta = Vector2.zero;
+                scrollRectTransform.sizeDelta = new Vector2(0f, 460f);
             }
 
             LayoutElement scrollLayout = scrollRect.GetComponent<LayoutElement>();
             if (scrollLayout == null)
                 scrollLayout = scrollRect.gameObject.AddComponent<LayoutElement>();
-            scrollLayout.minHeight = 520f;
+            scrollLayout.minHeight = 420f;
+            scrollLayout.preferredHeight = 460f;
             scrollLayout.flexibleHeight = 1f;
             scrollLayout.flexibleWidth = 1f;
 
             scrollRect.horizontal = false;
             scrollRect.vertical = true;
-            scrollRect.movementType = ScrollRect.MovementType.Elastic;
+            scrollRect.movementType = ScrollRect.MovementType.Clamped;
             scrollRect.scrollSensitivity = 30f;
 
             if (scrollRect.horizontalScrollbar != null)
@@ -77,34 +82,60 @@ public class MainMenuCreditsPanelController : MonoBehaviour
                 scrollRect.verticalScrollbar.gameObject.SetActive(true);
         }
 
-        if (contentRoot != null)
+        ConfigureTitleLayout();
+        ConfigureContentLayout();
+        ConfigureViewportMask();
+        ConfigureBodyText();
+        RefreshScrollMetrics(resetScrollPosition: true);
+    }
+
+    private void ConfigureTitleLayout()
+    {
+        if (titleText == null)
+            return;
+
+        RectTransform titleRect = titleText.rectTransform;
+        titleRect.anchorMin = new Vector2(0f, 1f);
+        titleRect.anchorMax = new Vector2(1f, 1f);
+        titleRect.pivot = new Vector2(0.5f, 1f);
+        titleRect.anchoredPosition = Vector2.zero;
+        titleRect.sizeDelta = new Vector2(0f, 52f);
+
+        LayoutElement titleLayout = titleText.GetComponent<LayoutElement>();
+        if (titleLayout == null)
+            titleLayout = titleText.gameObject.AddComponent<LayoutElement>();
+        titleLayout.minHeight = 52f;
+        titleLayout.preferredHeight = 52f;
+    }
+
+    private void ConfigureContentLayout()
+    {
+        if (contentRoot == null)
+            return;
+
+        contentRoot.anchorMin = new Vector2(0f, 1f);
+        contentRoot.anchorMax = new Vector2(1f, 1f);
+        contentRoot.pivot = new Vector2(0.5f, 1f);
+        contentRoot.anchoredPosition = Vector2.zero;
+        contentRoot.sizeDelta = new Vector2(0f, 0f);
+
+        VerticalLayoutGroup contentLayout = contentRoot.GetComponent<VerticalLayoutGroup>();
+        if (contentLayout != null)
         {
-            contentRoot.anchorMin = new Vector2(0f, 1f);
-            contentRoot.anchorMax = new Vector2(1f, 1f);
-            contentRoot.pivot = new Vector2(0.5f, 1f);
-            contentRoot.anchoredPosition = Vector2.zero;
-            contentRoot.sizeDelta = new Vector2(0f, 0f);
-
-            ContentSizeFitter fitter = contentRoot.GetComponent<ContentSizeFitter>();
-            if (fitter == null)
-                fitter = contentRoot.gameObject.AddComponent<ContentSizeFitter>();
-            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            VerticalLayoutGroup contentLayout = contentRoot.GetComponent<VerticalLayoutGroup>();
-            if (contentLayout == null)
-                contentLayout = contentRoot.gameObject.AddComponent<VerticalLayoutGroup>();
-            contentLayout.childAlignment = TextAnchor.UpperLeft;
-            contentLayout.spacing = 0f;
-            contentLayout.padding = new RectOffset(36, 36, 24, 24);
-            contentLayout.childControlWidth = true;
-            contentLayout.childControlHeight = true;
-            contentLayout.childForceExpandWidth = true;
-            contentLayout.childForceExpandHeight = false;
+            if (Application.isPlaying)
+                Destroy(contentLayout);
+            else
+                DestroyImmediate(contentLayout);
         }
 
-        ConfigureBodyText();
-        RefreshScrollMetrics();
+        ContentSizeFitter contentFitter = contentRoot.GetComponent<ContentSizeFitter>();
+        if (contentFitter != null)
+        {
+            if (Application.isPlaying)
+                Destroy(contentFitter);
+            else
+                DestroyImmediate(contentFitter);
+        }
     }
 
     public void PopulateCredits()
@@ -117,16 +148,18 @@ public class MainMenuCreditsPanelController : MonoBehaviour
         if (bodyText != null)
             bodyText.text = BuildCreditsText();
 
-        RefreshScrollMetrics();
+        RefreshScrollMetrics(resetScrollPosition: true);
     }
 
     private IEnumerator RefreshScrollMetricsNextFrame()
     {
         yield return null;
-        RefreshScrollMetrics();
+        RefreshScrollMetrics(resetScrollPosition: !scrollPositionInitialized);
+        yield return null;
+        RefreshScrollMetrics(resetScrollPosition: !scrollPositionInitialized);
     }
 
-    private void RefreshScrollMetrics()
+    private void RefreshScrollMetrics(bool resetScrollPosition = false)
     {
         if (contentRoot == null || bodyText == null)
             return;
@@ -134,16 +167,25 @@ public class MainMenuCreditsPanelController : MonoBehaviour
         bodyText.ForceMeshUpdate(true);
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(bodyText.rectTransform);
-        LayoutRebuilder.ForceRebuildLayoutImmediate(contentRoot);
 
-        float contentHeight = LayoutUtility.GetPreferredHeight(contentRoot);
-        if (contentHeight < 1f)
-            contentHeight = bodyText.preferredHeight + 48f;
+        float bodyHeight = Mathf.Max(bodyText.preferredHeight, bodyText.renderedHeight);
+        RectTransform bodyRect = bodyText.rectTransform;
+        bodyRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, bodyHeight);
 
+        float contentHeight = bodyHeight + contentBottomPadding;
         contentRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, contentHeight);
 
         if (scrollRect != null)
-            scrollRect.verticalNormalizedPosition = 1f;
+        {
+            scrollRect.enabled = false;
+            scrollRect.enabled = true;
+
+            if (resetScrollPosition && !scrollPositionInitialized)
+            {
+                scrollRect.verticalNormalizedPosition = 1f;
+                scrollPositionInitialized = true;
+            }
+        }
     }
 
     private void AutoBind()
@@ -190,20 +232,37 @@ public class MainMenuCreditsPanelController : MonoBehaviour
             bodyText = bodyGo.GetComponent<TextMeshProUGUI>();
         }
 
+        bodyText.gameObject.layer = gameObject.layer;
+
         RectTransform bodyRect = bodyText.rectTransform;
         bodyRect.anchorMin = new Vector2(0f, 1f);
         bodyRect.anchorMax = new Vector2(1f, 1f);
         bodyRect.pivot = new Vector2(0.5f, 1f);
         bodyRect.anchoredPosition = Vector2.zero;
-        bodyRect.sizeDelta = new Vector2(-72f, 0f);
+        bodyRect.sizeDelta = new Vector2(-32f, 0f);
+
+        if (bodyText.font == null && TMP_Settings.defaultFontAsset != null)
+            bodyText.font = TMP_Settings.defaultFontAsset;
 
         bodyText.fontSize = bodyFontSize;
         bodyText.lineSpacing = bodyLineSpacing;
         bodyText.alignment = TextAlignmentOptions.TopLeft;
         bodyText.textWrappingMode = TextWrappingModes.Normal;
         bodyText.overflowMode = TextOverflowModes.Overflow;
-        bodyText.color = new Color(0.93f, 0.95f, 0.98f, 1f);
+        bodyText.color = new Color(0.1f, 0.1f, 0.1f, 1f);
         bodyText.raycastTarget = false;
+
+        if (string.IsNullOrWhiteSpace(bodyText.text))
+            bodyText.text = BuildCreditsText();
+
+        LayoutElement bodyLayout = bodyText.GetComponent<LayoutElement>();
+        if (bodyLayout != null)
+        {
+            if (Application.isPlaying)
+                Destroy(bodyLayout);
+            else
+                DestroyImmediate(bodyLayout);
+        }
 
         ContentSizeFitter bodyFitter = bodyText.GetComponent<ContentSizeFitter>();
         if (bodyFitter == null)
@@ -211,19 +270,49 @@ public class MainMenuCreditsPanelController : MonoBehaviour
         bodyFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
         bodyFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        LayoutElement layout = bodyText.GetComponent<LayoutElement>();
-        if (layout == null)
-            layout = bodyText.gameObject.AddComponent<LayoutElement>();
-        layout.minHeight = 120f;
-        layout.preferredWidth = -1f;
-        layout.flexibleWidth = 1f;
-
         Image scrollBackground = scrollRect != null ? scrollRect.GetComponent<Image>() : null;
         if (scrollBackground != null)
-            scrollBackground.color = new Color(0.08f, 0.1f, 0.14f, 0.82f);
+        {
+            scrollBackground.color = new Color(1f, 1f, 1f, 0f);
+            scrollBackground.raycastTarget = true;
+        }
+
+        ConfigureViewportMask();
 
         if (titleText != null)
-            titleText.color = new Color(0.12f, 0.14f, 0.18f, 1f);
+        {
+            titleText.fontSize = 36f;
+            titleText.fontStyle = FontStyles.Bold;
+            titleText.alignment = TextAlignmentOptions.Center;
+            titleText.color = Color.black;
+        }
+    }
+
+    private void ConfigureViewportMask()
+    {
+        if (scrollRect == null || scrollRect.viewport == null)
+            return;
+
+        RectTransform viewport = scrollRect.viewport;
+
+        Mask legacyMask = viewport.GetComponent<Mask>();
+        if (legacyMask != null)
+        {
+            if (Application.isPlaying)
+                Destroy(legacyMask);
+            else
+                DestroyImmediate(legacyMask);
+        }
+
+        if (viewport.GetComponent<RectMask2D>() == null)
+            viewport.gameObject.AddComponent<RectMask2D>();
+
+        Image viewportImage = viewport.GetComponent<Image>();
+        if (viewportImage != null)
+        {
+            viewportImage.color = new Color(1f, 1f, 1f, 0f);
+            viewportImage.raycastTarget = true;
+        }
     }
 
     private void RemoveLegacyContentChildren()
