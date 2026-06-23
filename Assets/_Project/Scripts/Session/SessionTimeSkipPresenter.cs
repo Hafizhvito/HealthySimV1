@@ -76,7 +76,7 @@ public class SessionTimeSkipPresenter : MonoBehaviour
 
     private IEnumerator PlayPendingWhenReady()
     {
-        yield return new WaitForSecondsRealtime(0.35f);
+        yield return new WaitForSecondsRealtime(0.2f);
 
         if (FadeManager.Instance != null)
         {

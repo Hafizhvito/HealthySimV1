@@ -379,6 +379,12 @@ public class NpcDialogueMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>Emergency close when a sub-scene session hits its dialogue wait timeout.</summary>
+    public void ForceCloseSession()
+    {
+        CloseMenu();
+    }
+
     private void CloseMenu()
     {
         if (!IsOpen)

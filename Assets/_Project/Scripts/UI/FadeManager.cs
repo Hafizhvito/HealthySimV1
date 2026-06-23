@@ -140,28 +140,38 @@ public class FadeManager : MonoBehaviour
                 yield return null;
         }
 
-        bool shouldWaitForSpawn = !string.IsNullOrEmpty(SpawnPlayerManager.TargetSpawnID);
-        if (shouldWaitForSpawn)
+        yield return WaitForSubSceneSpawnIfNeeded();
+
+        if (sceneName == SubSceneReturnHelper.SampleSceneName)
         {
-            bool spawnComplete = false;
-            Action onSpawnComplete = () => spawnComplete = true;
-            SpawnPlayerManager.OnSpawnComplete += onSpawnComplete;
-
-            float elapsed = 0f;
-            const float timeout = 2f;
-            const float tick = 0.05f;
-            WaitForSecondsRealtime wait = new WaitForSecondsRealtime(tick);
-
-            while (!spawnComplete && elapsed < timeout)
-            {
-                yield return wait;
-                elapsed += tick;
-            }
-
-            SpawnPlayerManager.OnSpawnComplete -= onSpawnComplete;
+            ReleaseInputBlock();
+            yield break;
         }
 
         yield return FadeRoutine(0f, fadeDuration, null);
+    }
+
+    private static IEnumerator WaitForSubSceneSpawnIfNeeded()
+    {
+        if (string.IsNullOrEmpty(SpawnPlayerManager.TargetSpawnID))
+            yield break;
+
+        bool spawnComplete = false;
+        Action onSpawnComplete = () => spawnComplete = true;
+        SpawnPlayerManager.OnSpawnComplete += onSpawnComplete;
+
+        float elapsed = 0f;
+        const float timeout = 0.75f;
+        const float tick = 0.02f;
+        WaitForSecondsRealtime wait = new WaitForSecondsRealtime(tick);
+
+        while (!spawnComplete && elapsed < timeout)
+        {
+            yield return wait;
+            elapsed += tick;
+        }
+
+        SpawnPlayerManager.OnSpawnComplete -= onSpawnComplete;
     }
 
     private void EnsureFadeCanvas()

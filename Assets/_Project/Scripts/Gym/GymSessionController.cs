@@ -191,20 +191,13 @@ public class GymSessionController : MonoBehaviour
         if (!opened)
             yield break;
 
-        while (dialogueUI != null && dialogueUI.IsOpen)
-            yield return new WaitForSecondsRealtime(dialoguePollInterval);
+        yield return SubSceneReturnHelper.WaitForDialogue(dialogueUI, dialoguePollInterval);
     }
 
     private void ExitToMainScene()
     {
         SetGymSessionLock(false);
-
-        SpawnPlayerManager.TargetSpawnID = "gymdoor";
-
-        if (FadeManager.Instance != null)
-        {
-            FadeManager.Instance.FadeToBlackAndLoad(mainSceneName, 0.5f);
-        }
+        SubSceneReturnHelper.ReturnToSampleScene("gymdoor", mainSceneName);
     }
 
     private void SetGymSessionLock(bool locked)

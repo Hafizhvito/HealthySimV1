@@ -72,12 +72,7 @@ public class WorkSessionController : MonoBehaviour
 
     private void ReturnToMainScene()
     {
-        SpawnPlayerManager.TargetSpawnID = "officedoor";
-
-        if (FadeManager.Instance != null)
-        {
-            FadeManager.Instance.FadeToBlackAndLoad(_mainSceneName, 0.5f);
-        }
+        SubSceneReturnHelper.ReturnToSampleScene("officedoor", _mainSceneName);
     }
 
     private bool ResolveSceneDependencies()
@@ -145,8 +140,7 @@ public class WorkSessionController : MonoBehaviour
             yield break;
         }
 
-        while (_dialogueUI != null && _dialogueUI.IsOpen)
-            yield return new WaitForSecondsRealtime(_dialoguePollInterval);
+        yield return SubSceneReturnHelper.WaitForDialogue(_dialogueUI, _dialoguePollInterval);
 
         onClosed?.Invoke();
     }

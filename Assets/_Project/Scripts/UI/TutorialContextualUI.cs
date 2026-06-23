@@ -199,13 +199,21 @@ public class TutorialContextualUI : MonoBehaviour
 
         bool workCondition = workSessionManager != null
             && !workSessionManager.HasWorkedToday
-            && GetEstimatedHour() >= 9f;
+            && IsWorkReminderHour();
 
         TryQueueHint(
             "work",
             "\U0001F4BC",
-            "Jangan lupa ke kantor hari ini - cari pintu bertulis Kantor",
+            $"Kantor buka {FacilityHours.WorkHoursLabel}. Cari pintu bertulis Kantor.",
             workCondition);
+    }
+
+    private bool IsWorkReminderHour()
+    {
+        if (timeManager != null)
+            return FacilityHours.IsWorkOpen(timeManager);
+
+        return false;
     }
 
     private void TryQueueHint(string key, string icon, string text, bool condition)
@@ -221,18 +229,6 @@ public class TutorialContextualUI : MonoBehaviour
 
         shownHintKeys.Add(key);
         queue.Enqueue(new ToastData(key, icon, text));
-    }
-
-    private float GetEstimatedHour()
-    {
-        if (timeManager == null)
-            return 7f;
-
-        if (timeManager.TotalDuration <= 0.001f)
-            return 7f;
-
-        float normalized = Mathf.Clamp01(timeManager.CurrentTime / timeManager.TotalDuration);
-        return Mathf.Lerp(7f, 20f, normalized);
     }
 
     private void StartNextToast()
