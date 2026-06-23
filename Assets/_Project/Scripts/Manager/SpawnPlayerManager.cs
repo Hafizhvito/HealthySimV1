@@ -24,6 +24,19 @@ public class SpawnPlayerManager : MonoBehaviour
         TargetSpawnID = string.Empty;
     }
 
+    /// <summary>
+    /// True when SampleScene reload should use a non-default spawn (office/gym return, etc.).
+    /// </summary>
+    public static bool IsReturningFromSubSceneLoad()
+    {
+        if (string.IsNullOrEmpty(TargetSpawnID))
+            return false;
+
+        return !string.Equals(TargetSpawnID, DefaultSpawnId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool spawnCompletedThisSceneLoad;
+
     private void Awake()
     {
         if (_Instance != null && _Instance != this)
@@ -51,26 +64,66 @@ public class SpawnPlayerManager : MonoBehaviour
         if (scene.name != "SampleScene")
             return;
 
+        spawnCompletedThisSceneLoad = false;
+
         if (string.IsNullOrEmpty(TargetSpawnID))
             TargetSpawnID = DefaultSpawnId;
 
-        StartCoroutine(SpawnAfterEverything());
+        if (IsReturningFromSubSceneLoad())
+            StartCoroutine(SpawnForSubSceneReturn());
     }
 
-    private IEnumerator SpawnAfterEverything()
+    /// <summary>
+    /// Called by SampleSceneBootstrap before intro so cutscene cameras frame the final spawn pose.
+    /// </summary>
+    public IEnumerator SpawnWhenPlayerReady()
     {
-        // Tunggu Bootstrap selesai — Bootstrap jalan di Start()
-        // Kita tunggu beberapa frame + waktu ekstra
-        yield return null;          // frame 1
-        yield return null;          // frame 2
-        yield return null;          // frame 3
-        yield return new WaitForSeconds(0.2f); // ekstra safety
+        if (spawnCompletedThisSceneLoad)
+            yield break;
+
+        const float timeoutSeconds = 8f;
+        float elapsed = 0f;
+        GameObject player = null;
+
+        while (player == null && elapsed < timeoutSeconds)
+        {
+            player = GameObject.FindWithTag("Player");
+            if (player == null)
+            {
+                PlayerController pc = FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+                if (pc != null)
+                    player = pc.gameObject;
+            }
+
+            if (player != null)
+                break;
+
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (player == null)
+        {
+            Debug.LogWarning("[Spawn] Player tidak siap — spawn dibatalkan.");
+            yield break;
+        }
 
         SpawnPlayer();
     }
 
+    private IEnumerator SpawnForSubSceneReturn()
+    {
+        // Let scene objects activate before resolving spawn points.
+        yield return null;
+        yield return null;
+        yield return SpawnWhenPlayerReady();
+    }
+
     private void SpawnPlayer()
     {
+        if (spawnCompletedThisSceneLoad)
+            return;
+
         if (string.IsNullOrEmpty(TargetSpawnID)) return;
 
         // Cari SpawnPoint
@@ -119,6 +172,7 @@ public class SpawnPlayerManager : MonoBehaviour
 
         if (cc != null) cc.enabled = true;
 
+        spawnCompletedThisSceneLoad = true;
         TargetSpawnID = "";
         OnSpawnComplete?.Invoke();
     }

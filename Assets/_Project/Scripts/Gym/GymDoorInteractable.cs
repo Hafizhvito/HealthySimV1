@@ -10,14 +10,15 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
     [SerializeField] private string gymSceneName = "GymScene";
     [SerializeField] private string promptText = "Masuk Gym";
     [SerializeField] private string blockedEnergyText = "Energi terlalu rendah untuk latihan.";
-    [SerializeField] private string blockedNightText = "Gym sudah tutup. Jam operasional 06.00 - 22.00.";
     [SerializeField] private string alreadyTrainedText = "Kamu sudah berlatih hari ini. Istirahat dulu!";
     [SerializeField] private GymProgressionSystem gymProgressionOverride;
     [SerializeField] private FadeManager fadeManagerOverride;
+    [SerializeField] private float floatingTextCooldownSeconds = 2f;
 
     private Collider cachedCollider;
     private Coroutine floatingTextRoutine;
     private GameObject floatingTextObject;
+    private float nextFloatingTextAllowedTime;
     private Canvas faintDialogCanvas;
     private bool pendingFaintConfirm;
     private TimeManager.TimePeriod pendingPeriod;
@@ -38,6 +39,7 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
     private void OnDisable()
     {
         InteractableRegistry.Unregister(this);
+        ClearFloatingText();
     }
 
     public string GetInteractionText()
@@ -53,7 +55,27 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
     public bool CanInteract(GameObject interactor)
     {
-        return true;
+        TimeManager timeManager = TimeManager.Instance;
+        PlayerStats playerStats = PlayerStats.Instance;
+        GymProgressionSystem progression = ResolveGymProgression();
+
+        if (timeManager == null || playerStats == null || progression == null)
+            return false;
+
+        if (!FacilityHours.IsGymOpen(timeManager))
+            return false;
+
+        if (progression.HasTrainedToday)
+            return false;
+
+        float energy = playerStats.EnergyPercent;
+        if (energy < FaintEnergyThreshold)
+            return true;
+
+        if (!progression.CanTrain(energy, timeManager.CurrentPeriod))
+            return false;
+
+        return progression.BuildSession(timeManager.CurrentPeriod, energy) != null;
     }
 
     public void Interact(GameObject interactor)
@@ -78,9 +100,9 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
         float hour = timeManager.CurrentHour;
         float energy = playerStats.EnergyPercent;
 
-        if (hour < 6f || hour >= 22f)
+        if (!FacilityHours.IsGymOpen(hour))
         {
-            ShowFloatingText(blockedNightText, 2f);
+            ShowFloatingText($"Gym sudah tutup. Jam operasional {FacilityHours.GymHoursLabel}.", 2f);
             return;
         }
 
@@ -160,16 +182,27 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
 
     private void ShowFloatingText(string text, float duration)
     {
+        if (Time.unscaledTime < nextFloatingTextAllowedTime)
+            return;
+
+        nextFloatingTextAllowedTime = Time.unscaledTime + Mathf.Max(0.25f, floatingTextCooldownSeconds);
+        ClearFloatingText();
+        floatingTextRoutine = StartCoroutine(FloatingTextRoutine(text, duration));
+    }
+
+    private void ClearFloatingText()
+    {
         if (floatingTextRoutine != null)
+        {
             StopCoroutine(floatingTextRoutine);
+            floatingTextRoutine = null;
+        }
 
         if (floatingTextObject != null)
         {
             Destroy(floatingTextObject);
             floatingTextObject = null;
         }
-
-        floatingTextRoutine = StartCoroutine(FloatingTextRoutine(text, duration));
     }
 
     private IEnumerator FloatingTextRoutine(string text, float duration)
@@ -206,10 +239,10 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
             yield return null;
         }
 
-        if (textObj != null)
-            Destroy(textObj);
+        if (floatingTextObject == textObj)
+            floatingTextObject = null;
 
-        floatingTextObject = null;
+        Destroy(textObj);
         floatingTextRoutine = null;
     }
 

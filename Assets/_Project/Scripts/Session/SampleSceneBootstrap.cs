@@ -104,8 +104,31 @@ public class SampleSceneBootstrap : MonoBehaviour
 
         EnsurePlayerCharacterSwapper();
 
+        yield return EnsurePlayerSpawnedBeforeIntro();
         yield return RunIntroSequence();
         _sceneEntryRoutine = null;
+    }
+
+    private IEnumerator EnsurePlayerSpawnedBeforeIntro()
+    {
+        if (SpawnPlayerManager.IsReturningFromSubSceneLoad())
+            yield break;
+
+        const float managerTimeoutSeconds = 8f;
+        float elapsed = 0f;
+        while (SpawnPlayerManager._Instance == null && elapsed < managerTimeoutSeconds)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (SpawnPlayerManager._Instance == null)
+        {
+            Debug.LogWarning("[Bootstrap] SpawnPlayerManager tidak ditemukan — spawn sebelum intro dilewati.");
+            yield break;
+        }
+
+        yield return SpawnPlayerManager._Instance.SpawnWhenPlayerReady();
     }
 
     private void EnsureCoreManagers()
@@ -479,14 +502,7 @@ public class SampleSceneBootstrap : MonoBehaviour
 
     private static bool ShouldSkipIntroOnThisLoad()
     {
-        string spawnId = SpawnPlayerManager.TargetSpawnID;
-        if (!string.IsNullOrEmpty(spawnId)
-            && !string.Equals(spawnId, SpawnPlayerManager.DefaultSpawnId, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return false;
+        return SpawnPlayerManager.IsReturningFromSubSceneLoad();
     }
 
     private static GameObject FindManagerHost()

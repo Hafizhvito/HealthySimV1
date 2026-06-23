@@ -27,10 +27,17 @@ public class UniversalInteractionController : MonoBehaviour
 
     [Header("Mobile Proximity Button")]
     [SerializeField] private bool preferProximityButtonOnMobile = true;
-    [SerializeField] private bool hideWorldBubblesOnMobile = false;
+    [SerializeField] private bool hideWorldBubblesOnMobile = true;
+    [SerializeField] private float proximityFacingWeight = 0.25f;
 
-    private const int PresentationVersion = 2;
+    private const int PresentationVersion = 3;
     [SerializeField] private int presentationVersion;
+
+    private enum InteractGate
+    {
+        Full,
+        Proximity
+    }
 
     private float nextInteractAllowedTime;
     private IInteractable currentInteractable;
@@ -104,7 +111,9 @@ public class UniversalInteractionController : MonoBehaviour
         if (presentationVersion >= PresentationVersion)
             return;
 
-        hideWorldBubblesOnMobile = false;
+        hideWorldBubblesOnMobile = true;
+        if (proximityFacingWeight < 0.15f)
+            proximityFacingWeight = 0.25f;
         if (bubbleScale < 0.0042f)
             bubbleScale = 0.0046f;
         if (bubbleMaxDistance < 6f)
@@ -310,7 +319,7 @@ public class UniversalInteractionController : MonoBehaviour
         }
 
         if (currentInteractable != null)
-            SetHintVisible(true, currentInteractable.GetInteractionText());
+            SetHintVisible(true, InteractionPromptCopy.FormatInteractionPrompt(currentInteractable.GetInteractionText()));
         else
             SetHintVisible(false, string.Empty);
     }
@@ -327,7 +336,7 @@ public class UniversalInteractionController : MonoBehaviour
             return;
         }
 
-        if (ShouldUseProximityButton() && hideWorldBubblesOnMobile)
+        if (ShouldHideWorldBubbles())
         {
             visibleBubbleCount = 0;
             HideAllBubbles();
@@ -524,8 +533,20 @@ public class UniversalInteractionController : MonoBehaviour
 
     public bool ShouldUseProximityButton()
     {
-        // Active on Android builds and in Editor/desktop so proximity UX can be tested while developing.
-        return preferProximityButtonOnMobile;
+        if (!preferProximityButtonOnMobile)
+            return false;
+
+        // Editor keeps the button for development; device builds use it on mobile platforms.
+        return Application.isEditor || Application.isMobilePlatform;
+    }
+
+    public bool ShouldHideWorldBubbles()
+    {
+        if (!hideWorldBubblesOnMobile || !ShouldUseProximityButton())
+            return false;
+
+        // Editor keeps world bubbles for debugging; Android/player builds hide them.
+        return Application.isMobilePlatform && !Application.isEditor;
     }
 
     public bool TryGetProximityActionLabel(out string label)
@@ -535,28 +556,33 @@ public class UniversalInteractionController : MonoBehaviour
         if (IsModalBlocked() || !ShouldUseProximityButton())
             return false;
 
-        if (!TryResolveNearestInteractableForUi(out IInteractable interactable, out _, out _, bubbleMaxDistance))
+        if (!TryResolveNearestInteractableForUi(out IInteractable interactable, out _, out _, interactDistance))
             return false;
 
-        if (!interactable.CanInteract(gameObject))
-            return false;
-
-        label = FormatProximityActionLabel(interactable.GetInteractionText());
+        label = InteractionPromptCopy.FormatProximityButtonLabel(interactable.GetInteractionText());
         return !string.IsNullOrWhiteSpace(label);
     }
 
     public void TriggerInteractFromMobile()
     {
-        if (TryResolveNearestInteractableForUi(out IInteractable interactable, out Transform targetTransform, out Collider targetCollider, bubbleMaxDistance))
+        if (TryResolveNearestInteractableForUi(
+                out IInteractable interactable,
+                out Transform targetTransform,
+                out Collider targetCollider,
+                interactDistance))
         {
-            TryInteract(interactable, targetTransform, targetCollider, skipForwardCheck: true);
+            TryInteract(interactable, targetTransform, targetCollider, InteractGate.Proximity);
             return;
         }
 
-        pendingInteract = true;
+        pendingInteract = false;
     }
 
-    private void TryInteract(IInteractable interactable, Transform targetTransform, Collider targetCollider, bool skipForwardCheck = false)
+    private void TryInteract(
+        IInteractable interactable,
+        Transform targetTransform,
+        Collider targetCollider,
+        InteractGate gate = InteractGate.Full)
     {
         if (IsModalBlocked())
             return;
@@ -576,18 +602,18 @@ public class UniversalInteractionController : MonoBehaviour
         if (distance <= 0.001f || distance > interactDistance)
             return;
 
-        if (!skipForwardCheck)
+        if (gate == InteractGate.Full)
         {
             Vector3 forward = playerCamera != null ? playerCamera.transform.forward : transform.forward;
             Vector3 dir = (targetPoint - playerPos).normalized;
             float forwardDot = Vector3.Dot(forward, dir);
             if (forwardDot < minForwardDot)
                 return;
-        }
 
-        Vector3 castOrigin = playerPos + Vector3.up * 1.1f;
-        if (!HasLineOfSight(castOrigin, targetPoint, targetCollider, distance + 0.8f))
-            return;
+            Vector3 castOrigin = playerPos + Vector3.up * 1.1f;
+            if (!HasLineOfSight(castOrigin, targetPoint, targetCollider, distance + 0.8f))
+                return;
+        }
 
         if (!interactable.CanInteract(gameObject))
             return;
@@ -618,7 +644,8 @@ public class UniversalInteractionController : MonoBehaviour
             return false;
 
         Vector3 playerPos = transform.position;
-        float bestDistance = float.PositiveInfinity;
+        Vector3 facing = GetProximityFacingDirection();
+        float bestScore = float.NegativeInfinity;
 
         for (int i = 0; i < entries.Count; i++)
         {
@@ -637,32 +664,35 @@ public class UniversalInteractionController : MonoBehaviour
             if (!entry.Interactable.CanInteract(gameObject))
                 continue;
 
-            if (distance < bestDistance)
-            {
-                bestDistance = distance;
-                interactable = entry.Interactable;
-                targetTransform = entry.Transform;
-                targetCollider = entry.Collider;
-            }
+            float distanceScore = 1f - Mathf.Clamp01(distance / maxDistance);
+            Vector3 toTarget = (targetPoint - playerPos) / distance;
+            float facingDot = Vector3.Dot(facing, toTarget);
+            float score = distanceScore + (facingDot * proximityFacingWeight);
+            if (score <= bestScore)
+                continue;
+
+            bestScore = score;
+            interactable = entry.Interactable;
+            targetTransform = entry.Transform;
+            targetCollider = entry.Collider;
         }
 
         return interactable != null;
     }
 
+    private Vector3 GetProximityFacingDirection()
+    {
+        Vector3 forward = transform.forward;
+        forward.y = 0f;
+        if (forward.sqrMagnitude < 0.0001f)
+            return transform.forward;
+
+        return forward.normalized;
+    }
+
     private static string FormatProximityActionLabel(string rawText)
     {
-        if (string.IsNullOrWhiteSpace(rawText))
-            return string.Empty;
-
-        string text = rawText.Trim();
-
-        if (text.StartsWith("Tekan E untuk ", System.StringComparison.OrdinalIgnoreCase))
-            text = text.Substring("Tekan E untuk ".Length);
-
-        if (text.StartsWith("Tekan E ", System.StringComparison.OrdinalIgnoreCase))
-            text = text.Substring("Tekan E ".Length);
-
-        return text.Trim();
+        return InteractionPromptCopy.FormatProximityButtonLabel(rawText);
     }
 
     private string GetBubbleLabel()

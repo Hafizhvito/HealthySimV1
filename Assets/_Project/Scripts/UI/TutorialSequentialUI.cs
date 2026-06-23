@@ -50,11 +50,14 @@ public class TutorialSequentialUI : MonoBehaviour
     [Header("Events")]
     public UnityEvent OnSequentialComplete;
 
-    private readonly HintData[] hints =
+    private HintData[] GetHints()
     {
-        new HintData(string.Empty, "Cara Bergerak", "Gunakan W A S D untuk berjalan.\nTahan Shift untuk berlari."),
-        new HintData(string.Empty, "Cara Berinteraksi", "Dekati objek atau NPC,\nlalu tap E untuk berinteraksi.")
-    };
+        return new[]
+        {
+            new HintData(string.Empty, TutorialInputHints.MovementTitle, TutorialInputHints.MovementBody),
+            new HintData(string.Empty, TutorialInputHints.InteractionTitle, TutorialInputHints.InteractionBody)
+        };
+    }
 
     private Canvas hudCanvas;
     private RectTransform panelRoot;
@@ -209,6 +212,7 @@ public class TutorialSequentialUI : MonoBehaviour
 
     private IEnumerator ShowFirstHintRoutine()
     {
+        HintData[] hints = GetHints();
         currentHintIndex = 0;
         ApplyHint(hints[currentHintIndex]);
         yield return FadePanel(0f, 1f, 0.3f);
@@ -363,6 +367,7 @@ public class TutorialSequentialUI : MonoBehaviour
 
     private IEnumerator AdvanceHintRoutine()
     {
+        HintData[] hints = GetHints();
         if (currentHintIndex < hints.Length - 1)
         {
             yield return FadePanel(1f, 0f, 0.2f);

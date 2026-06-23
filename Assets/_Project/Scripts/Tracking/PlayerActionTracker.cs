@@ -131,6 +131,10 @@ public class PlayerActionTracker : MonoBehaviour
         return actionType == ActionType.UnhealthyFoodTaken || actionType == ActionType.NegativeNpcTalk;
     }
 
+    public int FaintEventCount => faintEvents;
+    public int CriticalEventCount => criticalEvents;
+    public int WarningEventCount => warningEvents;
+
     public int GetCount(ActionType actionType)
     {
         return counts.TryGetValue(actionType, out int value) ? value : 0;

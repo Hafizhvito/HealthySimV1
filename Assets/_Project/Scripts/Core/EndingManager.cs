@@ -6,10 +6,10 @@ using UnityEngine.UI;
 public class EndingManager : MonoBehaviour
 {
     public static EndingManager Instance { get; private set; }
-    public enum EndingType { Good, Neutral, Bad }
+    public enum EndingType { Good, Neutral, Bad, PrematureDeath }
 
     [Header("Config")]
-    [SerializeField] private int endingTriggerDay = 10;
+    [SerializeField] private int endingTriggerDay = 12;
 
     [Header("Fonts")]
     [SerializeField] private TMP_FontAsset titleFont;
@@ -30,9 +30,9 @@ public class EndingManager : MonoBehaviour
     private bool isShowing;
     private EndingType pendingEndingType;
     private PlayerStats.Gender pendingGender;
-    private bool creditsPending;
     private bool endingTriggered;
-    private int creditsAfterDay = -1;
+    private string pendingMortalityCause = string.Empty;
+    private int pendingDeathDay = -1;
 
     void Awake()
     {
@@ -92,23 +92,31 @@ public class EndingManager : MonoBehaviour
         StartCoroutine(ShowEndingRoutine(pendingEndingType, pendingGender));
     }
 
+    public void TriggerPrematureDeath(LifestyleMortalityEvaluator.MortalityAssessment assessment, int dayNumber)
+    {
+        if (isShowing || endingTriggered)
+            return;
+
+        if (PlayerStats.Instance == null)
+            return;
+
+        pendingEndingType = EndingType.PrematureDeath;
+        pendingGender = PlayerStats.Instance.PlayerGender;
+        pendingMortalityCause = string.IsNullOrWhiteSpace(assessment.PrimaryCauseLabel)
+            ? "beban kesehatan yang menumpuk"
+            : assessment.PrimaryCauseLabel;
+        pendingDeathDay = dayNumber;
+        endingTriggered = true;
+        isShowing = true;
+
+        Debug.Log($"[EndingManager] Premature death on day {dayNumber}, cause={pendingMortalityCause}");
+
+        StartCoroutine(ShowEndingRoutine(EndingType.PrematureDeath, pendingGender));
+    }
+
     public void NotifySleepCompleted(int currentDayNumber)
     {
-        if (!creditsPending)
-            return;
-
-        if (creditsAfterDay < 0 || currentDayNumber <= creditsAfterDay)
-            return;
-
-        creditsPending = false;
-
-        if (CreditsController.Instance == null)
-        {
-            GameObject creditsGo = new GameObject("CreditsController");
-            creditsGo.AddComponent<CreditsController>();
-        }
-
-        CreditsController.Instance.Play();
+        // Credits now play immediately after recap in ShowEndingRoutine.
     }
 
     // ── Dialogue builder ─────────────────────────────────────────────
@@ -410,10 +418,19 @@ public class EndingManager : MonoBehaviour
         if (ModalStateManager.Instance != null)
             ModalStateManager.Instance.CloseModal(ModalKey);
 
-        // Ending selesai, credits diputar setelah pemain tidur lagi.
+        PlayCredits();
         isShowing = false;
-        creditsPending = true;
-        creditsAfterDay = TimeManager.Instance != null ? TimeManager.Instance.CurrentDayNumber : -1;
+    }
+
+    private static void PlayCredits()
+    {
+        if (CreditsController.Instance == null)
+        {
+            GameObject creditsGo = new GameObject("CreditsController");
+            creditsGo.AddComponent<CreditsController>();
+        }
+
+        CreditsController.Instance.Play();
     }
 
     private void SetAccentColor(EndingType type, RectTransform targetRoot = null)
@@ -431,10 +448,11 @@ public class EndingManager : MonoBehaviour
 
         accentImage.color = type switch
         {
-            EndingType.Good    => new Color32(0x4C, 0xAF, 0x50, 0xFF), // hijau
-            EndingType.Neutral => new Color32(0xFF, 0x98, 0x00, 0xFF), // oranye
-            EndingType.Bad     => new Color32(0xF4, 0x43, 0x36, 0xFF), // merah
-            _                  => new Color32(0x21, 0x96, 0xF3, 0xFF)
+            EndingType.Good           => new Color32(0x4C, 0xAF, 0x50, 0xFF),
+            EndingType.Neutral        => new Color32(0xFF, 0x98, 0x00, 0xFF),
+            EndingType.Bad            => new Color32(0xF4, 0x43, 0x36, 0xFF),
+            EndingType.PrematureDeath => new Color32(0x7E, 0x57, 0xC2, 0xFF),
+            _                         => new Color32(0x21, 0x96, 0xF3, 0xFF)
         };
     }
 
@@ -455,16 +473,20 @@ public class EndingManager : MonoBehaviour
         text.font = font;
     }
 
-    private static string GetTitle(EndingType type) => type switch
+    private string GetTitle(EndingType type) => type switch
     {
-        EndingType.Good    => "Hidup Sehat, Hidup Bahagia",
-        EndingType.Neutral => "Perjalanan yang Belum Selesai",
-        EndingType.Bad     => "Tubuh Sudah Berbicara",
-        _                  => "Akhir Perjalanan"
+        EndingType.Good           => "Hidup Sehat, Hidup Bahagia",
+        EndingType.Neutral        => "Perjalanan yang Belum Selesai",
+        EndingType.Bad            => "Tubuh Sudah Berbicara",
+        EndingType.PrematureDeath => "Tubuh Meminta Istirahat",
+        _                         => "Akhir Perjalanan"
     };
 
-    private static string GetNarrative(EndingType type, PlayerStats.Gender gender)
+    private string GetNarrative(EndingType type, PlayerStats.Gender gender)
     {
+        if (type == EndingType.PrematureDeath)
+            return GetPrematureDeathNarrative(gender);
+
         bool isFemale = gender == PlayerStats.Gender.Female;
 
         return type switch
@@ -497,6 +519,22 @@ public class EndingManager : MonoBehaviour
         };
     }
 
+    private string GetPrematureDeathNarrative(PlayerStats.Gender gender)
+    {
+        bool isFemale = gender == PlayerStats.Gender.Female;
+        string dayLine = pendingDeathDay > 0
+            ? $"Pada Hari {pendingDeathDay}, "
+            : string.Empty;
+
+        return isFemale
+            ? $"{dayLine}tubuhmu tidak sanggup lagi menahan beban dari {pendingMortalityCause}.\n\n" +
+              "Ini simulasi — bukan hukuman. Tubuh memberi sinyal ketika kebiasaan harian terlalu lama diabaikan.\n\n" +
+              "Di kehidupan nyata, tidur cukup, makan seimbang, dan gerak rutin bisa menurunkan risiko ini. Pelan-pelan, selalu ada ruang untuk memulai lagi."
+            : $"{dayLine}tubuhmu kehabisan tenaga karena {pendingMortalityCause} menumpuk terlalu lama.\n\n" +
+              "Ini simulasi edukatif, bukan takdir. Setiap hari adalah kesempatan memperbaiki pola makan, istirahat, dan aktivitas.\n\n" +
+              "Perawatan dini dan kebiasaan sehat bisa mencegah momen seperti ini di dunia nyata.";
+    }
+
     private struct DiseaseRisk
     {
         public string Name;
@@ -523,6 +561,28 @@ public class EndingManager : MonoBehaviour
                 return "Tubuhmu dalam kondisi baik. Tidak ada indikasi risiko penyakit yang berarti. Pertahankan.";
 
             return "Meskipun kondisimu secara umum baik, tetap jaga pola hidupmu agar risiko kesehatan tetap rendah di masa depan.";
+        }
+
+        if (endingType == EndingType.PrematureDeath)
+        {
+            var deathSb = new System.Text.StringBuilder();
+            deathSb.Append("Pola hidup yang menumpuk bisa memperburuk kondisi:");
+
+            int deathShown = 0;
+            for (int i = 0; i < risks.Count && deathShown < 2; i++)
+            {
+                if (risks[i].Score < warningThreshold)
+                    continue;
+
+                deathSb.Append("\n\n• ");
+                deathSb.Append(risks[i].Name);
+                deathSb.Append("\n  ");
+                deathSb.Append(risks[i].Description);
+                deathShown++;
+            }
+
+            deathSb.Append("\n\nKebiasaan kecil yang dijaga setiap hari bisa menurunkan risiko ini — bahkan setelah titik kritis.");
+            return deathSb.ToString();
         }
 
         int count = 0;
@@ -683,10 +743,11 @@ public class EndingManager : MonoBehaviour
     {
         string doctorMessage = pendingEndingType switch
         {
-            EndingType.Good    => "Selamat! Kamu telah menjalani gaya hidup yang sehat dan seimbang.",
-            EndingType.Neutral => "Ada kemajuan, namun masih banyak ruang untuk perbaikan ke depannya.",
-            EndingType.Bad     => "Pola hidup yang buruk memberikan dampak serius. Mulailah berubah sekarang.",
-            _                  => "Tetap jaga kesehatanmu ke depan."
+            EndingType.Good           => "Selamat! Kamu telah menjalani gaya hidup yang sehat dan seimbang.",
+            EndingType.Neutral        => "Ada kemajuan, namun masih banyak ruang untuk perbaikan ke depannya.",
+            EndingType.Bad            => "Pola hidup yang buruk memberikan dampak serius. Mulailah berubah sekarang.",
+            EndingType.PrematureDeath => "Risiko kesehatan bisa diturunkan dengan perubahan kecil yang konsisten. Mulai dari satu kebiasaan baik.",
+            _                         => "Tetap jaga kesehatanmu ke depan."
         };
 
         if (stats == null)

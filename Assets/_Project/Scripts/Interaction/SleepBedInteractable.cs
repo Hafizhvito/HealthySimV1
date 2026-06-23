@@ -266,6 +266,15 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             wasForced = true;
 
         bool sleepInputLocked = false;
+        bool prematureDeathOccurred = false;
+        bool skipInputRestore = false;
+        int triggerDay = EndingManager.Instance != null
+            ? EndingManager.Instance.EndingTriggerDay
+            : LifestyleMortalityEvaluator.DefaultEndingDay;
+        int dayBeforeAdvance = timeManager.CurrentDayNumber;
+        bool isFinalDaySleep = dayBeforeAdvance >= triggerDay;
+        LifestyleMortalityEvaluator.MortalityAssessment mortalityAssessment = default;
+
         try
         {
             ResetGameplayStateBeforeSleep(playerController);
@@ -313,6 +322,19 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
                         workedYesterday, lastWorkSession, lastWorkHadBonus,
                         trainedYesterday, lastGymSession, overworkedYesterday, out dailyEvalResult);
 
+            mortalityAssessment = LifestyleMortalityEvaluator.Assess(
+                dayBeforeAdvance, triggerDay, playerStats, PlayerActionTracker.Instance);
+
+            if (!isFinalDaySleep
+                && mortalityAssessment.RollChance > 0f
+                && LifestyleMortalityEvaluator.RollMortality(mortalityAssessment.RollChance))
+            {
+                prematureDeathOccurred = true;
+                yield return StartCoroutine(HandlePrematureDeathDuringSleep(
+                    playerController, dayBeforeAdvance, mortalityAssessment));
+                yield break;
+            }
+
             // ── Advance day ──────────────────────────────────────
             timeManager.AdvanceToNextDayFromSleep();
             if (BazaarManager.Instance != null)
@@ -337,6 +359,17 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
             if (lateWakePenaltyTriggered)
                 ApplyLateWakePenalty(playerStats);
+
+            if (isFinalDaySleep)
+            {
+                skipInputRestore = true;
+                MoveInteractorToBedSpawn(interactor);
+                if (EndingManager.Instance != null)
+                    EndingManager.Instance.TriggerEnding();
+                else
+                    Debug.LogWarning("[SleepBedInteractable] EndingManager.Instance null — ending not triggered.");
+                yield break;
+            }
 
             MoveInteractorToBedSpawn(interactor);
             Debug.Log($"[SleepBedInteractable] {sleepingLogText} Hari {wakeDayName}.");
@@ -364,34 +397,21 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
                     phaseSnapshotBeforeTransition, playerStats.PlayerGender));
             }
 
-            int triggerDay = EndingManager.Instance != null
-                ? EndingManager.Instance.EndingTriggerDay
-                : 10;
-            bool allowEarlyEnding = triggerDay < 10;
-            bool seniorTransition = ageStageChanged && newAgeStage == PlayerStats.AgeStage.Senior;
+            string mortalityWarning = mortalityAssessment.IsWarningZone && !string.IsNullOrEmpty(mortalityAssessment.WarningText)
+                ? mortalityAssessment.WarningText
+                : null;
 
-            if (timeManager.CurrentDayNumber >= triggerDay && (seniorTransition || allowEarlyEnding))
-            {
-                if (EndingManager.Instance != null)
-                    EndingManager.Instance.TriggerEnding();
-                else
-                    Debug.LogWarning("[SleepBedInteractable] EndingManager.Instance null — ending not triggered.");
-            }
-
-            // ── Wake message dengan hasil evaluator ──────────────
             ShowWakeMessage(
                 BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep,
-                                 disturbedSleep, lateWakePenaltyTriggered, dailyEvalResult),
+                                 disturbedSleep, lateWakePenaltyTriggered, dailyEvalResult,
+                                 mortalityWarning),
                 wakeMessageDuration);
-
-            if (EndingManager.Instance != null)
-                EndingManager.Instance.NotifySleepCompleted(timeManager.CurrentDayNumber);
 
             EvaluateCharacterModelSwap(interactor);
         }
         finally
         {
-            if (sleepInputLocked)
+            if (sleepInputLocked && !prematureDeathOccurred && !skipInputRestore)
                 RestoreGameplayAfterSleep(playerController, playerStats);
         }
 
@@ -642,6 +662,27 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         sleepRoutine = StartCoroutine(SleepRoutine(interactor, true));
     }
 
+    private IEnumerator HandlePrematureDeathDuringSleep(
+        PlayerController playerController,
+        int dayNumber,
+        LifestyleMortalityEvaluator.MortalityAssessment mortality)
+    {
+        HidePreSleepCinematic();
+
+        if (EndingManager.Instance != null)
+        {
+            EndingManager.Instance.TriggerPrematureDeath(mortality, dayNumber);
+            yield return new WaitUntil(() => !EndingManager.Instance.IsShowing);
+        }
+        else
+        {
+            Debug.LogWarning("[SleepBedInteractable] EndingManager.Instance null — premature death not shown.");
+        }
+
+        forceSleepTriggered = false;
+        sleepRoutine = null;
+    }
+
     private void MoveInteractorToBedSpawn(GameObject interactor)
     {
         if (interactor == null)
@@ -889,7 +930,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         float energyBeforeSleep,
         bool disturbedSleep,
         bool lateWakePenaltyTriggered,
-        DailyHealthResult evalResult = null)
+        DailyHealthResult evalResult = null,
+        string mortalityWarning = null)
     {
         var content = new WakeMessageContent
         {
@@ -908,6 +950,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             content.warnings.Add(wakeWarningDisturbedSleep);
         if (lateWakePenaltyTriggered)
             content.warnings.Add(wakeWarningLateWakePenalty);
+        if (!string.IsNullOrEmpty(mortalityWarning))
+            content.warnings.Add(mortalityWarning);
 
         if (evalResult != null && !string.IsNullOrEmpty(evalResult.overallNote))
             content.summary = evalResult.overallNote;
@@ -1097,7 +1141,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private void ShowWakeMessage(string message, float duration)
     {
-        ShowWakeMessage(new WakeMessageContent { intro = message }, duration);
+        ShowWakeMessage(new WakeMessageContent { intro = InteractionPromptCopy.FormatBannerMessage(message) }, duration);
     }
 
     private void ShowWakeMessage(WakeMessageContent content, float duration)

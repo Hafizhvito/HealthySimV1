@@ -698,21 +698,7 @@ public class WorkReminderUI : MonoBehaviour
 
     private string GetWorkHoursText()
     {
-        TimeManager.TimePeriod period = TimeManager.Instance != null
-            ? TimeManager.Instance.CurrentPeriod
-            : TimeManager.TimePeriod.Morning;
-
-        switch (period)
-        {
-            case TimeManager.TimePeriod.Morning:
-                return "07.00 - 15.00";
-            case TimeManager.TimePeriod.Afternoon:
-                return "12.00 - 17.00";
-            case TimeManager.TimePeriod.Evening:
-                return "15.00 - 20.00";
-            default:
-                return "Tutup (Malam)";
-        }
+        return FacilityHours.WorkHoursLabel;
     }
 
     private static string GetGymHoursText()
@@ -724,7 +710,7 @@ public class WorkReminderUI : MonoBehaviour
         if (period == TimeManager.TimePeriod.Night)
             return "Tutup (Malam)";
 
-        return "06.00 - 22.00";
+        return FacilityHours.GymHoursLabel;
     }
 
     private void OnDismissClicked()

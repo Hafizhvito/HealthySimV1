@@ -10,8 +10,11 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
     [SerializeField] private string _nightText = "Kantor sudah tutup";
     [SerializeField] private WorkSessionManager _workSessionManagerOverride;
     [SerializeField] private FadeManager _fadeManagerOverride;
+    [SerializeField] private float floatingTextCooldownSeconds = 2f;
 
     private Coroutine _floatingTextRoutine;
+    private GameObject _floatingTextObject;
+    private float _nextFloatingTextAllowedTime;
     private Collider _cachedCollider;
 
     private void Awake()
@@ -29,6 +32,7 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
     private void OnDisable()
     {
         InteractableRegistry.Unregister(this);
+        ClearFloatingText();
     }
 
     public string GetInteractionText()
@@ -36,7 +40,6 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
         return _promptText;
     }
 
-    // Compatibility helper with requested naming.
     public string GetInteractPrompt()
     {
         return _promptText;
@@ -44,7 +47,21 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
 
     public bool CanInteract(GameObject interactor)
     {
-        return true;
+        TimeManager timeManager = TimeManager.Instance;
+        PlayerStats playerStats = PlayerStats.Instance;
+        WorkSessionManager workSessionManager = ResolveWorkSessionManager();
+
+        if (timeManager == null || playerStats == null || workSessionManager == null)
+            return false;
+
+        if (!FacilityHours.IsWorkOpen(timeManager))
+            return false;
+
+        float energy = playerStats.EnergyPercent;
+        if (!workSessionManager.CanWork(energy))
+            return false;
+
+        return workSessionManager.BuildSession(timeManager.CurrentPeriod, energy) != null;
     }
 
     public void Interact(GameObject interactor)
@@ -52,51 +69,12 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
         OnInteract(interactor);
     }
 
-    // Compatibility helper with requested naming.
     public void OnInteract(GameObject player)
     {
         TimeManager timeManager = TimeManager.Instance;
         PlayerStats playerStats = PlayerStats.Instance;
-        WorkSessionManager workSessionManager = _workSessionManagerOverride != null
-            ? _workSessionManagerOverride
-            : WorkSessionManager.Instance;
-        FadeManager fadeManager = _fadeManagerOverride != null
-            ? _fadeManagerOverride
-            : FadeManager.Instance;
-
-        if (workSessionManager == null)
-        {
-            GameObject managerObj = GameObject.Find("GameManager");
-            if (managerObj != null)
-            {
-                WorkSessionManager existing = managerObj.GetComponent<WorkSessionManager>();
-                if (existing == null)
-                    Debug.LogWarning("[WorkDoorInteractable] WorkSessionManager tidak ditemukan di GameManager. Menambahkan fallback runtime.");
-
-                workSessionManager = existing ?? managerObj.AddComponent<WorkSessionManager>();
-            }
-            else
-            {
-                Debug.LogWarning("[WorkDoorInteractable] GameManager tidak ditemukan saat mencari WorkSessionManager fallback.");
-            }
-        }
-
-        if (fadeManager == null)
-        {
-            GameObject managerObj = GameObject.Find("GameManager");
-            if (managerObj != null)
-            {
-                FadeManager existing = managerObj.GetComponent<FadeManager>();
-                if (existing == null)
-                    Debug.LogWarning("[WorkDoorInteractable] FadeManager tidak ditemukan di GameManager. Menambahkan fallback runtime.");
-
-                fadeManager = existing ?? managerObj.AddComponent<FadeManager>();
-            }
-            else
-            {
-                Debug.LogWarning("[WorkDoorInteractable] GameManager tidak ditemukan saat mencari FadeManager fallback.");
-            }
-        }
+        WorkSessionManager workSessionManager = ResolveWorkSessionManager();
+        FadeManager fadeManager = ResolveFadeManager();
 
         if (timeManager == null || playerStats == null)
         {
@@ -113,9 +91,9 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
         float hour = timeManager.CurrentHour;
         float energy = playerStats.EnergyPercent;
 
-        if (hour < 7f || hour >= 15f)
+        if (!FacilityHours.IsWorkOpen(hour))
         {
-            ShowFloatingText("Kantor sudah tutup. Jam kerja 07.00 - 15.00.", 2f);
+            ShowFloatingText($"Kantor sudah tutup. Jam kerja {FacilityHours.WorkHoursLabel}.", 2f);
             return;
         }
 
@@ -123,8 +101,7 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
 
         if (!workSessionManager.CanWork(energy))
         {
-            string reason = _blockedText;
-            ShowFloatingText(reason, 2f);
+            ShowFloatingText(_blockedText, 2f);
             return;
         }
 
@@ -145,17 +122,67 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
         fadeManager.FadeToBlackAndLoad(_officeSceneName, 0.5f);
     }
 
+    private WorkSessionManager ResolveWorkSessionManager()
+    {
+        if (_workSessionManagerOverride != null)
+            return _workSessionManagerOverride;
+
+        if (WorkSessionManager.Instance != null)
+            return WorkSessionManager.Instance;
+
+        GameObject managerObj = GameObject.Find("GameManager");
+        if (managerObj == null)
+            return null;
+
+        WorkSessionManager existing = managerObj.GetComponent<WorkSessionManager>();
+        return existing != null ? existing : managerObj.AddComponent<WorkSessionManager>();
+    }
+
+    private FadeManager ResolveFadeManager()
+    {
+        if (_fadeManagerOverride != null)
+            return _fadeManagerOverride;
+
+        if (FadeManager.Instance != null)
+            return FadeManager.Instance;
+
+        GameObject managerObj = GameObject.Find("GameManager");
+        if (managerObj == null)
+            return null;
+
+        FadeManager existing = managerObj.GetComponent<FadeManager>();
+        return existing != null ? existing : managerObj.AddComponent<FadeManager>();
+    }
+
     private void ShowFloatingText(string text, float duration)
     {
-        if (_floatingTextRoutine != null)
-            StopCoroutine(_floatingTextRoutine);
+        if (Time.unscaledTime < _nextFloatingTextAllowedTime)
+            return;
 
+        _nextFloatingTextAllowedTime = Time.unscaledTime + Mathf.Max(0.25f, floatingTextCooldownSeconds);
+        ClearFloatingText();
         _floatingTextRoutine = StartCoroutine(FloatingTextRoutine(text, duration));
+    }
+
+    private void ClearFloatingText()
+    {
+        if (_floatingTextRoutine != null)
+        {
+            StopCoroutine(_floatingTextRoutine);
+            _floatingTextRoutine = null;
+        }
+
+        if (_floatingTextObject != null)
+        {
+            Destroy(_floatingTextObject);
+            _floatingTextObject = null;
+        }
     }
 
     private IEnumerator FloatingTextRoutine(string text, float duration)
     {
         GameObject textObj = new GameObject("WorkDoorFloatingText");
+        _floatingTextObject = textObj;
 
         TextMeshPro tmp = textObj.AddComponent<TextMeshPro>();
         tmp.text = text;
@@ -186,6 +213,9 @@ public class WorkDoorInteractable : MonoBehaviour, IInteractable
 
             yield return null;
         }
+
+        if (_floatingTextObject == textObj)
+            _floatingTextObject = null;
 
         Destroy(textObj);
         _floatingTextRoutine = null;

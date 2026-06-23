@@ -180,7 +180,7 @@ public class TutorialContextualUI : MonoBehaviour
         TryQueueHint(
             "npc",
             "\U0001F4AC",
-            "Coba dekati NPC dan tekan E untuk ngobrol",
+            TutorialInputHints.NpcToast,
             npcCondition);
 
         bool energyCondition = playerStats != null && playerStats.EnergyPercent < 0.70f;
@@ -194,7 +194,7 @@ public class TutorialContextualUI : MonoBehaviour
         TryQueueHint(
             "food",
             "\U0001F371",
-            "Tekan E di dekat makanan untuk makan atau simpan ke stash",
+            TutorialInputHints.FoodToast,
             foodCondition);
 
         bool workCondition = workSessionManager != null
