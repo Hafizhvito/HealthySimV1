@@ -11,8 +11,8 @@ public class WorkSessionManager : MonoBehaviour
     [SerializeField] private int _basePaySore = 150;
 
     [Header("Energy Rules")]
-    [SerializeField] private float _energyDrainFull = 0.35f;
-    [SerializeField] private float _energyDrainPartial = 0.20f;
+    [SerializeField] private float _energyDrainFull = 0.20f;
+    [SerializeField] private float _energyDrainPartial = 0.11f;
     [SerializeField] private float _energyThresholdFail = 0.30f;
     [SerializeField] private float _energyThresholdBonus = 0.60f;
     [SerializeField] private float _bonusMultiplier = 1.25f;
@@ -38,6 +38,8 @@ public class WorkSessionManager : MonoBehaviour
 
         _instance = this;
         DontDestroyOnLoad(gameObject);
+        _energyDrainFull = 0.20f;
+        _energyDrainPartial = 0.11f;
         EnsureTimeSkipPresenter();
     }
 
@@ -71,29 +73,30 @@ public class WorkSessionManager : MonoBehaviour
             return null;
         }
 
+        TimeManager timeManager = TimeManager.Instance;
+        if (timeManager != null && !FacilityHours.IsWorkOpen(timeManager))
+        {
+            PendingSession = null;
+            return null;
+        }
+
         WorkSessionData data = new WorkSessionData
         {
             period = MapWorkPeriod(currentPeriod),
             energyAtStart = Mathf.Clamp01(currentEnergyNormalized)
         };
 
-        switch (data.period)
+        float currentHour = timeManager != null ? timeManager.CurrentHour : FacilityHours.WorkOpenHour;
+        data.startHour = Mathf.CeilToInt(Mathf.Max(FacilityHours.WorkOpenHour, currentHour));
+        data.endHour = Mathf.RoundToInt(FacilityHours.WorkCloseHour);
+
+        if (data.startHour >= data.endHour)
         {
-            case WorkPeriod.Pagi:
-                data.startHour = 7;
-                data.endHour = 15;
-                break;
-            case WorkPeriod.Siang:
-                data.startHour = 12;
-                data.endHour = 17;
-                break;
-            default:
-                data.startHour = 15;
-                data.endHour = 20;
-                break;
+            PendingSession = null;
+            return null;
         }
 
-            PendingSession = data;
+        PendingSession = data;
         return data;
     }
 
@@ -206,7 +209,7 @@ public class WorkSessionManager : MonoBehaviour
         if (TimeManager.Instance == null)
             return true;
 
-        return TimeManager.Instance.CurrentPeriod != TimeManager.TimePeriod.Night;
+        return FacilityHours.IsWorkOpen(TimeManager.Instance);
     }
 
     public void NotifyDayResetFromSleep()

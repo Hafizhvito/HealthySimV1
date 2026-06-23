@@ -231,6 +231,18 @@ public class TutorialContextualUI : MonoBehaviour
         queue.Enqueue(new ToastData(key, icon, text));
     }
 
+    public void ShowTransientToast(string icon, string text)
+    {
+        if (queue.Count >= MaxQueueSize)
+            return;
+
+        string key = $"transient_{Time.unscaledTime:F3}";
+        queue.Enqueue(new ToastData(key, icon, text));
+
+        if (IsInSampleScene() && !isShowingToast && !TutorialSequentialUI.IsSequentialVisible)
+            StartNextToast();
+    }
+
     private void StartNextToast()
     {
         if (queue.Count == 0 || isShowingToast)

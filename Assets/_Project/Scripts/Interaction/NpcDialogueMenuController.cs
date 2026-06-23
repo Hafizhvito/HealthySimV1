@@ -68,6 +68,7 @@ public class NpcDialogueMenuController : MonoBehaviour
     private UniversalInteractionController interactionController;
     private bool dialogueModalOpened;
     private bool gameplayPausedByDialogue;
+    private bool pausedGameTimeForDialogue;
     private CursorLockMode previousCursorLockMode;
     private bool previousCursorVisible;
     private bool cursorStateCaptured;
@@ -1111,6 +1112,15 @@ public class NpcDialogueMenuController : MonoBehaviour
         }
 
         gameplayPausedByDialogue = true;
+
+        if (TimeManager.Instance != null && TimeManager.Instance.IsRunning)
+        {
+            TimeManager.Instance.PauseTime();
+            pausedGameTimeForDialogue = true;
+        }
+
+        if (HUDManager.Instance != null)
+            HUDManager.Instance.SnapEnergyVisualToActual();
     }
 
     private void ResumeGameplay()
@@ -1130,6 +1140,12 @@ public class NpcDialogueMenuController : MonoBehaviour
         {
             interactionController.SetGlobalPromptSuppressed(false);
             interactionController.enabled = wasInteractionEnabled;
+        }
+
+        if (pausedGameTimeForDialogue && TimeManager.Instance != null)
+        {
+            TimeManager.Instance.ResumeTime();
+            pausedGameTimeForDialogue = false;
         }
 
         gameplayPausedByDialogue = false;

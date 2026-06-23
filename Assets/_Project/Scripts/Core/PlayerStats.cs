@@ -1,4 +1,6 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PlayerStats : MonoBehaviour
 {
@@ -10,9 +12,15 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] private float energyDrainIdle = 0.2f;
     [SerializeField] private float energyDrainWalk = 0.45f;
     [SerializeField] private float energyDrainRun = 0.95f;
-    [SerializeField] [Range(0.05f, 1f)] private float movementDrainScale = 0.40f;
+    [SerializeField] [Range(0.05f, 1f)] private float movementDrainScale = 0.30f;
     [SerializeField] [Range(0.5f, 1.5f)] private float movementDrainModifier = 1f;
     [SerializeField] private float runDrainRampSeconds = 1.2f;
+
+    [Header("Post-Activity Travel Grace")]
+    [SerializeField] [Range(0.1f, 1f)] private float postActivityTravelGraceMultiplier = 0.55f;
+
+    private bool postActivityTravelGraceActive;
+    private bool pendingTravelGraceToast;
 
     [Header("Calories")]
     [SerializeField] private float totalCaloriesConsumed = 0f;
@@ -75,7 +83,10 @@ public class PlayerStats : MonoBehaviour
     [Header("Energy State Thresholds")]
     [SerializeField] private float warningThreshold = 40f;
     [SerializeField] private float criticalThreshold = 15f;
-    
+
+    [Header("Faint Presentation")]
+    [SerializeField] private float faintFadeOutDuration = 0.35f;
+    [SerializeField] private float faintFadeInDuration = 0.5f;
 
     public enum EnergyState { Normal, Warning, Critical, Fainted }
     public enum AgeStage { Youth, Adult, Senior }
@@ -86,6 +97,7 @@ public class PlayerStats : MonoBehaviour
     private float faintDuration = 3f;
     private float runningDuration;
     private bool faintRespawnHandled;
+    private Coroutine faintPresentationRoutine;
 
     // ── Public getters ───────────────────────────────────────
     public float CurrentEnergy       => currentEnergy;
@@ -108,6 +120,7 @@ public class PlayerStats : MonoBehaviour
     public float HealthScoreThisPhase => healthScoreThisPhase;
     public float[] CommittedPhaseScores => committedPhaseScores;
     public float MovementDrainModifier  => movementDrainModifier;
+    public bool PostActivityTravelGraceActive => postActivityTravelGraceActive;
     public int ProgressionDayCount   => progressionDayCount;
     public AgeStage CurrentAgeStage  => currentAgeStage;
 
@@ -177,6 +190,7 @@ public class PlayerStats : MonoBehaviour
         }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        movementDrainScale = 0.30f;
     }
 
     void Start()
@@ -189,6 +203,7 @@ public class PlayerStats : MonoBehaviour
     void Update()
     {
         if (currentEnergyState == EnergyState.Fainted) return;
+        TryShowPendingTravelGraceToast();
         DrainMoodOverTime();
         CheckFaintCondition();
     }
@@ -216,11 +231,50 @@ public class PlayerStats : MonoBehaviour
         }
 
         float drainModifier = Mathf.Clamp(movementDrainModifier, 0.75f, 1.25f);
-        float scaledDrain   = drainRate * Mathf.Clamp(movementDrainScale, 0.05f, 1f) * drainModifier;
+        float graceMultiplier = postActivityTravelGraceActive
+            ? Mathf.Clamp(postActivityTravelGraceMultiplier, 0.1f, 1f)
+            : 1f;
+        float scaledDrain   = drainRate * Mathf.Clamp(movementDrainScale, 0.05f, 1f) * drainModifier * graceMultiplier;
         ModifyEnergy(-(scaledDrain * deltaTime));
     }
 
-    public void AddFood(float energyAmount, float calories, float moodEffect, float protein, float fat)
+    public void ActivatePostActivityTravelGrace()
+    {
+        postActivityTravelGraceActive = true;
+        pendingTravelGraceToast = true;
+    }
+
+    public void ClearPostActivityTravelGrace()
+    {
+        postActivityTravelGraceActive = false;
+        pendingTravelGraceToast = false;
+    }
+
+    private void TryShowPendingTravelGraceToast()
+    {
+        if (!pendingTravelGraceToast)
+            return;
+
+        if (!string.Equals(SceneManager.GetActiveScene().name, "SampleScene", System.StringComparison.Ordinal))
+            return;
+
+        TutorialContextualUI tutorial = FindFirstObjectByType<TutorialContextualUI>();
+        if (tutorial == null)
+            return;
+
+        pendingTravelGraceToast = false;
+        tutorial.ShowTransientToast(
+            "\U0001F9D8",
+            "Badan masih adaptasi — perjalanan lebih ringan sampai kamu makan.");
+    }
+
+    public void AddFood(
+        float energyAmount,
+        float calories,
+        float moodEffect,
+        float protein,
+        float fat,
+        bool countsAsMeal = false)
     {
         ModifyEnergy(energyAmount);
         totalCaloriesConsumed += calories;
@@ -228,6 +282,8 @@ public class PlayerStats : MonoBehaviour
         dailyFat += fat;
         ModifyMood(moodEffect);
         OnCaloriesChanged?.Invoke(totalCaloriesConsumed);
+        if (countsAsMeal)
+            ClearPostActivityTravelGrace();
         Debug.Log($"[Nutrition] Calories={totalCaloriesConsumed:0.#}, Protein={dailyProtein:0.#}, Fat={dailyFat:0.#}");
     }
 
@@ -269,6 +325,14 @@ public class PlayerStats : MonoBehaviour
     {
         trainingAdaptation = Mathf.Clamp(trainingAdaptation + adaptationDelta, 0f, 100f);
         fatigueDebt        = Mathf.Clamp(fatigueDebt        + fatigueDelta,    0f, 100f);
+    }
+
+    public void ApplyFatigueDebt(float amount)
+    {
+        if (amount <= 0f)
+            return;
+
+        fatigueDebt = Mathf.Clamp(fatigueDebt + amount, 0f, 100f);
     }
 
     public void RegisterHealthScore(float delta)
@@ -500,6 +564,8 @@ public class PlayerStats : MonoBehaviour
         gymSkipStreak = 0;
         workSkipStreak = 0;
 
+        ClearPostActivityTravelGrace();
+
         progressionDayCount = 1;
         currentAgeStage = AgeStage.Youth;
 
@@ -628,6 +694,21 @@ public class PlayerStats : MonoBehaviour
         faintRespawnHandled = true;
         faintTimer = 0f;
 
+        if (faintPresentationRoutine != null)
+            StopCoroutine(faintPresentationRoutine);
+
+        faintPresentationRoutine = StartCoroutine(FaintAndRespawnRoutine());
+    }
+
+    private IEnumerator FaintAndRespawnRoutine()
+    {
+        if (FadeManager.Instance != null)
+        {
+            bool fadeOutDone = false;
+            FadeManager.Instance.FadeToBlack(faintFadeOutDuration, () => fadeOutDone = true);
+            yield return new WaitUntil(() => fadeOutDone);
+        }
+
         currentEnergy = maxEnergy;
         OnEnergyChanged?.Invoke(currentEnergy);
 
@@ -637,21 +718,38 @@ public class PlayerStats : MonoBehaviour
         TeleportPlayerToRespawn();
         OnPlayerFainted?.Invoke();
 
-        FaintNotificationController faintPanel = FindFirstObjectByType<FaintNotificationController>(FindObjectsInactive.Include);
+        FaintNotificationController faintPanel =
+            FindFirstObjectByType<FaintNotificationController>(FindObjectsInactive.Include);
+
         if (faintPanel != null)
-        {
             faintPanel.ShowPanel();
-        }
         else
         {
             Debug.LogWarning("[PlayerStats] FaintNotificationController tidak ditemukan di scene.");
             ResetFaintState();
+            faintPresentationRoutine = null;
+            yield break;
         }
+
+        if (FadeManager.Instance != null)
+        {
+            bool fadeInDone = false;
+            FadeManager.Instance.FadeFromBlack(faintFadeInDuration, () => fadeInDone = true);
+            yield return new WaitUntil(() => fadeInDone);
+        }
+
+        faintPresentationRoutine = null;
     }
 
     public void ResetFaintState()
     {
         bool wasFainted = currentEnergyState == EnergyState.Fainted;
+
+        if (faintPresentationRoutine != null)
+        {
+            StopCoroutine(faintPresentationRoutine);
+            faintPresentationRoutine = null;
+        }
 
         faintRespawnHandled = false;
         faintTimer = 0f;

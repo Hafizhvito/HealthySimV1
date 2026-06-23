@@ -370,6 +370,9 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
 
     private FoodPickupInteractable FindRestaurantFoodSource()
     {
+        if (restaurantFoodSource != null)
+            return restaurantFoodSource;
+
         FoodPickupInteractable[] sources = FindObjectsByType<FoodPickupInteractable>(
             FindObjectsInactive.Include, FindObjectsSortMode.None);
 

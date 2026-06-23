@@ -11,6 +11,8 @@ public static class LifestyleMortalityEvaluator
     public const float HospitalChanceMultiplier = 0.45f;
     public const float MinimumRiskChance = 0.01f;
     public const float MaximumRiskChance = 0.18f;
+    public const int WarningEventsMortalityThreshold = 5;
+    public const float WarningMortalityBonus = 0.015f;
 
     public struct MortalityAssessment
     {
@@ -76,6 +78,8 @@ public static class LifestyleMortalityEvaluator
 
         if (tracker != null)
         {
+            if (tracker.WarningEventCount >= WarningEventsMortalityThreshold)
+                chance += WarningMortalityBonus;
             if (tracker.FaintEventCount >= 2)
                 chance += 0.03f;
             if (tracker.CriticalEventCount >= 3)

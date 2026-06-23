@@ -42,7 +42,7 @@ public class GymProgressionSystem : MonoBehaviour
 
     [Header("Training Rules")]
     [SerializeField] [Range(0f, 1f)] private float minEnergyToTrain = 0.15f;
-    [SerializeField] [Range(0f, 1f)] private float baseEnergyCost = 0.18f;
+    [SerializeField] [Range(0f, 1f)] private float baseEnergyCost = 0.10f;
 
     [Header("Progression Gain")]
     [SerializeField] private float baseAdaptationGain = 5f;
@@ -81,6 +81,7 @@ public class GymProgressionSystem : MonoBehaviour
 
         _instance = this;
         DontDestroyOnLoad(gameObject);
+        baseEnergyCost = 0.10f;
     }
 
     public bool CanTrain(float energyNormalized, TimeManager.TimePeriod period)

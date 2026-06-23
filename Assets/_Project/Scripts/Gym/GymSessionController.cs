@@ -197,7 +197,7 @@ public class GymSessionController : MonoBehaviour
     private void ExitToMainScene()
     {
         SetGymSessionLock(false);
-        SubSceneReturnHelper.ReturnToSampleScene("gymdoor", mainSceneName);
+        SubSceneReturnHelper.ReturnToSampleScene("gymdoor", mainSceneName, activateTravelGrace: true);
     }
 
     private void SetGymSessionLock(bool locked)

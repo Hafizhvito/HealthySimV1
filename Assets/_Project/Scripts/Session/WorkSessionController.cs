@@ -72,7 +72,7 @@ public class WorkSessionController : MonoBehaviour
 
     private void ReturnToMainScene()
     {
-        SubSceneReturnHelper.ReturnToSampleScene("officedoor", _mainSceneName);
+        SubSceneReturnHelper.ReturnToSampleScene("officedoor", _mainSceneName, activateTravelGrace: true);
     }
 
     private bool ResolveSceneDependencies()

@@ -11,8 +11,14 @@ public static class SubSceneReturnHelper
     public const float ReturnFadeDuration = 0.28f;
     public const float DialogueTimeoutSeconds = 90f;
 
-    public static void ReturnToSampleScene(string spawnId, string sceneName = SampleSceneName)
+    public static void ReturnToSampleScene(
+        string spawnId,
+        string sceneName = SampleSceneName,
+        bool activateTravelGrace = false)
     {
+        if (activateTravelGrace)
+            PlayerStats.Instance?.ActivatePostActivityTravelGrace();
+
         if (!string.IsNullOrWhiteSpace(spawnId))
             SpawnPlayerManager.TargetSpawnID = spawnId;
 

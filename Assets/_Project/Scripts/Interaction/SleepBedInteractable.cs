@@ -352,6 +352,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             if (gymProgressionSystem != null)
                 gymProgressionSystem.NotifyDayResetFromSleep();
 
+            playerStats.ClearPostActivityTravelGrace();
+
             float baseDrainModifier = ApplyNextDayMovementDrainModifier(playerStats, trainedYesterday, adaptationBeforeSleep, fatigueBeforeSleep);
 
             if (wasForced)

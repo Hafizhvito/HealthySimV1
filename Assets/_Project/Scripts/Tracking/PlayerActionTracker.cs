@@ -20,6 +20,8 @@ public class PlayerActionTracker : MonoBehaviour
         RiskyPath
     }
 
+    public const float WarningFatigueDebtGain = 5f;
+
     public static PlayerActionTracker Instance { get; private set; }
 
     private readonly Dictionary<ActionType, int> counts = new Dictionary<ActionType, int>();
@@ -32,6 +34,7 @@ public class PlayerActionTracker : MonoBehaviour
     private int warningEvents;
     private int criticalEvents;
     private int faintEvents;
+    private int lastWarningDayRecorded = -1;
 
     public event Action<ActionType, string> OnActionTracked;
 
@@ -90,9 +93,22 @@ public class PlayerActionTracker : MonoBehaviour
     private void HandleEnergyStateChanged(PlayerStats.EnergyState state)
     {
         if (state == PlayerStats.EnergyState.Warning)
-            warningEvents++;
+            RegisterDailyWarningEvent();
         else if (state == PlayerStats.EnergyState.Critical)
             criticalEvents++;
+    }
+
+    private void RegisterDailyWarningEvent()
+    {
+        int day = TimeManager.Instance != null ? TimeManager.Instance.CurrentDayNumber : -1;
+        if (day >= 0 && day == lastWarningDayRecorded)
+            return;
+
+        warningEvents++;
+        lastWarningDayRecorded = day;
+
+        if (PlayerStats.Instance != null)
+            PlayerStats.Instance.ApplyFatigueDebt(WarningFatigueDebtGain);
     }
 
     private void HandlePlayerFainted()
@@ -140,19 +156,16 @@ public class PlayerActionTracker : MonoBehaviour
         return counts.TryGetValue(actionType, out int value) ? value : 0;
     }
 
-    // ── TAMBAHAN: Reset food counts harian ──────────────────────────
     /// <summary>
     /// Reset hanya food counts (HealthyFoodTaken + UnhealthyFoodTaken).
     /// Dipanggil oleh SleepBedInteractable setelah DailyHealthEvaluator.Evaluate().
-    /// warningEvents, criticalEvents, faintEvents TIDAK direset — itu data lifetime
-    /// yang dipakai EvaluateBranchOutcome() untuk story branching.
+    /// warningEvents, criticalEvents, faintEvents TIDAK direset — data lifetime untuk branching & mortality.
     /// </summary>
     public void ResetDailyFoodCounts()
     {
         counts[ActionType.HealthyFoodTaken]   = 0;
         counts[ActionType.UnhealthyFoodTaken] = 0;
 
-        // Reset juga period buckets supaya evaluasi diet besok tidak terkontaminasi
         foreach (TimeManager.TimePeriod period in Enum.GetValues(typeof(TimeManager.TimePeriod)))
         {
             positiveByPeriod[period] = 0;
@@ -176,6 +189,7 @@ public class PlayerActionTracker : MonoBehaviour
         warningEvents = 0;
         criticalEvents = 0;
         faintEvents = 0;
+        lastWarningDayRecorded = -1;
 
         Debug.Log("[PlayerActionTracker] Full session tracker reset.");
     }

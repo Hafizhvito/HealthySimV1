@@ -158,7 +158,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
         if (!TrySpendForFood(food, out int chargedPrice))
             return;
     
-        PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect, food.protein, food.fat);
+        PlayerStats.Instance.AddFood(food.energyRestored, food.calories, food.moodEffect, food.protein, food.fat, countsAsMeal: true);
         // DIHAPUS: PlayerStats.Instance?.RegisterHealthScore(foodData.isHealthy ? 5f : -5f);
     
         if (PlayerActionTracker.Instance != null)
@@ -272,7 +272,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
             return false;
 
         PlayerStats.Instance.AddFood(
-            food.energyRestored, food.calories, food.moodEffect, food.protein, food.fat);
+            food.energyRestored, food.calories, food.moodEffect, food.protein, food.fat, countsAsMeal: true);
 
         if (PlayerActionTracker.Instance != null)
         {

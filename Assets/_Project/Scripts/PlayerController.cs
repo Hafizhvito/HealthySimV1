@@ -13,8 +13,8 @@ using UnityEngine.InputSystem;
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
-    [SerializeField] private float walkSpeed = 4f;
-    [SerializeField] private float runSpeed = 7f;
+    [SerializeField] private float walkSpeed = 4.6f;
+    [SerializeField] private float runSpeed = 8f;
     [SerializeField] private float rotationSpeed = 9f;
     [SerializeField] private float inputDeadZone = 0.08f;
     [SerializeField] private float inputDirectionSmooth = 10f; // turunkan dari 14 ke 10
@@ -130,6 +130,9 @@ public class PlayerController : MonoBehaviour
         rb.angularDamping = 0.05f;
 
         EnsureLowFrictionColliderMaterial();
+
+        walkSpeed = 4.6f;
+        runSpeed = 8f;
 
         animator.applyRootMotion = false;
         animator.updateMode = AnimatorUpdateMode.Fixed;
@@ -963,6 +966,13 @@ public class PlayerController : MonoBehaviour
     private bool ShouldDrainEnergyFromMovement()
     {
         if (TimeManager.Instance != null && !TimeManager.Instance.IsRunning)
+            return false;
+
+        if (ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen)
+            return false;
+
+        NpcDialogueMenuController dialogue = NpcDialogueMenuController.Instance;
+        if (dialogue != null && dialogue.IsOpen)
             return false;
 
         return true;

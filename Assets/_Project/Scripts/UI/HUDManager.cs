@@ -127,6 +127,24 @@ public class HUDManager : MonoBehaviour
         canvasGroup.interactable = visible;
         canvasGroup.blocksRaycasts = visible;
     }
+
+    /// <summary>
+    /// Stops lagging energy bar animation (e.g. when a modal opens after walking).
+    /// </summary>
+    public void SnapEnergyVisualToActual()
+    {
+        if (playerStats == null)
+            playerStats = PlayerStats.Instance;
+
+        if (playerStats == null)
+            return;
+
+        float energyNormalized = Mathf.Clamp01(playerStats.EnergyPercent);
+        energyVisualPercent = energyNormalized;
+        energyChipPercent = energyNormalized;
+        energyChipDelayTimer = 0f;
+        previousEnergyPercent = energyNormalized;
+    }
     // ===========================================================
 
     void Start()
@@ -292,16 +310,28 @@ public class HUDManager : MonoBehaviour
         if (playerStats == null || energyBarFill == null) return;
 
         float energyNormalized = Mathf.Clamp01(playerStats.EnergyPercent);
-        float targetPercent = energyNormalized;
-        if (targetPercent < previousEnergyPercent - pulseDropThreshold)
-            energyPulseTimer = pulseDuration;
+        bool modalOpen = ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen;
+        bool isDraining;
 
-        bool isDraining = targetPercent < energyVisualPercent;
-        float frontSpeed = isDraining ? energyFrontDrainSpeed : energyFrontRecoverSpeed;
-        energyVisualPercent = Mathf.MoveTowards(
-            energyVisualPercent,
-            targetPercent,
-            Mathf.Max(0.01f, frontSpeed) * Time.deltaTime);
+        if (modalOpen)
+        {
+            energyVisualPercent = energyNormalized;
+            energyChipPercent = energyNormalized;
+            energyChipDelayTimer = 0f;
+            isDraining = false;
+        }
+        else
+        {
+            if (energyNormalized < previousEnergyPercent - pulseDropThreshold)
+                energyPulseTimer = pulseDuration;
+
+            isDraining = energyNormalized < energyVisualPercent;
+            float frontSpeed = isDraining ? energyFrontDrainSpeed : energyFrontRecoverSpeed;
+            energyVisualPercent = Mathf.MoveTowards(
+                energyVisualPercent,
+                energyNormalized,
+                Mathf.Max(0.01f, frontSpeed) * Time.deltaTime);
+        }
 
         energyBarFill.type = Image.Type.Filled;
         energyBarFill.fillMethod = Image.FillMethod.Horizontal;
@@ -325,7 +355,7 @@ public class HUDManager : MonoBehaviour
         if (isDraining)
             energyChipDelayTimer = energyChipDelay;
 
-        previousEnergyPercent = targetPercent;
+        previousEnergyPercent = energyNormalized;
 
         if (energyBarChipFill != null)
         {
