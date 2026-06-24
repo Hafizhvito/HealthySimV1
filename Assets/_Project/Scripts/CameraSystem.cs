@@ -101,6 +101,8 @@ public class CameraSystem : MonoBehaviour
     private Coroutine transitionRoutine;
     private Rigidbody playerRigidbody;
     private float lastManualLookTime;
+    private bool genshinTppDefaultsApplied;
+    private CinemachineCamera boundTppCameraRef;
 
     public bool IsFirstPerson => isFirstPerson;
     public bool HasTppOrbit => orbitalFollow != null && tppCamera != null;
@@ -134,7 +136,11 @@ public class CameraSystem : MonoBehaviour
             brain = FindFirstObjectByType<CinemachineBrain>();
 
         if (applyGenshinTppDefaultsAtRuntime)
+        {
             ApplyGenshinTppDefaults();
+            genshinTppDefaultsApplied = true;
+            boundTppCameraRef = tppCamera;
+        }
 
         CacheDialogueZoomDefaults();
 
@@ -190,6 +196,13 @@ public class CameraSystem : MonoBehaviour
         if (fppCamera == null)
             fppCamera = FindSceneVirtualCamera("CM_FPP");
 
+        bool tppInstanceChanged = tppCamera != null && tppCamera != boundTppCameraRef;
+        if (tppInstanceChanged)
+        {
+            boundTppCameraRef = tppCamera;
+            genshinTppDefaultsApplied = false;
+        }
+
         if (tppCamera != null)
         {
             tppFollow = tppCamera.GetComponent<CinemachineThirdPersonFollow>();
@@ -214,8 +227,11 @@ public class CameraSystem : MonoBehaviour
                 brain = FindFirstObjectByType<CinemachineBrain>();
         }
 
-        if (applyGenshinTppDefaultsAtRuntime)
+        if (applyGenshinTppDefaultsAtRuntime && !genshinTppDefaultsApplied)
+        {
             ApplyGenshinTppDefaults();
+            genshinTppDefaultsApplied = true;
+        }
 
         ApplyBrainUpdateMode();
     }
@@ -429,6 +445,16 @@ public class CameraSystem : MonoBehaviour
             return;
 
         if (ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen)
+            return;
+
+        // Mobile: auto-recenter fights swipe look + joystick steering and can oscillate.
+        if (Application.isMobilePlatform
+            || (MobileInputController.Instance != null && MobileInputController.Instance.IsTouchUiEnabled))
+        {
+            return;
+        }
+
+        if (MobileInputController.Instance != null && MobileInputController.Instance.HasActiveGameplayTouch())
             return;
 
         if (Time.time - lastManualLookTime < recenterIdleDelay)

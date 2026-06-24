@@ -15,6 +15,11 @@ public class WorkReminderUI : MonoBehaviour
     private const float ReminderWarningFontSize = 18f;
     private const float ReminderButtonFontSize = 20f;
     private const float ReminderPanelWidth = 520f;
+    private const float StatusPanelWidth = 420f;
+    private const float StatusPanelHeight = 132f;
+    private const float StatusPanelTopPadding = 14f;
+    private const float StatusLineHeight = 34f;
+    private const float StatusPanelGapBelowCalories = 14f;
 
     private Canvas hudCanvas;
     private CanvasGroup reminderGroup;
@@ -432,11 +437,14 @@ public class WorkReminderUI : MonoBehaviour
         if (hudStatusPanel == null)
             return;
 
+        // Align with energy/calorie bars: calories panel ends at -140 (pos -92, height 48).
+        float panelTopY = -(92f + 48f + StatusPanelGapBelowCalories);
+
         hudStatusPanel.anchorMin = new Vector2(0f, 1f);
         hudStatusPanel.anchorMax = new Vector2(0f, 1f);
         hudStatusPanel.pivot = new Vector2(0f, 1f);
-        hudStatusPanel.anchoredPosition = new Vector2(36f, -142f);
-        hudStatusPanel.sizeDelta = new Vector2(348f, 120f);
+        hudStatusPanel.anchoredPosition = new Vector2(34f, panelTopY);
+        hudStatusPanel.sizeDelta = new Vector2(StatusPanelWidth, StatusPanelHeight);
 
         Image bg = hudStatusPanel.GetComponent<Image>();
         if (bg == null)
@@ -544,8 +552,8 @@ public class WorkReminderUI : MonoBehaviour
         rect.anchorMin = new Vector2(0f, 1f);
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(14f, -12f);
-        rect.sizeDelta = new Vector2(-24f, 30f);
+        rect.anchoredPosition = new Vector2(14f, -StatusPanelTopPadding);
+        rect.sizeDelta = new Vector2(-28f, StatusLineHeight);
         hudWorkIndicator.alignment = TextAlignmentOptions.TopLeft;
     }
 
@@ -567,8 +575,8 @@ public class WorkReminderUI : MonoBehaviour
         rect.anchorMin = new Vector2(0f, 1f);
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(14f, -84f);
-        rect.sizeDelta = new Vector2(-24f, 32f);
+        rect.anchoredPosition = new Vector2(14f, -(StatusPanelTopPadding + StatusLineHeight * 2f));
+        rect.sizeDelta = new Vector2(-28f, StatusLineHeight);
         hudMoneyIndicator.alignment = TextAlignmentOptions.TopLeft;
     }
 
@@ -590,8 +598,8 @@ public class WorkReminderUI : MonoBehaviour
         rect.anchorMin = new Vector2(0f, 1f);
         rect.anchorMax = new Vector2(1f, 1f);
         rect.pivot = new Vector2(0f, 1f);
-        rect.anchoredPosition = new Vector2(14f, -48f);
-        rect.sizeDelta = new Vector2(-24f, 30f);
+        rect.anchoredPosition = new Vector2(14f, -(StatusPanelTopPadding + StatusLineHeight));
+        rect.sizeDelta = new Vector2(-28f, StatusLineHeight);
         hudGymIndicator.alignment = TextAlignmentOptions.TopLeft;
     }
 

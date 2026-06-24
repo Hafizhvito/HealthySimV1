@@ -19,15 +19,15 @@ public class HUDAutoSetup : MonoBehaviour
 
         RemoveChildPanelIfExists(canvas.transform, "MoodBar_Panel");
 
-        RectTransform energyPanel = EnsurePanel(canvas.transform, "EnergyBar_Panel", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -34f), new Vector2(348f, 48f));
+        RectTransform energyPanel = EnsurePanel(canvas.transform, "EnergyBar_Panel", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(34f, -32f), new Vector2(420f, 52f));
         ApplyPanelChrome(energyPanel, new Color32(10, 14, 20, 225));
 
         Image energyBg = EnsureImage(energyPanel, "EnergyBar_BG", new Color32(34, 40, 50, 255), true, 1f);
-        ConfigureBarArea(energyBg.rectTransform, 4f, 22f);
+        ConfigureBarArea(energyBg.rectTransform, 4f, 24f);
         Image energyFill = EnsureImage(energyPanel, "EnergyBar_Fill", new Color32(88, 210, 104, 255), false, 1f);
-        ConfigureBarArea(energyFill.rectTransform, 6f, 22f);
+        ConfigureBarArea(energyFill.rectTransform, 6f, 24f);
         Image energyWarning = EnsureImage(energyPanel, "EnergyBar_Warning_Fill", new Color32(255, 255, 255, 90), false, 0f);
-        ConfigureBarArea(energyWarning.rectTransform, 6f, 22f);
+        ConfigureBarArea(energyWarning.rectTransform, 6f, 24f);
         energyBg.rectTransform.SetSiblingIndex(0);
         energyFill.rectTransform.SetSiblingIndex(1);
         energyWarning.rectTransform.SetSiblingIndex(2);
@@ -38,17 +38,17 @@ public class HUDAutoSetup : MonoBehaviour
         SetupFillImage(energyFill, 1f);
         SetupFillImage(energyWarning, 0f);
 
-        TextMeshProUGUI energyLabel = EnsureText(energyPanel, "EnergyBar_Label", "Energi", 16, new Color32(245, 248, 252, 255), TextAlignmentOptions.Left);
+        TextMeshProUGUI energyLabel = EnsureText(energyPanel, "EnergyBar_Label", "Energi", 18, new Color32(245, 248, 252, 255), TextAlignmentOptions.Left);
         ApplyHudTextStyle(energyLabel, 0.18f);
-        SetupLabelRect(energyLabel.rectTransform, new Vector2(12f, -2f), new Vector2(96f, 22f));
+        SetupLabelRect(energyLabel.rectTransform, new Vector2(12f, -2f), new Vector2(104f, 24f));
         energyLabel.fontStyle = FontStyles.Bold;
 
-        TextMeshProUGUI energyValue = EnsureText(energyPanel, "EnergyBar_Value", "100%", 16, new Color32(245, 248, 252, 255), TextAlignmentOptions.Right);
+        TextMeshProUGUI energyValue = EnsureText(energyPanel, "EnergyBar_Value", "100%", 18, new Color32(245, 248, 252, 255), TextAlignmentOptions.Right);
         ApplyHudTextStyle(energyValue, 0.18f);
-        SetupValueRect(energyValue.rectTransform, new Vector2(-12f, -2f), new Vector2(72f, 22f));
+        SetupValueRect(energyValue.rectTransform, new Vector2(-12f, -2f), new Vector2(80f, 24f));
         energyValue.fontStyle = FontStyles.Bold;
 
-        RectTransform caloriesPanel = EnsurePanel(canvas.transform, "Calories_Panel", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(36f, -90f), new Vector2(348f, 44f));
+        RectTransform caloriesPanel = EnsurePanel(canvas.transform, "Calories_Panel", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(34f, -92f), new Vector2(420f, 48f));
         ApplyPanelChrome(caloriesPanel, new Color32(10, 14, 20, 225));
 
         Image caloriesBg = EnsureImage(caloriesPanel, "Calories_BG", new Color32(34, 40, 50, 255), true, 1f);
@@ -63,14 +63,15 @@ public class HUDAutoSetup : MonoBehaviour
         caloriesBg.rectTransform.SetSiblingIndex(0);
         caloriesFill.rectTransform.SetSiblingIndex(1);
 
-        TextMeshProUGUI caloriesText = EnsureText(caloriesPanel, "Calories_Text", "Kalori 0 / 2100 kcal", 15, new Color32(238, 242, 248, 255), TextAlignmentOptions.Center);
-        ApplyHudTextStyle(caloriesText, 0.16f);
+        TextMeshProUGUI caloriesText = EnsureText(caloriesPanel, "Calories_Text", "Kalori 0 / 2100 KCAL", 20, new Color32(238, 242, 248, 255), TextAlignmentOptions.Center);
+        ApplyHudTextStyle(caloriesText, 0.20f);
         SetupInfoTextRect(caloriesText.rectTransform, 0f, 0f);
         caloriesText.rectTransform.anchorMin = Vector2.zero;
         caloriesText.rectTransform.anchorMax = Vector2.one;
-        caloriesText.rectTransform.offsetMin = new Vector2(10f, 4f);
-        caloriesText.rectTransform.offsetMax = new Vector2(-10f, -4f);
+        caloriesText.rectTransform.offsetMin = new Vector2(10f, 5f);
+        caloriesText.rectTransform.offsetMax = new Vector2(-10f, -5f);
         caloriesText.rectTransform.SetSiblingIndex(2);
+        caloriesText.fontStyle = FontStyles.Bold;
 
         RectTransform timePanel = EnsurePanel(canvas.transform, "Time_Panel", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -36f), new Vector2(340f, 72f));
         ApplyPanelChrome(timePanel, new Color32(10, 14, 20, 225));

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class FoodStashMenuController : MonoBehaviour
@@ -7,7 +7,25 @@ public class FoodStashMenuController : MonoBehaviour
 
     private bool isOpen;
     private Vector2 scrollPosition;
-    private Rect windowRect = new Rect(0f, 0f, 760f, 520f);
+    private ImGuiMenuLayout.Metrics menuMetrics;
+    private Rect stashWindowScreenRect;
+    private Rect stashScrollScreenRect;
+    private float stashScrollContentHeight;
+    private bool hasStashScrollScreenRect;
+    private float cachedStyleScale = -1f;
+
+    private GUIStyle headerStyle;
+    private GUIStyle bodyStyle;
+    private GUIStyle buttonStyle;
+    private GUIStyle scrollHintStyle;
+
+    private float ComputeScrollHeight(bool includesScrollHint)
+    {
+        return ImGuiMenuLayout.ComputeScrollHeight(
+            menuMetrics,
+            menuMetrics.StashHeaderReservedHeight,
+            includesScrollHint);
+    }
 
     void Awake()
     {
@@ -23,6 +41,8 @@ public class FoodStashMenuController : MonoBehaviour
     public void OpenStash()
     {
         isOpen = true;
+        scrollPosition = Vector2.zero;
+        cachedStyleScale = -1f;
 
         if (TimeManager.Instance != null)
             TimeManager.Instance.PauseTime();
@@ -41,6 +61,11 @@ public class FoodStashMenuController : MonoBehaviour
             return;
 
         isOpen = false;
+        scrollPosition = Vector2.zero;
+        stashScrollScreenRect = Rect.zero;
+        stashScrollContentHeight = 0f;
+        hasStashScrollScreenRect = false;
+        ImGuiMobileScrollUtility.Reset();
 
         if (TimeManager.Instance != null)
             TimeManager.Instance.ResumeTime();
@@ -53,21 +78,77 @@ public class FoodStashMenuController : MonoBehaviour
 
     public void Close() => CloseStash();
 
+    void LateUpdate()
+    {
+        if (!isOpen || !hasStashScrollScreenRect)
+            return;
+
+        scrollPosition = ImGuiMobileScrollUtility.PollTouchScroll(
+            stashScrollScreenRect,
+            scrollPosition,
+            stashScrollContentHeight);
+
+        ImGuiMobileScrollUtility.EndFrameCleanup();
+    }
+
     void OnGUI()
     {
         if (!isOpen)
             return;
 
         GUI.depth = -999;
-        windowRect.x = (Screen.width - windowRect.width) * 0.5f;
-        windowRect.y = (Screen.height - windowRect.height) * 0.5f;
+        menuMetrics = ImGuiMenuLayout.Compute();
+        ImGuiMobileScrollUtility.EnsureScrollbarStyles();
+        EnsureStyles();
+
+        Rect windowRect = ImGuiMenuLayout.CenteredWindowRect(menuMetrics);
 
         Color previousColor = GUI.color;
         GUI.color = new Color(0f, 0f, 0f, 0.72f);
         GUI.Box(new Rect(0f, 0f, Screen.width, Screen.height), GUIContent.none);
         GUI.color = previousColor;
 
-        windowRect = GUI.Window(GetInstanceID() + 77, windowRect, DrawWindow, "Food Stash");
+        stashWindowScreenRect = windowRect;
+        GUI.Window(GetInstanceID() + 77, windowRect, DrawWindow, GUIContent.none);
+    }
+
+    private void EnsureStyles()
+    {
+        float scale = menuMetrics.FontScale;
+        if (headerStyle != null && Mathf.Approximately(cachedStyleScale, scale))
+            return;
+
+        cachedStyleScale = scale;
+
+        headerStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = ImGuiMenuLayout.ScaledFont(menuMetrics, 28, 34),
+            fontStyle = FontStyle.Bold,
+            wordWrap = false
+        };
+        headerStyle.normal.textColor = Color.white;
+
+        bodyStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = ImGuiMenuLayout.ScaledFont(menuMetrics, 18, 23),
+            wordWrap = true
+        };
+        bodyStyle.normal.textColor = new Color(0.88f, 0.92f, 0.96f, 1f);
+
+        buttonStyle = new GUIStyle(GUI.skin.button)
+        {
+            fontSize = ImGuiMenuLayout.ScaledFont(menuMetrics, 17, 21),
+            fontStyle = FontStyle.Bold,
+            alignment = TextAnchor.MiddleCenter,
+            padding = new RectOffset(12, 12, 10, 10)
+        };
+
+        scrollHintStyle = new GUIStyle(bodyStyle)
+        {
+            fontSize = ImGuiMenuLayout.ScaledFont(menuMetrics, 16, 20),
+            fontStyle = FontStyle.Italic,
+            alignment = TextAnchor.MiddleCenter
+        };
     }
 
     private void DrawWindow(int id)
@@ -79,24 +160,41 @@ public class FoodStashMenuController : MonoBehaviour
         int count = foods != null ? foods.Count : 0;
 
         GUILayout.Space(8f);
-        GUILayout.Label($"Item tersimpan: {count}");
+        GUILayout.Label("Stash Makanan", headerStyle);
+        GUILayout.Label($"Item tersimpan: {count}", bodyStyle);
         GUILayout.Space(8f);
 
-        scrollPosition = GUILayout.BeginScrollView(
-            scrollPosition,
-            false,
-            false,
-            GUIStyle.none,
-            GUIStyle.none,
-            GUIStyle.none,
-            GUILayout.Height(360f));
+        stashScrollContentHeight = count == 0
+            ? menuMetrics.EmptyListHeight
+            : count * menuMetrics.StashRowHeight
+                + Mathf.Max(0, count - 1) * ImGuiMenuLayout.FoodRowSpacingFor(menuMetrics);
+        bool needsScroll = count > 0 && stashScrollContentHeight > 120f;
+        float scrollHeight = ComputeScrollHeight(needsScroll);
 
-        if (foods == null || foods.Count == 0)
+        if (needsScroll && stashScrollContentHeight > scrollHeight + 8f)
+            GUILayout.Label("Geser daftar ke atas/bawah untuk scroll", scrollHintStyle);
+
+        if (count == 0)
         {
-            GUILayout.Label("Stash kosong.");
+            GUILayout.Label("Stash kosong.", bodyStyle);
+            hasStashScrollScreenRect = false;
+            stashScrollScreenRect = Rect.zero;
         }
         else
         {
+            if (hasStashScrollScreenRect)
+            {
+                ImGuiMobileScrollUtility.TryHandleGuiScrollEvent(
+                    stashScrollScreenRect,
+                    ref scrollPosition,
+                    stashScrollContentHeight);
+            }
+
+            scrollPosition = ImGuiMobileScrollUtility.BeginWideScrollView(
+                scrollPosition,
+                scrollHeight,
+                out Rect scrollViewportLocal);
+
             for (int i = 0; i < foods.Count; i++)
             {
                 FoodData food = foods[i];
@@ -105,40 +203,60 @@ public class FoodStashMenuController : MonoBehaviour
 
                 DrawStashRow(food, i);
             }
+
+            ImGuiMobileScrollUtility.EndWideScrollView();
+
+            if (Event.current.type == EventType.Repaint && scrollViewportLocal.height > 1f)
+            {
+                stashScrollScreenRect = ImGuiMobileScrollUtility.BuildContentSwipeRect(
+                    stashWindowScreenRect,
+                    scrollViewportLocal);
+                hasStashScrollScreenRect = true;
+            }
         }
 
-        GUILayout.EndScrollView();
-        GUILayout.Space(8f);
+        GUILayout.FlexibleSpace();
+        GUILayout.Space(ImGuiMenuLayout.FooterTopSpacing);
 
         GUILayout.BeginHorizontal();
 
-        if (GUILayout.Button("Clear All", GUILayout.Height(36f)) && SessionFoodStash.Instance != null)
+        if (GUILayout.Button("Clear All", buttonStyle, GUILayout.Height(menuMetrics.FooterButtonHeight))
+            && SessionFoodStash.Instance != null
+            && !ImGuiMobileScrollUtility.ShouldSuppressClicks)
+        {
             SessionFoodStash.Instance.ClearStash();
+            scrollPosition = Vector2.zero;
+        }
 
-        if (GUILayout.Button("Tutup", GUILayout.Height(36f)))
+        if (GUILayout.Button("Tutup", buttonStyle, GUILayout.Height(menuMetrics.FooterButtonHeight)))
             CloseStash();
 
         GUILayout.EndHorizontal();
 
-        GUI.DragWindow(new Rect(0f, 0f, 10000f, 24f));
+        GUILayout.Space(ImGuiMenuLayout.WindowBottomPadding);
+        GUI.DragWindow(new Rect(0f, 0f, menuMetrics.WindowWidth, menuMetrics.CloseButtonSize + 12f));
     }
 
     private void DrawStashRow(FoodData food, int index)
     {
         GUILayout.BeginVertical("box");
-        GUILayout.Label(food.foodName);
-        GUILayout.Label($"Kalori: {food.calories:0} | Energi: +{food.energyRestored:0}");
+        GUILayout.Label(food.foodName, headerStyle);
+        GUILayout.Label($"Kalori: {food.calories:0} | Energi: +{food.energyRestored:0}", bodyStyle);
 
         GUILayout.BeginHorizontal();
 
-        if (GUILayout.Button("Konsumsi", GUILayout.Height(30f)) && SessionFoodStash.Instance != null)
+        if (GUILayout.Button("Konsumsi", buttonStyle, GUILayout.Height(menuMetrics.TouchButtonHeight))
+            && SessionFoodStash.Instance != null
+            && !ImGuiMobileScrollUtility.ShouldSuppressClicks)
             SessionFoodStash.Instance.ConsumeFromStash(index);
 
-        if (GUILayout.Button("Hapus", GUILayout.Height(30f)) && SessionFoodStash.Instance != null)
+        if (GUILayout.Button("Hapus", buttonStyle, GUILayout.Height(menuMetrics.TouchButtonHeight))
+            && SessionFoodStash.Instance != null
+            && !ImGuiMobileScrollUtility.ShouldSuppressClicks)
             SessionFoodStash.Instance.RemoveFromStash(index);
 
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
-        GUILayout.Space(6f);
+        GUILayout.Space(ImGuiMenuLayout.FoodRowSpacingFor(menuMetrics));
     }
 }

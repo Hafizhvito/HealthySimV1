@@ -34,6 +34,11 @@ public class FaintNotificationController : MonoBehaviour
 
     public void ShowPanel()
     {
+        ShowPanel(DefaultTitle, DefaultBody);
+    }
+
+    public void ShowPanel(string title, string body)
+    {
         TryAutoBind();
         BindContinueButton();
 
@@ -44,10 +49,10 @@ public class FaintNotificationController : MonoBehaviour
         }
 
         if (titleText != null)
-            titleText.text = DefaultTitle;
+            titleText.text = string.IsNullOrWhiteSpace(title) ? DefaultTitle : title.Trim();
 
         if (bodyText != null)
-            bodyText.text = DefaultBody;
+            bodyText.text = string.IsNullOrWhiteSpace(body) ? DefaultBody : body.Trim();
 
         isShowing = true;
         panelRoot.SetActive(true);

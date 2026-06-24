@@ -21,7 +21,10 @@ public class CreditsController : MonoBehaviour
     [Header("Optional BGM Source")]
     [SerializeField] private AudioSource bgmSource;
 
-    [Header("Exit Settings")]
+    [SerializeField] private float minCreditsDuration = 8f;
+
+    private const int CreditsCanvasSortingOrder = 1100;
+
     [SerializeField] private string mainMenuSceneName = "MainMenu";
 
     // ── Runtime UI ───────────────────────────────────────────────────
@@ -30,6 +33,7 @@ public class CreditsController : MonoBehaviour
     private RectTransform   scrollRect;   // container yang digerakkan
     private bool            isRunning;
     private bool            skipRequested;
+    private float           creditsStartedAt;
 
     // ── Konten credits ───────────────────────────────────────────────
     // Setiap entry: (teks, fontSize, style, spaceAfter)
@@ -71,6 +75,23 @@ public class CreditsController : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+    public static CreditsController EnsureInstance()
+    {
+        if (Instance != null)
+            return Instance;
+
+        CreditsController existing = FindFirstObjectByType<CreditsController>(FindObjectsInactive.Include);
+        if (existing != null)
+        {
+            Instance = existing;
+            DontDestroyOnLoad(existing.gameObject);
+            return existing;
+        }
+
+        GameObject go = new GameObject("CreditsController");
+        return go.AddComponent<CreditsController>();
+    }
+
     void Update()
     {
         // Skip: space, enter, atau tap layar
@@ -97,59 +118,69 @@ public class CreditsController : MonoBehaviour
     private IEnumerator RunCredits()
     {
         isRunning = true;
+        creditsStartedAt = Time.unscaledTime;
+        Debug.Log("[CreditsController] Memulai credit scene.");
+
+        if (FadeManager.Instance != null)
+            FadeManager.Instance.ReleaseInputBlock();
+
         EnsureUI();
+
+        if (creditsCanvas == null || scrollRect == null)
+        {
+            Debug.LogError("[CreditsController] UI gagal dibuat — credit scene dibatalkan.");
+            isRunning = false;
+            yield break;
+        }
 
         creditsCanvas.gameObject.SetActive(true);
         creditsGroup.alpha = 0f;
 
-        // Fade in background hitam
         yield return StartCoroutine(FadeCanvas(0f, 1f, fadeInDuration));
 
-        // BGM fade out bersamaan
         if (bgmSource != null && bgmSource.isPlaying)
             StartCoroutine(FadeOutBGM(bgmSource, bgmFadeOutDuration));
 
-        // Tunggu layout selesai dikalkulasi dulu (fix freeze di awal)
-        yield return null;
-        yield return null;
-        yield return null;
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect);
+        yield return new WaitForEndOfFrame();
 
-        // Force rebuild layout supaya rect.height sudah akurat
-        UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(scrollRect);
-        yield return null;
+        float viewportHeight = creditsCanvas.pixelRect.height > 1f
+            ? creditsCanvas.pixelRect.height
+            : Screen.height;
+        float contentHeight = Mathf.Max(
+            LayoutUtility.GetPreferredHeight(scrollRect),
+            scrollRect.rect.height,
+            900f);
 
-        float screenHeight  = 1080f;
-        float contentHeight = scrollRect.rect.height;
+        scrollRect.anchoredPosition = new Vector2(0f, -viewportHeight * 0.5f);
+        float targetY = viewportHeight * 0.5f + contentHeight;
 
-        // Mulai dari bawah layar
-        scrollRect.anchoredPosition = new Vector2(0f, -screenHeight * 0.5f);
-
-        // Target akhir: konten habis melewati atas layar
-        float targetY = screenHeight * 0.5f + contentHeight;
-
-        // Scroll loop
         while (!skipRequested)
         {
             float currentY = scrollRect.anchoredPosition.y;
+            if (currentY < targetY)
+            {
+                float newY = currentY + scrollSpeed * Time.unscaledDeltaTime;
+                scrollRect.anchoredPosition = new Vector2(0f, Mathf.Min(newY, targetY));
+            }
 
-            if (currentY >= targetY)
+            float elapsed = Time.unscaledTime - creditsStartedAt;
+            if (currentY >= targetY && elapsed >= minCreditsDuration)
                 break;
 
-            float newY = currentY + scrollSpeed * Time.unscaledDeltaTime;
-            scrollRect.anchoredPosition = new Vector2(0f, Mathf.Min(newY, targetY));
             yield return null;
         }
 
-        // Hold sebentar setelah scroll selesai (kecuali skip)
         if (!skipRequested)
             yield return new WaitForSecondsRealtime(endHoldDuration);
 
-        // Fade out
         yield return StartCoroutine(FadeCanvas(1f, 0f, fadeInDuration));
 
         creditsCanvas.gameObject.SetActive(false);
         Time.timeScale = 1f;
-        isRunning      = false;
+        isRunning = false;
 
         if (!string.IsNullOrWhiteSpace(mainMenuSceneName))
             SceneLoader.LoadScene(mainMenuSceneName);
@@ -189,7 +220,7 @@ public class CreditsController : MonoBehaviour
     {
         if (creditsCanvas != null)
         {
-            // Reset posisi scroll untuk replay
+            creditsCanvas.sortingOrder = CreditsCanvasSortingOrder;
             RebuildScrollContent();
             return;
         }
@@ -200,11 +231,11 @@ public class CreditsController : MonoBehaviour
 
         creditsCanvas              = canvasGo.GetComponent<Canvas>();
         creditsCanvas.renderMode   = RenderMode.ScreenSpaceOverlay;
-        creditsCanvas.sortingOrder = 400;
+        creditsCanvas.sortingOrder = CreditsCanvasSortingOrder;
 
         CanvasScaler scaler        = canvasGo.GetComponent<CanvasScaler>();
         scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        scaler.referenceResolution = new Vector2(1080f, 1920f);
         scaler.matchWidthOrHeight  = 0.5f;
 
         canvasGo.GetComponent<GraphicRaycaster>().enabled = false;
@@ -241,9 +272,8 @@ public class CreditsController : MonoBehaviour
 
     private void RebuildScrollContent()
     {
-        // Hapus isi lama
         for (int i = scrollRect.childCount - 1; i >= 0; i--)
-            Destroy(scrollRect.GetChild(i).gameObject);
+            DestroyImmediate(scrollRect.GetChild(i).gameObject);
 
         // Vertical layout supaya tinggi otomatis
         ContentSizeFitter csf = scrollRect.gameObject.GetComponent<ContentSizeFitter>();
@@ -274,6 +304,8 @@ public class CreditsController : MonoBehaviour
             tmp.alignment        = TextAlignmentOptions.Center;
             tmp.textWrappingMode = TextWrappingModes.Normal;
             tmp.color            = GetLineColor(line.style, line.size);
+            tmp.font             = ResolveCreditsFont();
+            tmp.ForceMeshUpdate();
 
             LayoutElement le     = textGo.AddComponent<LayoutElement>();
             le.preferredHeight   = line.size * 1.4f;
@@ -288,6 +320,18 @@ public class CreditsController : MonoBehaviour
                 spacerLe.minHeight       = line.spacer;
             }
         }
+    }
+
+    private static TMP_FontAsset ResolveCreditsFont()
+    {
+        if (TMP_Settings.defaultFontAsset != null)
+            return TMP_Settings.defaultFontAsset;
+
+        TMP_FontAsset liberation = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        if (liberation != null)
+            return liberation;
+
+        return Resources.Load<TMP_FontAsset>("LiberationSans SDF");
     }
 
     private static Color GetLineColor(FontStyles style, float size)

@@ -118,6 +118,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private Collider cachedCollider;
     private Coroutine sleepRoutine;
+    private bool isSleepInProgress;
+    private const float AsyncWaitTimeoutSeconds = 10f;
     private Canvas wakeCanvas;
     private CanvasGroup wakeCanvasGroup;
     private RectTransform wakePanelRect;
@@ -141,6 +143,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private bool forceSleepTriggered;
     private const string AgingNotificationModalKey = "aging_panel";
     private const string ForcedSleepMessage = "Kamu terlalu lelah dan tertidur...";
+
+    /// <summary>Only one bed may run a sleep session at a time (scene can have bedSingle + legacy Interactable_Bed).</summary>
+    private static SleepBedInteractable sleepSessionOwner;
 
     private struct WakeMessageContent
     {
@@ -173,11 +178,23 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private void OnDisable()
     {
+        if (isSleepInProgress || sleepRoutine != null)
+            ResetSleepState("on_disable");
+
         InteractableRegistry.Unregister(this);
+    }
+
+    private void OnApplicationPause(bool paused)
+    {
+        if (paused && (isSleepInProgress || sleepRoutine != null))
+            ResetSleepState("application_pause");
     }
 
     private void Update()
     {
+        if (IsAnotherBedSleeping(this))
+            return;
+
         TryForceSleep();
     }
 
@@ -194,12 +211,15 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     public bool CanInteract(GameObject interactor)
     {
-        return sleepRoutine == null;
+        if (IsAnotherBedSleeping(this))
+            return false;
+
+        return !isSleepInProgress;
     }
 
     public void Interact(GameObject interactor)
     {
-        if (sleepRoutine != null)
+        if (isSleepInProgress)
             return;
 
         if (!CanSleepNow())
@@ -216,7 +236,68 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         }
 
         ResetSleepConfirm();
-        sleepRoutine = StartCoroutine(SleepRoutine(interactor, false));
+        BeginSleepRoutine(interactor, false);
+    }
+
+    private void BeginSleepRoutine(GameObject interactor, bool forcedSleep)
+    {
+        if (isSleepInProgress || sleepSessionOwner != null)
+            return;
+
+        sleepSessionOwner = this;
+        isSleepInProgress = true;
+        sleepRoutine = StartCoroutine(SleepRoutine(interactor, forcedSleep));
+    }
+
+    private static bool IsAnotherBedSleeping(SleepBedInteractable self)
+    {
+        return sleepSessionOwner != null && sleepSessionOwner != self;
+    }
+
+    private void ReleaseSleepSessionOwnership()
+    {
+        if (sleepSessionOwner == this)
+            sleepSessionOwner = null;
+    }
+
+    private void ResetSleepState(string reason)
+    {
+        if (sleepSessionOwner != null && sleepSessionOwner != this)
+            return;
+
+        bool wasActive = isSleepInProgress || sleepRoutine != null;
+
+        if (sleepRoutine != null)
+        {
+            StopCoroutine(sleepRoutine);
+            sleepRoutine = null;
+        }
+
+        if (wasActive)
+        {
+            PlayerController player = FindFirstObjectByType<PlayerController>();
+            RestoreGameplayAfterSleep(player, ResolvePlayerStats());
+
+            if (!string.IsNullOrEmpty(reason))
+                Debug.LogWarning($"[SleepBed] Sleep state reset ({reason}).");
+        }
+
+        forceSleepTriggered = false;
+        isSleepInProgress = false;
+        ReleaseSleepSessionOwnership();
+    }
+
+    private IEnumerator WaitUntilOrTimeout(System.Func<bool> predicate, float timeoutSeconds, string label)
+    {
+        float elapsed = 0f;
+        while (!predicate() && elapsed < timeoutSeconds)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (!predicate())
+            Debug.LogWarning($"[SleepBed] Timeout waiting for {label} after {timeoutSeconds:0}s — continuing.");
     }
 
     private IEnumerator SleepRoutine(GameObject interactor, bool forcedSleep)
@@ -232,7 +313,6 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (timeManager == null || playerStats == null)
         {
             Debug.LogWarning("[SleepBedInteractable] Sleep dibatalkan karena TimeManager/PlayerStats tidak tersedia.");
-            sleepRoutine = null;
             yield break;
         }
 
@@ -240,16 +320,12 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (!forcedSleep && requireNightToSleep && periodBeforeSleep != TimeManager.TimePeriod.Night)
         {
             ShowWakeMessage(blockedBeforeNightText, 1.8f);
-            sleepRoutine = null;
             yield break;
         }
 
         // ── Snapshot data sebelum tidur ──────────────────────
         bool workedYesterday   = workSessionManager != null && workSessionManager.HasWorkedToday;
         bool trainedYesterday  = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
-        WorkSessionData  lastWorkSession = workSessionManager?.LastSession;
-        bool             lastWorkHadBonus = workSessionManager?.LastSessionHadBonus ?? false;
-        GymSessionData   lastGymSession  = gymProgressionSystem?.LastSession;
         float energyBeforeSleep     = playerStats.EnergyPercent;
         float adaptationBeforeSleep = playerStats.TrainingAdaptation;
         float fatigueBeforeSleep    = playerStats.FatigueDebt;
@@ -291,7 +367,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
                 ShowWakeMessage(ForcedSleepMessage, Mathf.Max(1f, fadeDuration + 0.4f));
                 bool fadeToBlackDone = false;
                 fadeManager.FadeToBlack(fadeDuration, () => fadeToBlackDone = true);
-                yield return new WaitUntil(() => fadeToBlackDone);
+                yield return WaitUntilOrTimeout(() => fadeToBlackDone, AsyncWaitTimeoutSeconds, "forced_fade_to_black");
                 alreadyFaded = true;
             }
 
@@ -302,25 +378,35 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             {
                 bool fadeToBlackDone = false;
                 fadeManager.FadeToBlack(fadeDuration, () => fadeToBlackDone = true);
-                yield return new WaitUntil(() => fadeToBlackDone);
+                yield return WaitUntilOrTimeout(() => fadeToBlackDone, AsyncWaitTimeoutSeconds, "fade_to_black");
             }
 
             HidePreSleepCinematic();
 
             int wakeHour = ResolveWakeHour(disturbedSleep, lateWakePenaltyTriggered);
+            float clockStartHour = forcedSleep
+                ? Mathf.Clamp(timeManager.CurrentHour, 21f, 24f)
+                : 21f;
 
             if (clockUi != null)
             {
                 bool clockDone = false;
-                clockUi.PlayTimeSkipAnimation("Istirahat Malam", 21, wakeHour, clockSkipDuration, () => clockDone = true);
-                yield return new WaitUntil(() => clockDone);
+                clockUi.PlayTimeSkipAnimation("Istirahat Malam", clockStartHour, wakeHour, clockSkipDuration, () => clockDone = true);
+                yield return WaitUntilOrTimeout(() => clockDone, AsyncWaitTimeoutSeconds, "sleep_clock_animation");
             }
 
             // ── Apply recovery + evaluate health score ───────────
+            bool workedForEval = workSessionManager != null && workSessionManager.HasWorkedToday;
+            bool trainedForEval = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
+            WorkSessionData lastWorkForEval = workSessionManager?.LastSession;
+            bool lastWorkBonusForEval = workSessionManager?.LastSessionHadBonus ?? false;
+            GymSessionData lastGymForEval = gymProgressionSystem?.LastSession;
+            bool overworkedForEval = workedForEval && DidOverworkYesterday(workSessionManager);
+
             DailyHealthResult dailyEvalResult = null;
             ApplyRecovery(playerStats, disturbedSleep, energyBeforeSleep,
-                        workedYesterday, lastWorkSession, lastWorkHadBonus,
-                        trainedYesterday, lastGymSession, overworkedYesterday, out dailyEvalResult);
+                        workedForEval, lastWorkForEval, lastWorkBonusForEval,
+                        trainedForEval, lastGymForEval, overworkedForEval, out dailyEvalResult);
 
             mortalityAssessment = LifestyleMortalityEvaluator.Assess(
                 dayBeforeAdvance, triggerDay, playerStats, PlayerActionTracker.Instance);
@@ -337,6 +423,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
             // ── Advance day ──────────────────────────────────────
             timeManager.AdvanceToNextDayFromSleep();
+            Debug.Log($"[SleepBed] Hari berganti: {dayBeforeAdvance} → {timeManager.CurrentDayNumber} ({timeManager.GetDayNameIndonesia()}), forced={forcedSleep}");
             if (BazaarManager.Instance != null)
                 BazaarManager.Instance.TrySpawnBazaar(timeManager.CurrentDayNumber);
             timeManager.SetTimeByHour(wakeHour);
@@ -352,6 +439,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             if (gymProgressionSystem != null)
                 gymProgressionSystem.NotifyDayResetFromSleep();
 
+            playerStats.ResetDailyHospitalVisitForNewDay();
+            HealthAlertPanelController.EnsureInstance();
+
             playerStats.ClearPostActivityTravelGrace();
 
             float baseDrainModifier = ApplyNextDayMovementDrainModifier(playerStats, trainedYesterday, adaptationBeforeSleep, fatigueBeforeSleep);
@@ -366,6 +456,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             {
                 skipInputRestore = true;
                 MoveInteractorToBedSpawn(interactor);
+                if (fadeManager != null)
+                    fadeManager.ReleaseInputBlock();
                 if (EndingManager.Instance != null)
                     EndingManager.Instance.TriggerEnding();
                 else
@@ -383,7 +475,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             {
                 bool fadeFromBlackDone = false;
                 fadeManager.FadeFromBlack(fadeDuration, () => fadeFromBlackDone = true);
-                yield return new WaitUntil(() => fadeFromBlackDone);
+                yield return WaitUntilOrTimeout(() => fadeFromBlackDone, AsyncWaitTimeoutSeconds, "fade_from_black");
             }
 
             if (enableWakeEyeOpenCinematic)
@@ -404,7 +496,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
                 : null;
 
             ShowWakeMessage(
-                BuildWakeMessage(wakeDayName, workedYesterday, energyBeforeSleep,
+                BuildWakeMessage(wakeDayName, workedForEval, energyBeforeSleep,
                                  disturbedSleep, lateWakePenaltyTriggered, dailyEvalResult,
                                  mortalityWarning),
                 wakeMessageDuration);
@@ -415,10 +507,12 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         {
             if (sleepInputLocked && !prematureDeathOccurred && !skipInputRestore)
                 RestoreGameplayAfterSleep(playerController, playerStats);
-        }
 
-        forceSleepTriggered = false;
-        sleepRoutine = null;
+            forceSleepTriggered = false;
+            sleepRoutine = null;
+            isSleepInProgress = false;
+            ReleaseSleepSessionOwnership();
+        }
     }
 
     private static void ResetGameplayStateBeforeSleep(PlayerController playerController)
@@ -648,7 +742,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private void TryForceSleep()
     {
-        if (forceSleepTriggered || sleepRoutine != null)
+        if (sleepSessionOwner != null || forceSleepTriggered || isSleepInProgress)
             return;
 
         TimeManager timeManager = ResolveTimeManager();
@@ -661,7 +755,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         PlayerController playerController = FindFirstObjectByType<PlayerController>();
         GameObject interactor = playerController != null ? playerController.gameObject : null;
         forceSleepTriggered = true;
-        sleepRoutine = StartCoroutine(SleepRoutine(interactor, true));
+        BeginSleepRoutine(interactor, true);
     }
 
     private IEnumerator HandlePrematureDeathDuringSleep(
@@ -680,9 +774,6 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         {
             Debug.LogWarning("[SleepBedInteractable] EndingManager.Instance null — premature death not shown.");
         }
-
-        forceSleepTriggered = false;
-        sleepRoutine = null;
     }
 
     private void MoveInteractorToBedSpawn(GameObject interactor)

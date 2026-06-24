@@ -49,6 +49,8 @@ public class EndingManager : MonoBehaviour
         if (isShowing || endingTriggered) return;
         if (PlayerStats.Instance == null) return;
 
+        ClearFadeOverlay();
+
         float avg = PlayerStats.Instance.GetAveragePhaseScore();
         PlayerStats.Gender gender = PlayerStats.Instance.PlayerGender;
 
@@ -99,6 +101,8 @@ public class EndingManager : MonoBehaviour
 
         if (PlayerStats.Instance == null)
             return;
+
+        ClearFadeOverlay();
 
         pendingEndingType = EndingType.PrematureDeath;
         pendingGender = PlayerStats.Instance.PlayerGender;
@@ -344,8 +348,15 @@ public class EndingManager : MonoBehaviour
 
     private IEnumerator ShowEndingRoutine(EndingType type, PlayerStats.Gender gender)
     {
+        ClearFadeOverlay();
         EnsurePanel();
-        if (panelRoot == null) yield break;
+        if (panelRoot == null)
+        {
+            Debug.LogError("[EndingManager] Ending panel gagal dibuat — langsung ke credits.");
+            PlayCredits();
+            isShowing = false;
+            yield break;
+        }
 
         if (ModalStateManager.Instance != null)
             ModalStateManager.Instance.OpenModal(ModalKey);
@@ -424,13 +435,23 @@ public class EndingManager : MonoBehaviour
 
     private static void PlayCredits()
     {
-        if (CreditsController.Instance == null)
+        ClearFadeOverlay();
+
+        CreditsController credits = CreditsController.EnsureInstance();
+        if (credits == null)
         {
-            GameObject creditsGo = new GameObject("CreditsController");
-            creditsGo.AddComponent<CreditsController>();
+            Debug.LogError("[EndingManager] CreditsController tidak tersedia.");
+            return;
         }
 
-        CreditsController.Instance.Play();
+        Debug.Log("[EndingManager] Memutar credits.");
+        credits.Play();
+    }
+
+    private static void ClearFadeOverlay()
+    {
+        if (FadeManager.Instance != null)
+            FadeManager.Instance.ReleaseInputBlock();
     }
 
     private void SetAccentColor(EndingType type, RectTransform targetRoot = null)
@@ -469,8 +490,13 @@ public class EndingManager : MonoBehaviour
 
     private static void ApplyFont(TextMeshProUGUI text, TMP_FontAsset font)
     {
-        if (text == null || font == null) return;
-        text.font = font;
+        if (text == null)
+            return;
+
+        if (font != null)
+            text.font = font;
+        else if (TMP_Settings.defaultFontAsset != null)
+            text.font = TMP_Settings.defaultFontAsset;
     }
 
     private string GetTitle(EndingType type) => type switch

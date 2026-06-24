@@ -52,19 +52,6 @@ public class WorkSessionManager : MonoBehaviour
         presenterObj.AddComponent<SessionTimeSkipPresenter>();
     }
 
-    private void Update()
-    {
-        // Reset daily marker when session timer restarts from zero/new run.
-        if (TimeManager.Instance == null)
-            return;
-
-        float currentTime = TimeManager.Instance.CurrentTime;
-        if (_lastObservedGameTime >= 0f && currentTime < _lastObservedGameTime)
-            HasWorkedToday = false;
-
-        _lastObservedGameTime = currentTime;
-    }
-
     public WorkSessionData BuildSession(TimeManager.TimePeriod currentPeriod, float currentEnergyNormalized)
     {
         if (currentPeriod == TimeManager.TimePeriod.Night)

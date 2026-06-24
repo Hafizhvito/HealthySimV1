@@ -15,14 +15,6 @@ public class HomeFoodStationInteractable : MonoBehaviour, IInteractable
     [Header("Home Pricing")]
     [SerializeField] [Range(0.25f, 1f)] private float homePriceMultiplier = 0.65f;
 
-    [Header("Quick Drink")]
-    [SerializeField] private bool enableQuickDrink = true;
-    [SerializeField] private string quickDrinkName = "Air Dingin";
-    [SerializeField] private float quickDrinkEnergyGain = 6f;
-    [SerializeField] private float quickDrinkCalorieGain = 0f;
-    [SerializeField] private float quickDrinkMoodGain = 1.5f;
-    [SerializeField] private int quickDrinkPrice = 4;
-
     [Header("Optional References")]
     [SerializeField] private FoodCatalogProvider foodCatalogProviderOverride;
 
@@ -48,7 +40,6 @@ public class HomeFoodStationInteractable : MonoBehaviour, IInteractable
         }
 
         homePriceMultiplier = Mathf.Clamp(homePriceMultiplier, 0.25f, 1f);
-        quickDrinkPrice = Mathf.Max(0, quickDrinkPrice);
     }
 
     void OnEnable()
@@ -81,16 +72,7 @@ public class HomeFoodStationInteractable : MonoBehaviour, IInteractable
             return;
         }
 
-        FoodChoiceMenuController.Instance.OpenHomeMenu(
-            stationLabel,
-            choices,
-            homePriceMultiplier,
-            enableQuickDrink,
-            quickDrinkName,
-            quickDrinkEnergyGain,
-            quickDrinkCalorieGain,
-            quickDrinkMoodGain,
-            quickDrinkPrice);
+        FoodChoiceMenuController.Instance.OpenHomeMenu(stationLabel, choices, homePriceMultiplier);
     }
 
     private List<FoodData> BuildHomeFoodChoices()

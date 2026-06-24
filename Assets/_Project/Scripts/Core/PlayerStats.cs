@@ -61,6 +61,8 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] [HideInInspector] private int skippedWorkDays = 0;
     [SerializeField] [HideInInspector] private int overworkedDays = 0;
     [SerializeField] [HideInInspector] private bool _visitedHospitalToday = false;
+    [SerializeField] [HideInInspector] private bool _healthGuidanceDismissed = false;
+    [SerializeField] [HideInInspector] private bool _healthGuidanceIndicatorsUnlocked = false;
 
     [Header("Phase-Start Snapshot (Hidden)")]
     [SerializeField] [HideInInspector] private int phaseStartDaysEvaluated;
@@ -87,6 +89,7 @@ public class PlayerStats : MonoBehaviour
     [Header("Faint Presentation")]
     [SerializeField] private float faintFadeOutDuration = 0.35f;
     [SerializeField] private float faintFadeInDuration = 0.5f;
+    [SerializeField] [Range(0f, 1f)] private float vehicleKnockdownEnergyDrain = 0.12f;
 
     public enum EnergyState { Normal, Warning, Critical, Fainted }
     public enum AgeStage { Youth, Adult, Senior }
@@ -98,6 +101,12 @@ public class PlayerStats : MonoBehaviour
     private float runningDuration;
     private bool faintRespawnHandled;
     private Coroutine faintPresentationRoutine;
+    private bool vehicleKnockdownInProgress;
+
+    private const string VehicleKnockdownTitle = "Tertabrak Kendaraan";
+    private const string VehicleKnockdownBody =
+        "Kamu tertabrak kendaraan. Istirahat sejenak dan lebih berhati-hati saat menyeberang jalan.";
+    private const float PresentationWaitTimeoutSeconds = 8f;
 
     // ── Public getters ───────────────────────────────────────
     public float CurrentEnergy       => currentEnergy;
@@ -136,6 +145,48 @@ public class PlayerStats : MonoBehaviour
     public int OverworkedDays       => overworkedDays;
     public bool VisitedHospitalToday => _visitedHospitalToday;
 
+    public bool ShouldShowHealthGuidance(float threshold = 40f)
+    {
+        if (_healthGuidanceDismissed)
+            return false;
+
+        return HealthScoreThisPhase < threshold;
+    }
+
+    public bool ShouldShowHealthIndicators(float threshold = 40f)
+    {
+        return ShouldShowHealthGuidance(threshold) && _healthGuidanceIndicatorsUnlocked;
+    }
+
+    public void AcknowledgeHealthAlertNotice(float threshold = 40f)
+    {
+        if (!ShouldShowHealthGuidance(threshold))
+            return;
+
+        _healthGuidanceIndicatorsUnlocked = true;
+        OnHealthGuidanceIndicatorsUnlocked?.Invoke();
+    }
+
+    public void DismissHealthGuidance()
+    {
+        _healthGuidanceDismissed = true;
+        _healthGuidanceIndicatorsUnlocked = false;
+    }
+
+    private void TryRearmHealthGuidance(float threshold)
+    {
+        if (HealthScoreThisPhase >= threshold)
+        {
+            _healthGuidanceDismissed = false;
+            _healthGuidanceIndicatorsUnlocked = false;
+        }
+    }
+
+    public void NotifyHealthScoreEvaluated(float threshold = 40f)
+    {
+        TryRearmHealthGuidance(threshold);
+    }
+
     public PhaseSnapshot GetCurrentPhaseSnapshot()
     {
         return new PhaseSnapshot
@@ -172,6 +223,7 @@ public class PlayerStats : MonoBehaviour
     public System.Action<float> OnMoodChanged;
     public System.Action<float> OnCaloriesChanged;
     public System.Action<AgeStage, AgeStage, int> OnAgeStageChanged;
+    public System.Action OnHealthGuidanceIndicatorsUnlocked;
 
     [System.Serializable]
     private struct PhaseModifierData
@@ -292,13 +344,24 @@ public class PlayerStats : MonoBehaviour
         totalCaloriesConsumed = 0f;
         dailyProtein = 0f;
         dailyFat = 0f;
-        _visitedHospitalToday = false;
         OnCaloriesChanged?.Invoke(totalCaloriesConsumed);
+    }
+
+    public void ResetDailyHospitalVisitForNewDay()
+    {
+        _visitedHospitalToday = false;
+
+        if (HealthScoreThisPhase < 40f)
+        {
+            _healthGuidanceDismissed = false;
+            _healthGuidanceIndicatorsUnlocked = false;
+        }
     }
 
     public void SetVisitedHospital()
     {
         _visitedHospitalToday = true;
+        DismissHealthGuidance();
     }
 
     /// <summary>Reduces current energy by normalised amount [0..1] of max energy.</summary>
@@ -338,6 +401,7 @@ public class PlayerStats : MonoBehaviour
     public void RegisterHealthScore(float delta)
     {
         healthScoreThisPhase = Mathf.Clamp(healthScoreThisPhase + delta, 0f, 100f);
+        TryRearmHealthGuidance(40f);
     }
 
     public void RegisterDailyHealthSnapshot(
@@ -533,6 +597,7 @@ public class PlayerStats : MonoBehaviour
         faintTimer = 0f;
         runningDuration = 0f;
         faintRespawnHandled = false;
+        vehicleKnockdownInProgress = false;
 
         totalCaloriesConsumed = 0f;
         dailyProtein = 0f;
@@ -688,7 +753,7 @@ public class PlayerStats : MonoBehaviour
 
     public void FaintAndRespawn()
     {
-        if (faintRespawnHandled)
+        if (faintRespawnHandled || vehicleKnockdownInProgress)
             return;
 
         faintRespawnHandled = true;
@@ -700,14 +765,46 @@ public class PlayerStats : MonoBehaviour
         faintPresentationRoutine = StartCoroutine(FaintAndRespawnRoutine());
     }
 
+    public void HandleVehicleKnockdown()
+    {
+        if (vehicleKnockdownInProgress || faintRespawnHandled)
+            return;
+
+        if (currentEnergyState == EnergyState.Fainted)
+            return;
+
+        vehicleKnockdownInProgress = true;
+
+        if (faintPresentationRoutine != null)
+            StopCoroutine(faintPresentationRoutine);
+
+        faintPresentationRoutine = StartCoroutine(VehicleKnockdownRoutine());
+    }
+
+    private IEnumerator VehicleKnockdownRoutine()
+    {
+        yield return FadeToBlackWithTimeout(faintFadeOutDuration);
+
+        DrainEnergy(vehicleKnockdownEnergyDrain);
+        TeleportPlayerToRespawn();
+
+        FaintNotificationController notificationPanel =
+            FindFirstObjectByType<FaintNotificationController>(FindObjectsInactive.Include);
+
+        if (notificationPanel != null)
+            notificationPanel.ShowPanel(VehicleKnockdownTitle, VehicleKnockdownBody);
+        else
+            Debug.LogWarning("[PlayerStats] FaintNotificationController tidak ditemukan untuk notifikasi tabrak kendaraan.");
+
+        yield return FadeFromBlackWithTimeout(faintFadeInDuration);
+
+        vehicleKnockdownInProgress = false;
+        faintPresentationRoutine = null;
+    }
+
     private IEnumerator FaintAndRespawnRoutine()
     {
-        if (FadeManager.Instance != null)
-        {
-            bool fadeOutDone = false;
-            FadeManager.Instance.FadeToBlack(faintFadeOutDuration, () => fadeOutDone = true);
-            yield return new WaitUntil(() => fadeOutDone);
-        }
+        yield return FadeToBlackWithTimeout(faintFadeOutDuration);
 
         currentEnergy = maxEnergy;
         OnEnergyChanged?.Invoke(currentEnergy);
@@ -731,14 +828,39 @@ public class PlayerStats : MonoBehaviour
             yield break;
         }
 
-        if (FadeManager.Instance != null)
-        {
-            bool fadeInDone = false;
-            FadeManager.Instance.FadeFromBlack(faintFadeInDuration, () => fadeInDone = true);
-            yield return new WaitUntil(() => fadeInDone);
-        }
+        yield return FadeFromBlackWithTimeout(faintFadeInDuration);
 
         faintPresentationRoutine = null;
+    }
+
+    private IEnumerator FadeToBlackWithTimeout(float duration)
+    {
+        if (FadeManager.Instance == null)
+            yield break;
+
+        bool fadeOutDone = false;
+        FadeManager.Instance.FadeToBlack(duration, () => fadeOutDone = true);
+        yield return WaitUntilOrTimeout(() => fadeOutDone, PresentationWaitTimeoutSeconds);
+    }
+
+    private IEnumerator FadeFromBlackWithTimeout(float duration)
+    {
+        if (FadeManager.Instance == null)
+            yield break;
+
+        bool fadeInDone = false;
+        FadeManager.Instance.FadeFromBlack(duration, () => fadeInDone = true);
+        yield return WaitUntilOrTimeout(() => fadeInDone, PresentationWaitTimeoutSeconds);
+    }
+
+    private static IEnumerator WaitUntilOrTimeout(System.Func<bool> predicate, float timeoutSeconds)
+    {
+        float elapsed = 0f;
+        while (!predicate() && elapsed < timeoutSeconds)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
     }
 
     public void ResetFaintState()
@@ -753,6 +875,7 @@ public class PlayerStats : MonoBehaviour
 
         faintRespawnHandled = false;
         faintTimer = 0f;
+        vehicleKnockdownInProgress = false;
 
         if (wasFainted)
         {

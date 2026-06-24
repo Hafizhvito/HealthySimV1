@@ -163,6 +163,7 @@ public class HUDManager : MonoBehaviour
         // =======================================================
 
         TryInitialize();
+        ApplyHudBarPresentation();
 
         // Initialize UI
         if (warningPanel != null)
@@ -235,6 +236,43 @@ public class HUDManager : MonoBehaviour
             caloriesVisualPercent = Mathf.Clamp01(previousCaloriesValue / playerStats.DailyCalorieTarget);
         else
             caloriesVisualPercent = 0f;
+    }
+
+    private void ApplyHudBarPresentation()
+    {
+        const float barWidth = 420f;
+        const float energyHeight = 52f;
+        const float caloriesHeight = 48f;
+
+        ApplyHudPanelSize(energyBarFill, barWidth, energyHeight, new Vector2(34f, -32f));
+        ApplyHudPanelSize(caloriesBarFill, barWidth, caloriesHeight, new Vector2(34f, -92f));
+
+        if (energyValueText != null)
+        {
+            energyValueText.fontSize = 18f;
+            energyValueText.fontStyle = FontStyles.Bold;
+            energyValueText.outlineWidth = 0.18f;
+        }
+
+        if (caloriesText != null)
+        {
+            caloriesText.fontSize = 20f;
+            caloriesText.fontStyle = FontStyles.Bold;
+            caloriesText.outlineWidth = 0.20f;
+        }
+    }
+
+    private static void ApplyHudPanelSize(Image barImage, float width, float height, Vector2 anchoredPosition)
+    {
+        if (barImage == null)
+            return;
+
+        RectTransform panel = barImage.transform.parent as RectTransform;
+        if (panel == null)
+            return;
+
+        panel.sizeDelta = new Vector2(width, height);
+        panel.anchoredPosition = anchoredPosition;
     }
 
     void TryInitialize()
@@ -500,7 +538,7 @@ public class HUDManager : MonoBehaviour
         if (caloriesText != null)
         {
             caloriesText.text = string.Format(
-                "Kalori {0:0} / {1:0} kcal",
+                "Kalori {0:0} / {1:0} KCAL",
                 playerStats.TotalCalories,
                 playerStats.DailyCalorieTarget
             );

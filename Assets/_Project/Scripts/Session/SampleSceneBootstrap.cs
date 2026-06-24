@@ -171,6 +171,7 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsureComponent<MobileInputController>(manager);
         EnsureComponent<BazaarManager>(manager);
         EnsureComponent<EndingManager>(manager);
+        EnsureComponent<CreditsController>(manager);
         EnsureComponent<GameplayAudioListenerKeeper>(manager);
     }
 

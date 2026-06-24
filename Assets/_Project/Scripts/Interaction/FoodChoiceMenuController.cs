@@ -1,24 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class FoodChoiceMenuController : MonoBehaviour
 {
     public static FoodChoiceMenuController Instance { get; private set; }
-
-    private static class MenuDesign
-    {
-        public const float ReferenceWidth = 900f;
-        public const float ReferenceHeight = 620f;
-        public const float ScreenMargin = 16f;
-        public const float MinTouchHeight = 48f;
-        public const float FooterButtonHeight = 48f;
-        public const float RowActionButtonHeight = 48f;
-        public const float CloseButtonSize = 44f;
-        public const float ScrollBottomPadding = 16f;
-        public const float ThumbnailSize = 80f;
-        public const float ThumbnailColumnWidth = 96f;
-        public const float ActionColumnWidth = 172f;
-    }
 
     private static class MenuPalette
     {
@@ -38,16 +23,7 @@ public class FoodChoiceMenuController : MonoBehaviour
 
     private struct MenuLayout
     {
-        public float WindowWidth;
-        public float WindowHeight;
-        public float TouchButtonHeight;
-        public float FooterButtonHeight;
-        public float CloseButtonSize;
-        public float ThumbnailSize;
-        public float ThumbnailColumnWidth;
-        public float ActionColumnWidth;
-        public float ScrollBottomPadding;
-        public float FontScale;
+        public ImGuiMenuLayout.Metrics Metrics;
     }
 
     private readonly List<FoodData> currentFoods = new List<FoodData>();
@@ -71,14 +47,15 @@ public class FoodChoiceMenuController : MonoBehaviour
     private GUIStyle statusWarnStyle;
     private GUIStyle thumbnailPlaceholderStyle;
 
+    private GUIStyle scrollHintStyle;
+
+    private Rect foodWindowScreenRect;
+    private Rect foodScrollScreenRect;
+    private float foodScrollContentHeight;
+    private bool hasFoodScrollScreenRect;
+
     private bool isHomeFoodMode;
     private float homePriceMultiplier = 1f;
-    private bool homeQuickDrinkEnabled;
-    private string homeQuickDrinkName = "Air Dingin";
-    private float homeQuickDrinkEnergy = 6f;
-    private float homeQuickDrinkCalories;
-    private float homeQuickDrinkMood = 1.5f;
-    private int homeQuickDrinkPrice = 4;
 
     void Awake()
     {
@@ -130,27 +107,12 @@ public class FoodChoiceMenuController : MonoBehaviour
         Debug.Log($"[FoodMenu] Dibuka: {currentLocationName} ({currentFoods.Count} item)");
     }
 
-    public void OpenHomeMenu(
-        string locationName,
-        List<FoodData> foods,
-        float priceMultiplier = 0.65f,
-        bool enableQuickDrink = true,
-        string quickDrinkName = "Air Dingin",
-        float quickDrinkEnergy = 6f,
-        float quickDrinkCalories = 0f,
-        float quickDrinkMood = 1.5f,
-        int quickDrinkPrice = 4)
+    public void OpenHomeMenu(string locationName, List<FoodData> foods, float priceMultiplier = 0.65f)
     {
         OpenMenu(locationName, foods);
 
         isHomeFoodMode = true;
         homePriceMultiplier = Mathf.Clamp(priceMultiplier, 0.25f, 1f);
-        homeQuickDrinkEnabled = enableQuickDrink;
-        homeQuickDrinkName = string.IsNullOrWhiteSpace(quickDrinkName) ? "Air Dingin" : quickDrinkName.Trim();
-        homeQuickDrinkEnergy = quickDrinkEnergy;
-        homeQuickDrinkCalories = quickDrinkCalories;
-        homeQuickDrinkMood = quickDrinkMood;
-        homeQuickDrinkPrice = Mathf.Max(0, quickDrinkPrice);
     }
 
     public void CloseMenu()
@@ -160,6 +122,10 @@ public class FoodChoiceMenuController : MonoBehaviour
 
         isOpen = false;
         scrollPosition = Vector2.zero;
+        foodScrollScreenRect = Rect.zero;
+        foodScrollContentHeight = 0f;
+        hasFoodScrollScreenRect = false;
+        ImGuiMobileScrollUtility.Reset();
 
         if (TimeManager.Instance != null)
             TimeManager.Instance.ResumeTime();
@@ -191,6 +157,19 @@ public class FoodChoiceMenuController : MonoBehaviour
 
     public bool IsOpen => isOpen;
 
+    void LateUpdate()
+    {
+        if (!isOpen || !hasFoodScrollScreenRect)
+            return;
+
+        scrollPosition = ImGuiMobileScrollUtility.PollTouchScroll(
+            foodScrollScreenRect,
+            scrollPosition,
+            foodScrollContentHeight);
+
+        ImGuiMobileScrollUtility.EndFrameCleanup();
+    }
+
     void OnGUI()
     {
         if (!isOpen)
@@ -198,52 +177,32 @@ public class FoodChoiceMenuController : MonoBehaviour
 
         menuLayout = ComputeLayout();
         EnsureStyles();
+        ImGuiMobileScrollUtility.EnsureScrollbarStyles();
 
         GUI.depth = -1000;
 
-        Rect safeArea = Screen.safeArea;
-        Rect windowRect = new Rect(
-            safeArea.x + (safeArea.width - menuLayout.WindowWidth) * 0.5f,
-            safeArea.y + (safeArea.height - menuLayout.WindowHeight) * 0.5f,
-            menuLayout.WindowWidth,
-            menuLayout.WindowHeight);
+        Rect windowRect = ImGuiMenuLayout.CenteredWindowRect(menuLayout.Metrics);
 
         Color previousColor = GUI.color;
         GUI.color = MenuPalette.ScreenDim;
         GUI.Box(new Rect(0f, 0f, Screen.width, Screen.height), GUIContent.none);
         GUI.color = previousColor;
 
-        GUI.Window(GetInstanceID(), windowRect, DrawWindow, "Food Interaction");
+        foodWindowScreenRect = windowRect;
+        GUI.Window(GetInstanceID(), windowRect, DrawWindow, GUIContent.none);
     }
 
     private MenuLayout ComputeLayout()
     {
-        Rect safeArea = Screen.safeArea;
-        float margin = MenuDesign.ScreenMargin;
-        float availableWidth = Mathf.Max(320f, safeArea.width - margin * 2f);
-        float availableHeight = Mathf.Max(380f, safeArea.height - margin * 2f);
-
-        float width = Mathf.Min(MenuDesign.ReferenceWidth, availableWidth);
-        float height = Mathf.Min(MenuDesign.ReferenceHeight, availableHeight);
-        float scale = width / MenuDesign.ReferenceWidth;
-
         return new MenuLayout
         {
-            WindowWidth = width,
-            WindowHeight = height,
-            TouchButtonHeight = Mathf.Max(MenuDesign.MinTouchHeight, MenuDesign.RowActionButtonHeight * scale),
-            FooterButtonHeight = Mathf.Max(MenuDesign.MinTouchHeight, MenuDesign.FooterButtonHeight * scale),
-            CloseButtonSize = Mathf.Max(MenuDesign.MinTouchHeight, MenuDesign.CloseButtonSize * scale),
-            ThumbnailSize = MenuDesign.ThumbnailSize * scale,
-            ThumbnailColumnWidth = MenuDesign.ThumbnailColumnWidth * scale,
-            ActionColumnWidth = MenuDesign.ActionColumnWidth * scale,
-            ScrollBottomPadding = MenuDesign.ScrollBottomPadding * scale,
-            FontScale = Mathf.Clamp(scale, 0.72f, 1.12f)
+            Metrics = ImGuiMenuLayout.Compute()
         };
     }
 
     private void DrawWindow(int id)
     {
+        GUILayout.Space(6f);
         DrawCloseButton();
 
         GUILayout.Space(8f);
@@ -252,12 +211,30 @@ public class FoodChoiceMenuController : MonoBehaviour
         LabelOutlined($"{currentFoods.Count} item tersedia  •  Saldo Rp{money}", headerMetaStyle);
         DrawPanelStatus();
 
-        if (isHomeFoodMode)
-            DrawHomeQuickActions();
-
         GUILayout.Space(8f);
 
-        scrollPosition = BeginMenuScrollView(scrollPosition);
+        foodScrollContentHeight = EstimateFoodListContentHeight();
+        bool showScrollHint = foodScrollContentHeight > 120f;
+        float scrollViewHeight = ImGuiMenuLayout.ComputeScrollHeight(
+            menuLayout.Metrics,
+            menuLayout.Metrics.FoodHeaderReservedHeight,
+            showScrollHint && foodScrollContentHeight > 0f);
+
+        if (showScrollHint && foodScrollContentHeight > scrollViewHeight + 8f)
+            DrawScrollHint();
+
+        if (hasFoodScrollScreenRect)
+        {
+            ImGuiMobileScrollUtility.TryHandleGuiScrollEvent(
+                foodScrollScreenRect,
+                ref scrollPosition,
+                foodScrollContentHeight);
+        }
+
+        scrollPosition = ImGuiMobileScrollUtility.BeginWideScrollView(
+            scrollPosition,
+            scrollViewHeight,
+            out Rect scrollViewportLocal);
 
         if (currentFoods.Count == 0)
         {
@@ -273,20 +250,30 @@ public class FoodChoiceMenuController : MonoBehaviour
             }
         }
 
-        GUILayout.Space(menuLayout.ScrollBottomPadding);
-        GUILayout.EndScrollView();
+        GUILayout.Space(menuLayout.Metrics.ScrollBottomPadding);
+        ImGuiMobileScrollUtility.EndWideScrollView();
 
-        GUILayout.Space(8f);
+        if (Event.current.type == EventType.Repaint && scrollViewportLocal.height > 1f)
+        {
+            foodScrollScreenRect = ImGuiMobileScrollUtility.BuildContentSwipeRect(
+                foodWindowScreenRect,
+                scrollViewportLocal);
+            hasFoodScrollScreenRect = true;
+        }
+
+        GUILayout.FlexibleSpace();
+        GUILayout.Space(ImGuiMenuLayout.FooterTopSpacing);
         DrawFooterButtons();
+        GUILayout.Space(ImGuiMenuLayout.WindowBottomPadding);
 
-        GUI.DragWindow(new Rect(0f, 0f, 10000f, 24f));
+        GUI.DragWindow(new Rect(0f, 0f, menuLayout.Metrics.WindowWidth, menuLayout.Metrics.CloseButtonSize + 12f));
     }
 
     private void DrawCloseButton()
     {
-        float size = menuLayout.CloseButtonSize;
+        float size = menuLayout.Metrics.CloseButtonSize;
         float padding = 8f;
-        Rect closeRect = new Rect(menuLayout.WindowWidth - size - padding, padding, size, size);
+        Rect closeRect = new Rect(menuLayout.Metrics.WindowWidth - size - padding, padding, size, size);
 
         if (OutlinedButton("X", closeButtonStyle, closeRect))
             CloseMenu();
@@ -296,7 +283,7 @@ public class FoodChoiceMenuController : MonoBehaviour
     {
         GUILayout.BeginHorizontal();
 
-        if (OutlinedButton("Lihat Stash", actionButtonStyle, GUILayout.Height(menuLayout.FooterButtonHeight)))
+        if (OutlinedButton("Lihat Stash", actionButtonStyle, GUILayout.Height(menuLayout.Metrics.FooterButtonHeight)))
         {
             EnsureStashSystemsAvailable();
             CloseMenu();
@@ -304,7 +291,7 @@ public class FoodChoiceMenuController : MonoBehaviour
                 FoodStashMenuController.Instance.OpenStash();
         }
 
-        if (OutlinedButton("Tutup", actionButtonStyle, GUILayout.Height(menuLayout.FooterButtonHeight)))
+        if (OutlinedButton("Tutup", actionButtonStyle, GUILayout.Height(menuLayout.Metrics.FooterButtonHeight)))
             CloseMenu();
 
         GUILayout.EndHorizontal();
@@ -315,7 +302,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         int price = GetDisplayPrice(food);
         string eatLabel = isHomeFoodMode ? "Makan Cepat" : "Makan";
         string stashLabel = isHomeFoodMode ? "Meal Prep" : "Simpan";
-        float actionButtonHeight = menuLayout.TouchButtonHeight;
+        float actionButtonHeight = menuLayout.Metrics.TouchButtonHeight;
         string healthTag = food.isHealthy ? "Sehat" : "Kurang Sehat";
 
         GUILayout.BeginVertical("box");
@@ -333,25 +320,25 @@ public class FoodChoiceMenuController : MonoBehaviour
             nutrientStyle);
         GUILayout.EndVertical();
 
-        GUILayout.BeginVertical(GUILayout.Width(menuLayout.ActionColumnWidth));
+        GUILayout.BeginVertical(GUILayout.Width(menuLayout.Metrics.ActionColumnWidth));
         LabelOutlined($"Rp{price}", priceStyle, GUILayout.Height(actionButtonHeight * 0.55f));
 
-        if (OutlinedButton(eatLabel, actionButtonStyle, GUILayout.Height(actionButtonHeight)))
+        if (OutlinedButtonScrollSafe(eatLabel, actionButtonStyle, GUILayout.Height(actionButtonHeight)))
             EatFood(food);
 
-        if (OutlinedButton(stashLabel, actionButtonStyle, GUILayout.Height(actionButtonHeight)))
+        if (OutlinedButtonScrollSafe(stashLabel, actionButtonStyle, GUILayout.Height(actionButtonHeight)))
             StashFood(food);
 
         GUILayout.EndVertical();
         GUILayout.EndHorizontal();
         GUILayout.EndVertical();
-        GUILayout.Space(6f);
+        GUILayout.Space(ImGuiMenuLayout.FoodRowSpacingFor(menuLayout.Metrics));
     }
 
     private void DrawFoodThumbnail(FoodData food)
     {
-        float thumbnailSize = menuLayout.ThumbnailSize;
-        float columnWidth = menuLayout.ThumbnailColumnWidth;
+        float thumbnailSize = menuLayout.Metrics.ThumbnailSize;
+        float columnWidth = menuLayout.Metrics.ThumbnailColumnWidth;
         float rowHeight = thumbnailSize + 8f;
 
         Rect thumbRect = GUILayoutUtility.GetRect(columnWidth, rowHeight, GUILayout.Width(columnWidth));
@@ -455,63 +442,6 @@ public class FoodChoiceMenuController : MonoBehaviour
         return true;
     }
 
-    private void DrawHomeQuickActions()
-    {
-        float buttonHeight = menuLayout.TouchButtonHeight;
-
-        GUILayout.BeginVertical("box");
-        LabelOutlined("Aksi Cepat Rumah", foodNameStyle);
-        LabelOutlined("Rumah lebih hemat. Meal prep otomatis masuk stash dan bisa dimakan nanti tanpa bayar lagi.", foodDetailStyle);
-
-        if (OutlinedButton("Buka Stash Rumah", actionButtonStyle, GUILayout.Height(buttonHeight)))
-        {
-            EnsureStashSystemsAvailable();
-            CloseMenu();
-            if (FoodStashMenuController.Instance != null)
-                FoodStashMenuController.Instance.OpenStash();
-            return;
-        }
-
-        if (homeQuickDrinkEnabled)
-        {
-            int drinkPrice = Mathf.Max(0, homeQuickDrinkPrice);
-            LabelOutlined(
-                $"Minuman cepat: {homeQuickDrinkName}  •  Energi +{homeQuickDrinkEnergy:0.#}  •  Mood +{homeQuickDrinkMood:0.#}  •  Rp{drinkPrice}",
-                nutrientStyle);
-
-            if (OutlinedButton($"Minum Cepat (Rp{drinkPrice})", actionButtonStyle, GUILayout.Height(buttonHeight)))
-                ConsumeHomeQuickDrink();
-        }
-
-        GUILayout.EndVertical();
-    }
-
-    private void ConsumeHomeQuickDrink()
-    {
-        if (PlayerStats.Instance == null)
-        {
-            ShowPanelStatus("Data player belum siap.", true);
-            return;
-        }
-
-        int price = Mathf.Max(0, homeQuickDrinkPrice);
-        if (price > 0 && PlayerStats.Instance.Money < price)
-        {
-            ShowPanelStatus($"Uang tidak cukup. Butuh Rp{price}.", true);
-            return;
-        }
-
-        if (price > 0)
-            PlayerStats.Instance.SpendMoney(price);
-
-        PlayerStats.Instance.AddFood(homeQuickDrinkEnergy, homeQuickDrinkCalories, homeQuickDrinkMood, 0f, 0f, countsAsMeal: true);
-
-        if (PlayerActionTracker.Instance != null)
-            PlayerActionTracker.Instance.Track(PlayerActionTracker.ActionType.HealthyFoodTaken, "HomeQuickDrink");
-
-        ShowPanelStatus($"Kamu minum {homeQuickDrinkName}.", false, 1.2f);
-    }
-
     private int GetDisplayPrice(FoodData food)
     {
         if (food == null)
@@ -551,12 +481,6 @@ public class FoodChoiceMenuController : MonoBehaviour
     {
         isHomeFoodMode = false;
         homePriceMultiplier = 1f;
-        homeQuickDrinkEnabled = false;
-        homeQuickDrinkName = "Air Dingin";
-        homeQuickDrinkEnergy = 6f;
-        homeQuickDrinkCalories = 0f;
-        homeQuickDrinkMood = 1.5f;
-        homeQuickDrinkPrice = 4;
     }
 
     private void DrawPanelStatus()
@@ -574,48 +498,55 @@ public class FoodChoiceMenuController : MonoBehaviour
         panelStatusUntil = Time.unscaledTime + Mathf.Max(0.5f, duration);
     }
 
-    private int ScaledFont(int baseSize)
+    private int ScaledFont(int baseSize, int mobileMinimum = 12)
     {
-        return Mathf.Max(11, Mathf.RoundToInt(baseSize * menuLayout.FontScale));
+        return ImGuiMenuLayout.ScaledFont(menuLayout.Metrics, baseSize, mobileMinimum);
+    }
+
+    private void DrawScrollHint()
+    {
+        LabelOutlined("Geser daftar ke atas/bawah untuk scroll", scrollHintStyle);
     }
 
     private void EnsureStyles()
     {
-        float scale = menuLayout.FontScale;
+        float scale = menuLayout.Metrics.FontScale;
         if (headerTitleStyle != null && Mathf.Approximately(cachedStyleScale, scale))
             return;
 
         cachedStyleScale = scale;
+        scrollHintStyle = CreateLabelStyle(ScaledFont(16, 20), FontStyle.Italic, MenuPalette.MetaText);
+        scrollHintStyle.alignment = TextAnchor.MiddleCenter;
 
-        headerTitleStyle = CreateLabelStyle(ScaledFont(22), FontStyle.Bold, MenuPalette.TitleText);
+        headerTitleStyle = CreateLabelStyle(ScaledFont(28, 34), FontStyle.Bold, MenuPalette.TitleText);
         headerTitleStyle.margin = new RectOffset(10, 10, 2, 2);
 
-        headerMetaStyle = CreateLabelStyle(ScaledFont(13), FontStyle.Normal, MenuPalette.MetaText);
+        headerMetaStyle = CreateLabelStyle(ScaledFont(18, 23), FontStyle.Normal, MenuPalette.MetaText);
         headerMetaStyle.margin = new RectOffset(10, 10, 2, 8);
 
-        foodNameStyle = CreateLabelStyle(ScaledFont(16), FontStyle.Bold, MenuPalette.TitleText);
+        foodNameStyle = CreateLabelStyle(ScaledFont(20, 25), FontStyle.Bold, MenuPalette.TitleText);
         foodNameStyle.wordWrap = true;
 
-        foodDetailStyle = CreateLabelStyle(ScaledFont(13), FontStyle.Normal, MenuPalette.BodyText);
+        foodDetailStyle = CreateLabelStyle(ScaledFont(17, 22), FontStyle.Normal, MenuPalette.BodyText);
         foodDetailStyle.wordWrap = true;
 
-        nutrientStyle = CreateLabelStyle(ScaledFont(13), FontStyle.Bold, MenuPalette.NutrientText);
+        nutrientStyle = CreateLabelStyle(ScaledFont(17, 22), FontStyle.Bold, MenuPalette.NutrientText);
         nutrientStyle.wordWrap = true;
         nutrientStyle.margin = new RectOffset(0, 0, 4, 0);
 
-        priceStyle = CreateLabelStyle(ScaledFont(15), FontStyle.Bold, MenuPalette.PriceText);
+        priceStyle = CreateLabelStyle(ScaledFont(19, 24), FontStyle.Bold, MenuPalette.PriceText);
         priceStyle.alignment = TextAnchor.MiddleCenter;
 
-        actionButtonStyle = CreateActionButtonStyle(ScaledFont(13));
-        closeButtonStyle = CreateActionButtonStyle(ScaledFont(12));
+        actionButtonStyle = CreateActionButtonStyle(ScaledFont(17, 21));
+        closeButtonStyle = CreateActionButtonStyle(ScaledFont(17, 21));
 
-        statusOkStyle = CreateLabelStyle(ScaledFont(12), FontStyle.Bold, MenuPalette.StatusOkText);
+        statusOkStyle = CreateLabelStyle(ScaledFont(16, 20), FontStyle.Bold, MenuPalette.StatusOkText);
         statusOkStyle.margin = new RectOffset(10, 10, 2, 4);
 
-        statusWarnStyle = CreateLabelStyle(ScaledFont(12), FontStyle.Bold, MenuPalette.StatusWarnText);
+        statusWarnStyle = CreateLabelStyle(ScaledFont(16, 20), FontStyle.Bold, MenuPalette.StatusWarnText);
         statusWarnStyle.margin = new RectOffset(10, 10, 2, 4);
 
-        thumbnailPlaceholderStyle = CreateLabelStyle(ScaledFont(28), FontStyle.Bold, MenuPalette.PlaceholderText);
+        thumbnailPlaceholderStyle = CreateLabelStyle(ScaledFont(34, 38), FontStyle.Bold, MenuPalette.PlaceholderText);
         thumbnailPlaceholderStyle.alignment = TextAnchor.MiddleCenter;
     }
 
@@ -704,18 +635,28 @@ public class FoodChoiceMenuController : MonoBehaviour
         return style;
     }
 
-    private static Vector2 BeginMenuScrollView(Vector2 position)
+    private float EstimateFoodListContentHeight()
     {
-        // GameSkin lacks scrollview* styles; hide scrollbars to avoid console spam.
-        // Touch drag and mouse wheel still scroll the list.
-        return GUILayout.BeginScrollView(
-            position,
-            false,
-            false,
-            GUIStyle.none,
-            GUIStyle.none,
-            GUIStyle.none,
-            GUILayout.ExpandHeight(true));
+        if (currentFoods.Count == 0)
+            return menuLayout.Metrics.EmptyListHeight;
+
+        float rowSpacing = ImGuiMenuLayout.FoodRowSpacingFor(menuLayout.Metrics);
+        return currentFoods.Count * menuLayout.Metrics.FoodRowHeight
+            + Mathf.Max(0, currentFoods.Count - 1) * rowSpacing
+            + menuLayout.Metrics.ScrollBottomPadding;
+    }
+
+    private bool OutlinedButtonScrollSafe(string text, GUIStyle buttonStyle, params GUILayoutOption[] options)
+    {
+        if (ImGuiMobileScrollUtility.ShouldSuppressClicks)
+        {
+            GUILayout.Button(GUIContent.none, buttonStyle, options);
+            Rect rect = GUILayoutUtility.GetLastRect();
+            DrawOutlinedButtonText(rect, text, buttonStyle.fontSize);
+            return false;
+        }
+
+        return OutlinedButton(text, buttonStyle, options);
     }
 
     private static void ApplyTextColorAllStates(GUIStyle style, Color textColor)

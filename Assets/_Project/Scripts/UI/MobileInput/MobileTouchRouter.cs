@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -229,12 +228,10 @@ public class MobileTouchRouter
 
     private FingerRole AssignRoleForNewFinger(int touchId, Vector2 position)
     {
-        if (IsBlockedByUi(touchId))
-            return FingerRole.UiBlocked;
-
         float splitX = Screen.width * moveZoneSplit;
         bool isLeftHalf = position.x < splitX;
 
+        // Left zone is gameplay move only — do not let HUD raycasts steal joystick touches.
         if (isLeftHalf)
         {
             if (moveFingerId >= 0)
@@ -244,15 +241,6 @@ public class MobileTouchRouter
 
         // Right half: MobileSwipeLookZone owns look via EventSystem; router is move-only.
         return FingerRole.None;
-    }
-
-    private static bool IsBlockedByUi(int pointerId)
-    {
-        EventSystem eventSystem = EventSystem.current;
-        if (eventSystem == null)
-            return false;
-
-        return eventSystem.IsPointerOverGameObject(pointerId);
     }
 
     private void RemoveBinding(int touchId)

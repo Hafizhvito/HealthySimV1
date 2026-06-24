@@ -9,6 +9,8 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 #if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 using UnityEngine.InputSystem.UI;
 #endif
 
@@ -61,6 +63,7 @@ public class MobileInputController : MonoBehaviour
     [SerializeField] private RectTransform joystickKnob;
     private bool lastPerspectiveFirstPerson;
     private bool hasPerspectiveState;
+    private bool cinemachineRebindPending;
 
     private bool isTouchUiEnabled;
     private bool fallbackPitchInitialized;
@@ -86,11 +89,83 @@ public class MobileInputController : MonoBehaviour
     private bool lastFrameCameraMoved;
     private string boundSceneName = string.Empty;
     private Coroutine postSceneRefreshRoutine;
+    private bool subscribedModalEvents;
+    private bool subscribedPlayerStatsEvents;
 
     private static Sprite runtimeCircleSprite;
     private static Sprite runtimeRoundedRectSprite;
 
     public bool IsTouchUiEnabled => isTouchUiEnabled;
+
+    /// <summary>True while the player is touching move/look controls (used to avoid camera auto-recenter fights).</summary>
+    public bool HasActiveGameplayTouch()
+    {
+        if (!isTouchUiEnabled)
+            return false;
+
+        if (touchRouter.HasMoveFinger)
+            return true;
+
+        if (lookSwipeZone != null && lookSwipeZone.IsDragging)
+            return true;
+
+#if ENABLE_INPUT_SYSTEM
+        Touchscreen touchscreen = Touchscreen.current;
+        if (touchscreen != null && touchscreen.touches.Count > 0)
+            return true;
+#else
+        if (Input.touchCount > 0)
+            return true;
+#endif
+
+        return MoveInput.sqrMagnitude > 0.001f || LookDelta.sqrMagnitude > 0.000001f;
+    }
+
+    public static void RequestGameplayTouchRecovery()
+    {
+        if (Instance != null)
+            Instance.RecoverTouchStateAfterInterrupt();
+    }
+
+    void OnApplicationPause(bool paused)
+    {
+        if (!isTouchUiEnabled)
+            return;
+
+        if (paused)
+        {
+            ResetMotionInput();
+            return;
+        }
+
+        RecoverTouchStateAfterInterrupt();
+    }
+
+    void OnApplicationFocus(bool hasFocus)
+    {
+        if (!isTouchUiEnabled || !hasFocus)
+            return;
+
+        RecoverTouchStateAfterInterrupt();
+    }
+
+    private void RecoverTouchStateAfterInterrupt()
+    {
+        ResetMotionInput();
+
+        bool modalOpen = ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen;
+        bool cutscenePlaying = IntroCutsceneController.IsAnyCutscenePlaying;
+        SetUiVisible(!modalOpen && !cutscenePlaying);
+
+        if (FadeManager.Instance != null)
+            FadeManager.Instance.ReleaseInputBlock();
+
+        if (playerController != null && playerController.IsInputLocked
+            && ModalStateManager.Instance != null && !ModalStateManager.Instance.IsAnyModalOpen)
+        {
+            playerController.ForceResetLock();
+        }
+    }
 
     void Awake()
     {
@@ -124,11 +199,14 @@ public class MobileInputController : MonoBehaviour
     void OnEnable()
     {
         SceneManager.sceneLoaded += HandleSceneLoaded;
+        TrySubscribeModalEvents();
     }
 
     void OnDisable()
     {
         SceneManager.sceneLoaded -= HandleSceneLoaded;
+        UnsubscribeModalEvents();
+        UnsubscribePlayerStatsEvents();
     }
 
     void OnDestroy()
@@ -137,6 +215,8 @@ public class MobileInputController : MonoBehaviour
             Instance = null;
 
         SceneManager.sceneLoaded -= HandleSceneLoaded;
+        UnsubscribeModalEvents();
+        UnsubscribePlayerStatsEvents();
 
         if (dualTouchOverlayRoot != null && dualTouchOverlayRoot.transform.parent == transform)
             Destroy(dualTouchOverlayRoot);
@@ -170,6 +250,8 @@ public class MobileInputController : MonoBehaviour
 
         if (ModalStateManager.Instance != null)
             ModalStateManager.Instance.ForceResetAllModals();
+
+        cinemachineRebindPending = true;
 
         if (NpcDialogueMenuController.Instance != null)
             NpcDialogueMenuController.Instance.ForceCleanupAfterSceneLoad();
@@ -296,6 +378,8 @@ public class MobileInputController : MonoBehaviour
         if (!isTouchUiEnabled)
             return;
 
+        TrySubscribeModalEvents();
+        TrySubscribePlayerStatsEvents();
 
         if (playerController == null || cameraSystem == null || cameraSystemTransform == null)
             ResolveSceneReferences();
@@ -416,8 +500,11 @@ public class MobileInputController : MonoBehaviour
         if (cameraSystem == null)
             cameraSystem = FindFirstObjectByType<CameraSystem>();
 
-        if (cameraSystem != null)
+        if (cameraSystem != null && cinemachineRebindPending)
+        {
             cameraSystem.RebindCinemachineReferences();
+            cinemachineRebindPending = false;
+        }
 
         if (cachedCamera == null)
             cachedCamera = Camera.main;
@@ -898,6 +985,57 @@ public class MobileInputController : MonoBehaviour
         LookDelta = Vector2.zero;
     }
 
+    private void TrySubscribeModalEvents()
+    {
+        if (subscribedModalEvents || ModalStateManager.Instance == null)
+            return;
+
+        ModalStateManager.Instance.OnModalStateChanged += HandleModalStateChanged;
+        subscribedModalEvents = true;
+    }
+
+    private void UnsubscribeModalEvents()
+    {
+        if (!subscribedModalEvents || ModalStateManager.Instance == null)
+            return;
+
+        ModalStateManager.Instance.OnModalStateChanged -= HandleModalStateChanged;
+        subscribedModalEvents = false;
+    }
+
+    private void HandleModalStateChanged(bool anyModalOpen)
+    {
+        if (anyModalOpen)
+            return;
+
+        bool cutscenePlaying = IntroCutsceneController.IsAnyCutscenePlaying;
+        SetUiVisible(!cutscenePlaying);
+        ResetMotionInput();
+    }
+
+    private void TrySubscribePlayerStatsEvents()
+    {
+        if (subscribedPlayerStatsEvents || PlayerStats.Instance == null)
+            return;
+
+        PlayerStats.Instance.OnHealthGuidanceIndicatorsUnlocked += HandleHealthGuidanceIndicatorsUnlocked;
+        subscribedPlayerStatsEvents = true;
+    }
+
+    private void UnsubscribePlayerStatsEvents()
+    {
+        if (!subscribedPlayerStatsEvents || PlayerStats.Instance == null)
+            return;
+
+        PlayerStats.Instance.OnHealthGuidanceIndicatorsUnlocked -= HandleHealthGuidanceIndicatorsUnlocked;
+        subscribedPlayerStatsEvents = false;
+    }
+
+    private void HandleHealthGuidanceIndicatorsUnlocked()
+    {
+        RecoverTouchStateAfterInterrupt();
+    }
+
     private void ResetMotionInput()
     {
         MoveInput = Vector2.zero;
@@ -1212,7 +1350,7 @@ public class MobileInputController : MonoBehaviour
         return delta;
     }
 
-    private sealed class MobileSwipeLookZone : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
+    private sealed class MobileSwipeLookZone : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler, IPointerExitHandler
     {
         private MobileInputController owner;
         private Vector2 swipePrevPosition;
@@ -1260,6 +1398,14 @@ public class MobileInputController : MonoBehaviour
         public void OnPointerUp(PointerEventData eventData)
         {
             if (eventData.pointerId != swipePointerId)
+                return;
+
+            ForceReset();
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            if (!isSwiping || eventData.pointerId != swipePointerId)
                 return;
 
             ForceReset();

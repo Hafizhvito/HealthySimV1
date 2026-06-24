@@ -9,8 +9,7 @@ public class DoctorSriDialogueController : MonoBehaviour
     private const string BgResourcePath = "Backgrounds/bg_hospital";
 
     public bool IsHealthAlertActive => PlayerStats.Instance != null
-        && PlayerStats.Instance.HealthScoreThisPhase < 40f
-        && !PlayerStats.Instance.VisitedHospitalToday;
+        && PlayerStats.Instance.ShouldShowHealthGuidance(40f);
 
     public DialogueGraphData BuildConsultationDialogue(float healthScore, float dailyFat, float dailyProtein)
     {
