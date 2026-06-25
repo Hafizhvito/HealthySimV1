@@ -106,8 +106,9 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] private string wakeWarningLateWakePenalty = "Kamu bangun dengan badan terasa berat. Pola hidupmu mulai berdampak...";
 
     [Header("Wake Spawn")]
-    [Tooltip("Drag BedSpawnPoint child di atas kasur. Atur posisi/rotasi di Scene view.")]
+    [Tooltip("Optional marker child. Wake position is computed beside the bed at runtime.")]
     [SerializeField] private Transform bedSpawnPoint;
+    [SerializeField] [Range(0.2f, 1.5f)] private float besideBedStandDistance = 0.55f;
 
     [Header("Optional References")]
     [SerializeField] private TimeManager timeManagerOverride;
@@ -312,6 +313,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private IEnumerator SleepRoutine(GameObject interactor, bool forcedSleep)
     {
+        interactor = ResolveInteractorRoot(interactor);
+
         TimeManager         timeManager         = ResolveTimeManager();
         PlayerStats         playerStats         = ResolvePlayerStats();
         FadeManager         fadeManager         = ResolveFadeManager();
@@ -759,8 +762,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (timeManager.CurrentHour < 24f)
             return;
 
-        PlayerController playerController = FindFirstObjectByType<PlayerController>();
-        GameObject interactor = playerController != null ? playerController.gameObject : null;
+        GameObject interactor = ResolveInteractorRoot();
+        if (interactor == null)
+            return;
+
         forceSleepTriggered = true;
         BeginSleepRoutine(interactor, true);
     }
@@ -783,29 +788,75 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         }
     }
 
+    private static GameObject ResolveInteractorRoot(GameObject hint = null)
+    {
+        if (hint != null)
+            return hint;
+
+        PlayerController playerController =
+            FindFirstObjectByType<PlayerController>(FindObjectsInactive.Include);
+        return playerController != null ? playerController.gameObject : null;
+    }
+
     private void MoveInteractorToBedSpawn(GameObject interactor)
     {
+        interactor = ResolveInteractorRoot(interactor);
         if (interactor == null)
+        {
+            Debug.LogWarning("[SleepBedInteractable] Wake spawn skipped — player not found.");
             return;
+        }
 
-        Transform spawn = ResolveSpawnPoint();
-        interactor.transform.SetPositionAndRotation(spawn.position, spawn.rotation);
+        ResolveBesideBedSpawnPose(out Vector3 position, out Quaternion rotation);
 
         Rigidbody rb = interactor.GetComponent<Rigidbody>();
         if (rb != null)
+        {
             rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.position = position;
+            rb.rotation = rotation;
+            Physics.SyncTransforms();
+        }
+        else
+        {
+            interactor.transform.SetPositionAndRotation(position, rotation);
+        }
+
+        Transform spawnMarker = bedSpawnPoint != null ? bedSpawnPoint : transform.Find("BedSpawnPoint");
+        if (spawnMarker != null)
+            spawnMarker.SetPositionAndRotation(position, rotation);
     }
 
-    private Transform ResolveSpawnPoint()
+    private void ResolveBesideBedSpawnPose(out Vector3 position, out Quaternion rotation)
     {
-        if (bedSpawnPoint != null)
-            return bedSpawnPoint;
+        Collider bedCollider = cachedCollider;
+        if (bedCollider == null)
+            bedCollider = GetComponentInChildren<Collider>();
 
-        Transform child = transform.Find("BedSpawnPoint");
-        if (child != null)
-            return child;
+        if (bedCollider == null)
+        {
+            position = transform.position;
+            rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+            return;
+        }
 
-        return transform;
+        Bounds bounds = bedCollider.bounds;
+        Vector3 side = Vector3.ProjectOnPlane(transform.right, Vector3.up);
+        if (side.sqrMagnitude < 0.0001f)
+            side = Vector3.right;
+        else
+            side.Normalize();
+
+        float lateralExtent = Mathf.Max(bounds.extents.x, bounds.extents.z);
+        position = bounds.center + side * (lateralExtent + besideBedStandDistance);
+        position.y = bounds.min.y + 0.05f;
+
+        Vector3 towardBed = bounds.center - position;
+        towardBed.y = 0f;
+        rotation = towardBed.sqrMagnitude > 0.0001f
+            ? Quaternion.LookRotation(towardBed.normalized, Vector3.up)
+            : Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
     }
 
     // ── Resolvers ────────────────────────────────────────────

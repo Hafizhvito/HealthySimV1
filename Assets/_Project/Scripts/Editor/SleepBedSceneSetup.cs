@@ -88,19 +88,33 @@ public static class SleepBedSceneSetup
         if (bedCollider == null)
             bedCollider = bedSingle.GetComponentInChildren<Collider>();
 
-        Vector3 worldSpawn;
+        const float besideBedStandDistance = 0.55f;
         if (bedCollider != null)
         {
             Bounds bounds = bedCollider.bounds;
-            worldSpawn = new Vector3(bounds.center.x, bounds.max.y + 0.05f, bounds.center.z);
+            Vector3 side = Vector3.ProjectOnPlane(bedSingle.transform.right, Vector3.up);
+            if (side.sqrMagnitude < 0.0001f)
+                side = Vector3.right;
+            else
+                side.Normalize();
+
+            float lateralExtent = Mathf.Max(bounds.extents.x, bounds.extents.z);
+            Vector3 worldSpawn = bounds.center + side * (lateralExtent + besideBedStandDistance);
+            worldSpawn.y = bounds.min.y + 0.05f;
+
+            Vector3 towardBed = bounds.center - worldSpawn;
+            towardBed.y = 0f;
+            Quaternion spawnRotation = towardBed.sqrMagnitude > 0.0001f
+                ? Quaternion.LookRotation(towardBed.normalized, Vector3.up)
+                : Quaternion.Euler(0f, bedSingle.transform.eulerAngles.y, 0f);
+
+            spawn.SetPositionAndRotation(worldSpawn, spawnRotation);
         }
         else
         {
-            worldSpawn = bedSingle.transform.position + Vector3.up * 0.35f;
+            Vector3 worldSpawn = bedSingle.transform.position + bedSingle.transform.right * 0.85f;
+            spawn.SetPositionAndRotation(worldSpawn, Quaternion.Euler(0f, bedSingle.transform.eulerAngles.y, 0f));
         }
-
-        spawn.position = worldSpawn;
-        spawn.rotation = Quaternion.Euler(0f, bedSingle.transform.eulerAngles.y, 0f);
 
         SerializedObject serializedSleep = new SerializedObject(sleepBed);
         serializedSleep.FindProperty("bedSpawnPoint").objectReferenceValue = spawn;
