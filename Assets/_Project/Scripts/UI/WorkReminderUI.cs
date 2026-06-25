@@ -650,8 +650,17 @@ public class WorkReminderUI : MonoBehaviour
             return;
 
         GymProgressionSystem gym = GymProgressionSystem.Instance;
-        if (gym == null || !gym.HasTrainedToday || gym.LastSession == null)
+        PlayerStats stats = PlayerStats.Instance;
+        bool trainedToday = GymProgressionSystem.DidTrainToday(gym, stats);
+        if (!trainedToday || gym == null || gym.LastSession == null)
         {
+            if (trainedToday)
+            {
+                hudGymIndicator.text = "Gym · selesai";
+                hudGymIndicator.color = new Color(0.62f, 0.96f, 0.68f, 1f);
+                return;
+            }
+
             hudGymIndicator.color = new Color32(245, 248, 252, 255);
             hudGymIndicator.text = "Gym · " + GetGymHoursText();
             return;

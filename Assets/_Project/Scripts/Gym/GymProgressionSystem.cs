@@ -84,6 +84,12 @@ public class GymProgressionSystem : MonoBehaviour
         baseEnergyCost = 0.10f;
     }
 
+    private void OnDestroy()
+    {
+        if (_instance == this)
+            _instance = null;
+    }
+
     public bool CanTrain(float energyNormalized, TimeManager.TimePeriod period)
     {
         if (HasTrainedToday)
@@ -160,6 +166,7 @@ public class GymProgressionSystem : MonoBehaviour
         PendingSession = null;
         LastSession = data;
         HasTrainedToday = true;
+        ResolvePlayerStats()?.MarkGymCompletedToday();
     }
 
     public void ApplyResult(GymSessionData data)
@@ -173,6 +180,7 @@ public class GymProgressionSystem : MonoBehaviour
             PendingSession = null;
             LastSession = data;
             HasTrainedToday = true;
+            ResolvePlayerStats()?.MarkGymCompletedToday();
             return;
         }
 
@@ -233,6 +241,7 @@ public class GymProgressionSystem : MonoBehaviour
         PendingSession = null;
         LastSession = data;
         HasTrainedToday = true;
+        stats.MarkGymCompletedToday();
     }
 
     public static void SyncGameClockAfterGym(GymSessionData data)
@@ -253,6 +262,8 @@ public class GymProgressionSystem : MonoBehaviour
         if (stats == null)
             return;
 
+        stats.ResetGymCompletedForNewDay();
+
         float adaptationDecay = stats.FatigueDebt > overFatigueDecayThreshold
             ? sleepAdaptationDecayWhenOverFatigued
             : 0f;
@@ -265,6 +276,15 @@ public class GymProgressionSystem : MonoBehaviour
         HasTrainedToday = false;
         PendingSession = null;
         LastSession = null;
+        ResolvePlayerStats()?.ResetGymCompletedForNewDay();
+    }
+
+    public static bool DidTrainToday(GymProgressionSystem progression, PlayerStats stats)
+    {
+        if (stats != null && stats.GymCompletedToday)
+            return true;
+
+        return progression != null && progression.HasTrainedToday;
     }
 
     public GymTier GetCurrentTier()

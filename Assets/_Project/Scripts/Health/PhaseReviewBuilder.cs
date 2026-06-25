@@ -19,10 +19,13 @@ public static class PhaseReviewBuilder
     public static string Build(PhaseReviewInput input)
     {
         string summary = BuildSummaryLine(input);
+        string highlights = BuildHighlightsList(input);
         string issues = BuildIssuesList(input);
         string consequence = BuildConsequence(input);
 
         string result = summary;
+        if (!string.IsNullOrEmpty(highlights))
+            result += "\n\n" + highlights;
         if (!string.IsNullOrEmpty(issues))
             result += "\n\n" + issues;
         result += "\n\n" + consequence;
@@ -36,6 +39,26 @@ public static class PhaseReviewBuilder
         int days = input.snapshot.daysInPhase;
 
         return $"Fase {fromLabel} selesai dalam {days} hari dengan skor {input.phaseScore:0}/100, {scoreLabel}.";
+    }
+
+    private static string BuildHighlightsList(PhaseReviewInput input)
+    {
+        var snap = input.snapshot;
+        int days = Mathf.Max(1, snap.daysInPhase);
+        var lines = new System.Collections.Generic.List<string>();
+
+        if (snap.trainedGymDays > 0)
+        {
+            string gymLabel = (float)snap.trainedGymDays / days >= 0.6f
+                ? "Berolahraga rutin di gym"
+                : "Berolahraga di gym";
+            lines.Add($"• {gymLabel} ({snap.trainedGymDays} dari {days} hari)");
+        }
+
+        if (lines.Count == 0)
+            return string.Empty;
+
+        return "Catatan aktivitas:\n" + string.Join("\n", lines);
     }
 
     private static string BuildIssuesList(PhaseReviewInput input)

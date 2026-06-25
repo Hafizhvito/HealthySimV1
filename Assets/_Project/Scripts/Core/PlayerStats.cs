@@ -58,17 +58,20 @@ public class PlayerStats : MonoBehaviour
     [SerializeField] [HideInInspector] private int disturbedSleepDays = 0;
     [SerializeField] [HideInInspector] private int lowEnergySleepDays = 0;
     [SerializeField] [HideInInspector] private int skippedGymDays = 0;
+    [SerializeField] [HideInInspector] private int trainedGymDays = 0;
     [SerializeField] [HideInInspector] private int skippedWorkDays = 0;
     [SerializeField] [HideInInspector] private int overworkedDays = 0;
     [SerializeField] [HideInInspector] private bool _visitedHospitalToday = false;
     [SerializeField] [HideInInspector] private bool _healthGuidanceDismissed = false;
     [SerializeField] [HideInInspector] private bool _healthGuidanceIndicatorsUnlocked = false;
+    [SerializeField] [HideInInspector] private bool gymCompletedToday = false;
 
     [Header("Phase-Start Snapshot (Hidden)")]
     [SerializeField] [HideInInspector] private int phaseStartDaysEvaluated;
     [SerializeField] [HideInInspector] private int phaseStartPoorDietDays;
     [SerializeField] [HideInInspector] private int phaseStartHighCalorieDays;
     [SerializeField] [HideInInspector] private int phaseStartSkippedGymDays;
+    [SerializeField] [HideInInspector] private int phaseStartTrainedGymDays;
     [SerializeField] [HideInInspector] private int phaseStartSkippedWorkDays;
     [SerializeField] [HideInInspector] private int phaseStartOverworkedDays;
     [SerializeField] [HideInInspector] private int phaseStartDisturbedSleepDays;
@@ -141,9 +144,21 @@ public class PlayerStats : MonoBehaviour
     public int DisturbedSleepDays   => disturbedSleepDays;
     public int LowEnergySleepDays   => lowEnergySleepDays;
     public int SkippedGymDays       => skippedGymDays;
+    public int TrainedGymDays       => trainedGymDays;
     public int SkippedWorkDays      => skippedWorkDays;
     public int OverworkedDays       => overworkedDays;
     public bool VisitedHospitalToday => _visitedHospitalToday;
+    public bool GymCompletedToday    => gymCompletedToday;
+
+    public void MarkGymCompletedToday()
+    {
+        gymCompletedToday = true;
+    }
+
+    public void ResetGymCompletedForNewDay()
+    {
+        gymCompletedToday = false;
+    }
 
     public bool ShouldShowHealthGuidance(float threshold = 40f)
     {
@@ -195,6 +210,7 @@ public class PlayerStats : MonoBehaviour
             poorDietDays       = Mathf.Max(0, poorDietDays - phaseStartPoorDietDays),
             highCalorieDays    = Mathf.Max(0, highCalorieDays - phaseStartHighCalorieDays),
             skippedGymDays     = Mathf.Max(0, skippedGymDays - phaseStartSkippedGymDays),
+            trainedGymDays   = Mathf.Max(0, trainedGymDays - phaseStartTrainedGymDays),
             skippedWorkDays    = Mathf.Max(0, skippedWorkDays - phaseStartSkippedWorkDays),
             overworkedDays     = Mathf.Max(0, overworkedDays - phaseStartOverworkedDays),
             disturbedSleepDays = Mathf.Max(0, disturbedSleepDays - phaseStartDisturbedSleepDays)
@@ -207,6 +223,7 @@ public class PlayerStats : MonoBehaviour
         public int poorDietDays;
         public int highCalorieDays;
         public int skippedGymDays;
+        public int trainedGymDays;
         public int skippedWorkDays;
         public int overworkedDays;
         public int disturbedSleepDays;
@@ -436,7 +453,9 @@ public class PlayerStats : MonoBehaviour
         if (energyBeforeSleep <= 0.20f)
             lowEnergySleepDays++;
 
-        if (!trainedYesterday)
+        if (trainedYesterday)
+            trainedGymDays++;
+        else
             skippedGymDays++;
 
         if (!workedYesterday)
@@ -622,9 +641,11 @@ public class PlayerStats : MonoBehaviour
         disturbedSleepDays = 0;
         lowEnergySleepDays = 0;
         skippedGymDays = 0;
+        trainedGymDays = 0;
         skippedWorkDays = 0;
         overworkedDays = 0;
         _visitedHospitalToday = false;
+        gymCompletedToday = false;
 
         gymSkipStreak = 0;
         workSkipStreak = 0;
@@ -970,6 +991,7 @@ public class PlayerStats : MonoBehaviour
         phaseStartPoorDietDays      = poorDietDays;
         phaseStartHighCalorieDays   = highCalorieDays;
         phaseStartSkippedGymDays    = skippedGymDays;
+        phaseStartTrainedGymDays    = trainedGymDays;
         phaseStartSkippedWorkDays   = skippedWorkDays;
         phaseStartOverworkedDays    = overworkedDays;
         phaseStartDisturbedSleepDays = disturbedSleepDays;

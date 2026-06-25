@@ -164,6 +164,7 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsureComponent<WorkReminderUI>(manager);
         EnsureComponent<TimeManager>(manager);
         EnsureComponent<WorkSessionManager>(manager);
+        EnsureComponent<GymProgressionSystem>(manager);
         EnsureComponent<SessionTimeSkipPresenter>(manager);
         EnsureComponent<ClockAnimationUI>(manager);
         EnsureComponent<HealthAlertPanelController>(manager);

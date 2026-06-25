@@ -83,6 +83,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     [SerializeField] private float wakeMessageDuration = 3f;
     [SerializeField] private string wakeIntroTemplate = "Kamu bangun di Hari {0}.";
     [SerializeField] private string wakeWarningNoWork = "Peringatan: Kemarin kamu belum kerja. Atur ritme harimu lebih baik.";
+    [SerializeField] private string wakeWarningNoGym = "Peringatan: Kemarin kamu belum ke gym. Tubuh butuh gerak rutin.";
     [SerializeField] private string wakeWarningLowEnergy = "Peringatan: Kemarin kamu tidur saat energi sangat rendah.";
     [SerializeField] private string wakeWarningDisturbedSleep = "Peringatan: Tidurmu kurang nyenyak, jadi energimu belum pulih penuh.";
 
@@ -186,8 +187,13 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
     private void OnApplicationPause(bool paused)
     {
+#if UNITY_EDITOR
+        // Alt-tab in Editor fires application_pause and used to abort sleep mid-fade (stuck black screen).
+        return;
+#else
         if (paused && (isSleepInProgress || sleepRoutine != null))
             ResetSleepState("application_pause");
+#endif
     }
 
     private void Update()
@@ -278,6 +284,10 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             PlayerController player = FindFirstObjectByType<PlayerController>();
             RestoreGameplayAfterSleep(player, ResolvePlayerStats());
 
+            FadeManager fadeManager = FadeManager.Instance;
+            if (fadeManager != null)
+                fadeManager.ReleaseInputBlock();
+
             if (!string.IsNullOrEmpty(reason))
                 Debug.LogWarning($"[SleepBed] Sleep state reset ({reason}).");
         }
@@ -325,12 +335,13 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         // ── Snapshot data sebelum tidur ──────────────────────
         bool workedYesterday   = workSessionManager != null && workSessionManager.HasWorkedToday;
-        bool trainedYesterday  = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
+        bool trainedYesterday  = GymProgressionSystem.DidTrainToday(gymProgressionSystem, playerStats);
+        GymSessionData lastGymAtSleepStart = gymProgressionSystem != null ? gymProgressionSystem.LastSession : null;
+        WorkSessionData lastWorkAtSleepStart = workSessionManager != null ? workSessionManager.LastSession : null;
+        bool lastWorkBonusAtSleepStart = workSessionManager != null && workSessionManager.LastSessionHadBonus;
         float energyBeforeSleep     = playerStats.EnergyPercent;
         float adaptationBeforeSleep = playerStats.TrainingAdaptation;
         float fatigueBeforeSleep    = playerStats.FatigueDebt;
-        float scoreBeforeTransition = playerStats.HealthScoreThisPhase;
-        PlayerStats.PhaseSnapshot phaseSnapshotBeforeTransition = playerStats.GetCurrentPhaseSnapshot();
 
         bool  overworkedYesterday   = workedYesterday && DidOverworkYesterday(workSessionManager);
         bool  poorDietYesterday     = HasPoorDietPattern();
@@ -396,17 +407,13 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             }
 
             // ── Apply recovery + evaluate health score ───────────
-            bool workedForEval = workSessionManager != null && workSessionManager.HasWorkedToday;
-            bool trainedForEval = gymProgressionSystem != null && gymProgressionSystem.HasTrainedToday;
-            WorkSessionData lastWorkForEval = workSessionManager?.LastSession;
-            bool lastWorkBonusForEval = workSessionManager?.LastSessionHadBonus ?? false;
-            GymSessionData lastGymForEval = gymProgressionSystem?.LastSession;
-            bool overworkedForEval = workedForEval && DidOverworkYesterday(workSessionManager);
-
             DailyHealthResult dailyEvalResult = null;
             ApplyRecovery(playerStats, disturbedSleep, energyBeforeSleep,
-                        workedForEval, lastWorkForEval, lastWorkBonusForEval,
-                        trainedForEval, lastGymForEval, overworkedForEval, out dailyEvalResult);
+                        workedYesterday, lastWorkAtSleepStart, lastWorkBonusAtSleepStart,
+                        trainedYesterday, lastGymAtSleepStart, overworkedYesterday, out dailyEvalResult);
+
+            float scoreForPhaseTransition = playerStats.HealthScoreThisPhase;
+            PlayerStats.PhaseSnapshot snapshotForPhaseTransition = playerStats.GetCurrentPhaseSnapshot();
 
             mortalityAssessment = LifestyleMortalityEvaluator.Assess(
                 dayBeforeAdvance, triggerDay, playerStats, PlayerActionTracker.Instance);
@@ -487,8 +494,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             if (ageStageChanged)
             {
                 yield return StartCoroutine(ShowAgingNotificationRoutine(
-                    previousAgeStage, newAgeStage, scoreBeforeTransition,
-                    phaseSnapshotBeforeTransition, playerStats.PlayerGender));
+                    previousAgeStage, newAgeStage, scoreForPhaseTransition,
+                    snapshotForPhaseTransition, playerStats.PlayerGender));
             }
 
             string mortalityWarning = mortalityAssessment.IsWarningZone && !string.IsNullOrEmpty(mortalityAssessment.WarningText)
@@ -496,7 +503,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
                 : null;
 
             ShowWakeMessage(
-                BuildWakeMessage(wakeDayName, workedForEval, energyBeforeSleep,
+                BuildWakeMessage(wakeDayName, workedYesterday, trainedYesterday, energyBeforeSleep,
                                  disturbedSleep, lateWakePenaltyTriggered, dailyEvalResult,
                                  mortalityWarning),
                 wakeMessageDuration);
@@ -625,7 +632,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         ApplyDailyWeightShift(stats, evalResult, disturbedSleep, trainedYesterday, workedYesterday, overworkedYesterday);
 
         Debug.Log($"[SleepBed] {evalResult}");
-        Debug.Log($"[SleepBed] diet='{evalResult.dietNote}' gym='{evalResult.gymNote}' work='{evalResult.workNote}'");
+        Debug.Log($"[SleepBed] diet='{evalResult.dietNote}' gym='{evalResult.gymNote}' work='{evalResult.workNote}' trained={trainedYesterday}");
 
         // 3. Reset food tracker dan kalori harian
         if (PlayerActionTracker.Instance != null)
@@ -1020,6 +1027,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private WakeMessageContent BuildWakeMessage(
         string dayName,
         bool workedYesterday,
+        bool trainedYesterday,
         float energyBeforeSleep,
         bool disturbedSleep,
         bool lateWakePenaltyTriggered,
@@ -1037,6 +1045,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
 
         if (!workedYesterday)
             content.warnings.Add(wakeWarningNoWork);
+        if (!trainedYesterday)
+            content.warnings.Add(wakeWarningNoGym);
         if (lowEnergySleep)
             content.warnings.Add(wakeWarningLowEnergy);
         if (disturbedSleep)
@@ -1046,8 +1056,21 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (!string.IsNullOrEmpty(mortalityWarning))
             content.warnings.Add(mortalityWarning);
 
-        if (evalResult != null && !string.IsNullOrEmpty(evalResult.overallNote))
-            content.summary = evalResult.overallNote;
+        var summaryParts = new List<string>();
+        if (evalResult != null)
+        {
+            if (!string.IsNullOrEmpty(evalResult.overallNote))
+                summaryParts.Add(evalResult.overallNote);
+
+            if (trainedYesterday && !string.IsNullOrEmpty(evalResult.gymNote))
+                summaryParts.Add(evalResult.gymNote);
+            else if (!trainedYesterday && !string.IsNullOrEmpty(evalResult.gymNote)
+                     && evalResult.gymScore < 0f)
+                summaryParts.Add(evalResult.gymNote);
+        }
+
+        if (summaryParts.Count > 0)
+            content.summary = string.Join(" ", summaryParts);
 
         if (content.warnings.Count == 0 && string.IsNullOrEmpty(content.summary))
             content.summary = "Istirahatmu cukup. Lanjutkan harimu dengan pilihan sehat.";
