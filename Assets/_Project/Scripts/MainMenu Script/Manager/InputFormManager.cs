@@ -371,6 +371,11 @@ public class InputFormManager : MonoBehaviour
             SceneLoader.LoadScene(nextSceneName);
     }
 
+    public void OnKembaliButton(string scene)
+    {
+        SceneLoader.LoadScene(scene);
+    }
+
     private void OnDisable()
     {
         validationTween?.Kill();
