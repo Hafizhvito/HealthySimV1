@@ -2,6 +2,9 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 /// <summary>
 /// Credit scene scroll dari bawah ke atas, seperti film/game.
@@ -94,15 +97,46 @@ public class CreditsController : MonoBehaviour
 
     void Update()
     {
-        // Skip: space, enter, atau tap layar
         if (!isRunning) return;
-        if (Input.GetKeyDown(KeyCode.Space)  ||
-            Input.GetKeyDown(KeyCode.Return) ||
-            Input.GetMouseButtonDown(0)      ||
-            (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began))
-        {
+        if (WasSkipPressedThisFrame())
             skipRequested = true;
+    }
+
+    private static bool WasSkipPressedThisFrame()
+    {
+#if ENABLE_LEGACY_INPUT_MANAGER
+        if (Input.GetKeyDown(KeyCode.Space) ||
+            Input.GetKeyDown(KeyCode.Return) ||
+            Input.GetMouseButtonDown(0) ||
+            (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began))
+            return true;
+#endif
+
+#if ENABLE_INPUT_SYSTEM
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard != null &&
+            (keyboard.spaceKey.wasPressedThisFrame ||
+             keyboard.enterKey.wasPressedThisFrame ||
+             keyboard.numpadEnterKey.wasPressedThisFrame))
+            return true;
+
+        Mouse mouse = Mouse.current;
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+            return true;
+
+        Touchscreen touchscreen = Touchscreen.current;
+        if (touchscreen != null)
+        {
+            var touches = touchscreen.touches;
+            for (int i = 0; i < touches.Count; i++)
+            {
+                if (touches[i].phase.ReadValue() == UnityEngine.InputSystem.TouchPhase.Began)
+                    return true;
+            }
         }
+#endif
+
+        return false;
     }
 
     // ── Entry point ──────────────────────────────────────────────────
@@ -128,8 +162,9 @@ public class CreditsController : MonoBehaviour
 
         if (creditsCanvas == null || scrollRect == null)
         {
-            Debug.LogError("[CreditsController] UI gagal dibuat — credit scene dibatalkan.");
+            Debug.LogError("[CreditsController] UI gagal dibuat — langsung ke main menu.");
             isRunning = false;
+            ExitToMainMenu();
             yield break;
         }
 
@@ -179,13 +214,27 @@ public class CreditsController : MonoBehaviour
         yield return StartCoroutine(FadeCanvas(1f, 0f, fadeInDuration));
 
         creditsCanvas.gameObject.SetActive(false);
-        Time.timeScale = 1f;
         isRunning = false;
 
-        if (!string.IsNullOrWhiteSpace(mainMenuSceneName))
-            SceneLoader.LoadScene(mainMenuSceneName);
+        Debug.Log("[CreditsController] Credit scene selesai — pindah ke main menu.");
+        ExitToMainMenu();
+    }
 
-        Debug.Log("[CreditsController] Credit scene selesai.");
+    private void ExitToMainMenu()
+    {
+        Time.timeScale = 1f;
+
+        if (FadeManager.Instance != null)
+            FadeManager.Instance.ReleaseInputBlock();
+
+        SessionResetService.ResetAllForMenuExit();
+
+        string sceneName = string.IsNullOrWhiteSpace(mainMenuSceneName) ? "MainMenu" : mainMenuSceneName;
+
+        if (AudioManager._Instance != null)
+            AudioManager._Instance.StopMusic(() => SceneLoader.LoadScene(sceneName));
+        else
+            SceneLoader.LoadScene(sceneName);
     }
 
     // ── Canvas fade ──────────────────────────────────────────────────
