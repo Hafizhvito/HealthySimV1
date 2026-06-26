@@ -713,21 +713,27 @@ public class WorkReminderUI : MonoBehaviour
         ConfigureReminderPanelLayout();
     }
 
-    private string GetWorkHoursText()
+    private static string GetWorkHoursText()
     {
-        return FacilityHours.WorkHoursLabel;
+        TimeManager timeManager = TimeManager.Instance;
+        if (timeManager == null)
+            return FacilityHours.WorkHoursLabel;
+
+        // Tutup hanya setelah jam operasional berakhir — bukan sebelum buka (mis. 06:xx).
+        return timeManager.CurrentHour >= FacilityHours.WorkCloseHour
+            ? "Tutup"
+            : FacilityHours.WorkHoursLabel;
     }
 
     private static string GetGymHoursText()
     {
-        TimeManager.TimePeriod period = TimeManager.Instance != null
-            ? TimeManager.Instance.CurrentPeriod
-            : TimeManager.TimePeriod.Morning;
+        TimeManager timeManager = TimeManager.Instance;
+        if (timeManager == null)
+            return FacilityHours.GymHoursLabel;
 
-        if (period == TimeManager.TimePeriod.Night)
-            return "Tutup (Malam)";
-
-        return FacilityHours.GymHoursLabel;
+        return timeManager.CurrentHour >= FacilityHours.GymCloseHour
+            ? "Tutup"
+            : FacilityHours.GymHoursLabel;
     }
 
     private void OnDismissClicked()

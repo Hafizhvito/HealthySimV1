@@ -233,8 +233,7 @@ public class FoodChoiceMenuController : MonoBehaviour
 
         scrollPosition = ImGuiMobileScrollUtility.BeginWideScrollView(
             scrollPosition,
-            scrollViewHeight,
-            out Rect scrollViewportLocal);
+            scrollViewHeight);
 
         if (currentFoods.Count == 0)
         {
@@ -251,7 +250,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         }
 
         GUILayout.Space(menuLayout.Metrics.ScrollBottomPadding);
-        ImGuiMobileScrollUtility.EndWideScrollView();
+        Rect scrollViewportLocal = ImGuiMobileScrollUtility.EndWideScrollView();
 
         if (Event.current.type == EventType.Repaint && scrollViewportLocal.height > 1f)
         {

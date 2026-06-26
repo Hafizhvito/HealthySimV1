@@ -122,6 +122,7 @@ MonoBehaviour:
   movementDrainScale: 0.4
   movementDrainModifier: 1
   runDrainRampSeconds: 1.2
+  postActivityTravelGraceMultiplier: 0.55
   totalCaloriesConsumed: 0
   dailyCalorieTarget: 2000
   dailyProtein: 0
@@ -150,9 +151,21 @@ MonoBehaviour:
   disturbedSleepDays: 0
   lowEnergySleepDays: 0
   skippedGymDays: 0
+  trainedGymDays: 0
   skippedWorkDays: 0
   overworkedDays: 0
   _visitedHospitalToday: 0
+  _healthGuidanceDismissed: 0
+  _healthGuidanceIndicatorsUnlocked: 0
+  gymCompletedToday: 0
+  phaseStartDaysEvaluated: 0
+  phaseStartPoorDietDays: 0
+  phaseStartHighCalorieDays: 0
+  phaseStartSkippedGymDays: 0
+  phaseStartTrainedGymDays: 0
+  phaseStartSkippedWorkDays: 0
+  phaseStartOverworkedDays: 0
+  phaseStartDisturbedSleepDays: 0
   gymSkipStreak: 0
   workSkipStreak: 0
   progressionDayCount: 1
@@ -160,6 +173,9 @@ MonoBehaviour:
   playerGender: 0
   warningThreshold: 40
   criticalThreshold: 15
+  faintFadeOutDuration: 0.35
+  faintFadeInDuration: 0.5
+  vehicleKnockdownEnergyDrain: 0.12
 --- !u!114 &6871092138125836338
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -172,7 +188,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9aba70496b7849a48a8dac44cc950fc9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TimeManager
-  totalGameDuration: 250
+  totalGameDuration: 270
   currentDayNumber: 1
   currentDayOfWeekIndex: 0
   sleepReminderStartHour: 22
@@ -249,6 +265,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::NpcDialogueMenuController
   dialoguePanel: {fileID: 0}
   gradientOverlay: {fileID: 0}
+  dialogueBackgroundImage: {fileID: 0}
   letterboxTop: {fileID: 0}
   letterboxBottom: {fileID: 0}
   npcSpeechArea: {fileID: 0}

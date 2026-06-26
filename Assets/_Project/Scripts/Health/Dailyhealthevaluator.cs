@@ -253,12 +253,12 @@ public static class DailyHealthEvaluator
                     case WorkResult.Full:
                         score = hadBonus ? WorkFullBonusPay : WorkFullBonus;
                         result.workNote = hadBonus
-                            ? "Kerja penuh dengan bonus energi!"
-                            : "Kerja penuh hari ini.";
+                            ? "Kerja selesai dengan bonus energi!"
+                            : "Kerja selesai.";
                         break;
                     case WorkResult.Partial:
                         score = WorkPartial;
-                        result.workNote = "Kerja tidak optimal hari ini.";
+                        result.workNote = "Kerja selesai, tapi tidak optimal.";
                         break;
                     case WorkResult.Failed:
                         score = WorkFailed;

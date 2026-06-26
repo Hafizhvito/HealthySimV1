@@ -192,8 +192,7 @@ public class FoodStashMenuController : MonoBehaviour
 
             scrollPosition = ImGuiMobileScrollUtility.BeginWideScrollView(
                 scrollPosition,
-                scrollHeight,
-                out Rect scrollViewportLocal);
+                scrollHeight);
 
             for (int i = 0; i < foods.Count; i++)
             {
@@ -204,7 +203,7 @@ public class FoodStashMenuController : MonoBehaviour
                 DrawStashRow(food, i);
             }
 
-            ImGuiMobileScrollUtility.EndWideScrollView();
+            Rect scrollViewportLocal = ImGuiMobileScrollUtility.EndWideScrollView();
 
             if (Event.current.type == EventType.Repaint && scrollViewportLocal.height > 1f)
             {

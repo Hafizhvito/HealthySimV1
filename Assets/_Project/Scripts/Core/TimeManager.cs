@@ -19,7 +19,7 @@ public class TimeManager : MonoBehaviour
     };
 
     [Header("Time Settings")]
-    [SerializeField] private float totalGameDuration = 230f; // 3 minutes 50 seconds
+    [SerializeField] private float totalGameDuration = 270f; // 3 minutes 50 seconds
     private float currentGameTime = 0f;
     private bool isRunning = false;
     [SerializeField] private int currentDayNumber = 1;

@@ -396,17 +396,11 @@ public static class ImGuiMobileScrollUtility
 
     public static Vector2 BeginWideScrollView(Vector2 position, float height)
     {
-        return BeginWideScrollView(position, height, out _);
-    }
-
-    public static Vector2 BeginWideScrollView(Vector2 position, float height, out Rect viewportLocalRect)
-    {
         EnsureScrollbarStyles();
 
-        GUIStyle previousThumb = GUI.skin.verticalScrollbarThumb;
         GUI.skin.verticalScrollbarThumb = WideVerticalScrollbarThumb;
 
-        Vector2 result = GUILayout.BeginScrollView(
+        return GUILayout.BeginScrollView(
             position,
             false,
             true,
@@ -414,20 +408,20 @@ public static class ImGuiMobileScrollUtility
             WideVerticalScrollbar,
             ScrollViewBackground,
             GUILayout.Height(height));
-
-        viewportLocalRect = Event.current.type == EventType.Repaint
-            ? GUILayoutUtility.GetLastRect()
-            : default;
-
-        if (Event.current.type == EventType.Repaint)
-            GUI.skin.verticalScrollbarThumb = WideVerticalScrollbarThumb;
-
-        return result;
     }
 
-    public static void EndWideScrollView()
+    /// <summary>
+    /// Closes the scroll view and returns its outer layout rect (valid on Repaint).
+    /// GetLastRect is only safe after EndScrollView, not immediately after BeginScrollView.
+    /// </summary>
+    public static Rect EndWideScrollView()
     {
         GUILayout.EndScrollView();
+
+        if (Event.current.type != EventType.Repaint)
+            return default;
+
+        return GUILayoutUtility.GetLastRect();
     }
 
     private static Texture2D CreateSolidTexture(Color color)

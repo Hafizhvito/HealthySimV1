@@ -1118,6 +1118,12 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
             else if (!trainedYesterday && !string.IsNullOrEmpty(evalResult.gymNote)
                      && evalResult.gymScore < 0f)
                 summaryParts.Add(evalResult.gymNote);
+
+            if (workedYesterday && !string.IsNullOrEmpty(evalResult.workNote))
+                summaryParts.Add(evalResult.workNote);
+            else if (!workedYesterday && !string.IsNullOrEmpty(evalResult.workNote)
+                     && evalResult.workScore < 0f)
+                summaryParts.Add(evalResult.workNote);
         }
 
         if (summaryParts.Count > 0)
