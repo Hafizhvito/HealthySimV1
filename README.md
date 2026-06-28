@@ -1,18 +1,31 @@
 # HealthySimV1
 
-HealthySimV1 is a Unity 6 URP prototype focused on a short daily loop: move, interact, consume/save food, talk with NPCs, and complete one work session.
+HealthySimV1 is a Unity 6 URP life-simulation prototype: create a player profile, explore a city over a 12-day loop, manage food/energy/mood, work, train, visit the hospital, sleep, and reach one of several endings.
 
 ## Current Project Status
 
-- Engine: Unity 6000.3.10f1
-- Render pipeline: URP
-- Main gameplay scene: Assets/Scenes/SampleScene.unity
-- Secondary work scene: Assets/Scenes/OfficeScene.unity
-- Runtime: playable in Editor with core loop active
-- QA: manual smoke testing only
-- Mobile interaction: tap world bubbles marked '?' (desktop still uses E)
+- Engine: Unity **6000.3.10f1**
+- Render pipeline: **URP 17.x**
+- Runtime scripts: **157** C# files under `Assets/_Project/Scripts/` (+ `BazaarManager` / `BazaarInteractable` in `Assets/Scripts/`)
+- Entry flow (build order): **MainMenu → InputMenu → LoadingScreen → SampleScene**
+- Gameplay sub-scenes: **OfficeScene**, **GymScene**, **HouseInteriorScene**
+- Playable end-to-end from main menu through day-12 ending / credits
+- QA: manual smoke testing only (no automated PlayMode tests yet)
+- Target platforms: desktop + mobile (touch joystick, proximity interact button, safe-area aware menus)
 
-Ringkasan (ID): Proyek sudah bisa dimainkan end-to-end untuk loop utama, tetapi QA masih manual dan belum ada test otomatis.
+Ringkasan (ID): Proyek sudah bisa dimainkan end-to-end dari main menu sampai ending/credits, dengan loop harian lengkap. QA masih manual.
+
+## Scene Map
+
+| Scene | Path | Role |
+| ----- | ---- | ---- |
+| Main Menu | `Assets/Scenes/MainMenu/MainMenu.unity` | Play, Options, Credits |
+| Character Input | `Assets/Scenes/MainMenu/InputMenu.unity` | Nama, gender, tinggi, berat, ringkasan BMI |
+| Loading | `Assets/Scenes/MainMenu/LoadingScreen.unity` | Async load + progress bar |
+| City (main) | `Assets/Scenes/SampleScene.unity` | Loop harian, NPC, makanan, tidur |
+| Office | `Assets/Scenes/OfficeScene.unity` | Sesi kerja |
+| Gym | `Assets/Scenes/GymScene.unity` | Sesi latihan + dialog pelatih |
+| House Interior | `Assets/Scenes/HouseScene/HouseInteriorScene.unity` | Interior rumah (via `SceneLoaderInteractable`) |
 
 ## Team Onboarding
 
@@ -22,68 +35,58 @@ Ringkasan (ID): Proyek sudah bisa dimainkan end-to-end untuk loop utama, tetapi 
 2. Clone this repository.
 3. Open the project folder in Unity Hub.
 4. Wait for package import and script compilation to finish.
-5. Open `Assets/Scenes/SampleScene.unity`.
-6. Press Play and run the smoke test checklist below.
+5. Open `Assets/Scenes/MainMenu/MainMenu.unity` and press **Play** for the full flow.
+   - For a quick gameplay-only check, open `Assets/Scenes/SampleScene.unity` directly.
+6. Run the smoke test checklist below before making changes.
 
-Catatan (ID): Untuk mulai cepat, pakai Unity versi yang sama, buka `SampleScene`, lalu Play setelah compile selesai.
+Catatan (ID): Alur resmi dimulai dari MainMenu. SampleScene tetap bisa dipakai untuk debug cepat tanpa profil pemain.
 
 ### Full Setup (GitHub Clone to Play Mode)
 
 1. Clone repository:
 
-- `git clone <repo-url>`
-- `cd HealthySimV1`
+   - `git clone <repo-url>`
+   - `cd HealthySimV1`
 
 2. Confirm required folders exist after clone:
 
-- `Assets/`
-- `Packages/`
-- `ProjectSettings/`
+   - `Assets/`
+   - `Packages/`
+   - `ProjectSettings/`
 
 3. Open Unity Hub:
 
-- `Add` project folder `HealthySimV1`
-- Select Unity version `6000.3.10f1`
+   - `Add` project folder `HealthySimV1`
+   - Select Unity version `6000.3.10f1`
 
 4. First open checks:
 
-- Let Unity resolve `Packages/manifest.json` and `packages-lock.json`
-- Wait until Console compile activity is idle
+   - Let Unity resolve `Packages/manifest.json` and `packages-lock.json`
+   - Wait until Console compile activity is idle
 
-5. Open scenes:
+5. Press Play from **MainMenu** (recommended) or **SampleScene** (dev shortcut).
 
-- Main: `Assets/Scenes/SampleScene.unity`
-- Office: `Assets/Scenes/OfficeScene.unity`
-
-6. Run Play Mode in `SampleScene`.
-
-Catatan (ID): Jika pertama kali buka project terasa lama, itu normal karena import package dan domain reload.
+Catatan (ID): Import pertama kali memang lama — tunggu compile idle sebelum Play.
 
 ### Daily Workflow (Teammates)
 
 1. `git pull` on your branch.
 2. Open Unity and wait for compile to finish.
-3. Run smoke test in `SampleScene` before coding.
-4. Make changes in a focused scope.
+3. Run smoke test before coding.
+4. Make changes in a focused scope (`Assets/_Project/Scripts/` preferred).
 5. Re-run smoke test after changes.
 6. Commit with clear message.
 7. Push branch and open PR.
 
-Catatan (ID): Biasakan test cepat sebelum dan sesudah ngoding supaya regresi cepat ketahuan.
-
 ### Minimal Branching Recommendation
-
-1. Keep it simple:
 
 - `main`: stable baseline
 - `feature/<short-topic>` for new work
 - `fix/<short-topic>` for bug fixes
 
-2. Prefer short-lived branches and small PRs.
+Prefer short-lived branches and small PRs.
 
-Catatan (ID): Branch pendek dan PR kecil bikin review lebih cepat dan minim konflik.
-
-### First Commit and Commit Convention
+### Commit Convention
 
 Use Conventional Commit style:
 
@@ -92,160 +95,122 @@ Use Conventional Commit style:
 - `docs(scope): ...`
 - `chore(scope): ...`
 
-Examples:
-
-- `feat(core): add swap-contract warning validator`
-- `fix(ui): stabilize tutorial startup cutscene gating`
-- `docs(onboarding): add teammate setup and smoke tests`
-
-Catatan (ID): Format commit konsisten memudahkan tracking perubahan di tim.
-
 ### Smoke Test Checklist (Run After Open and Before PR)
 
-1. Open `Assets/Scenes/SampleScene.unity`.
-2. Press Play.
-3. Verify movement:
+**Full flow (recommended):**
 
-- Walk/run/jump works.
-- Camera toggle `F`/`V` works.
+1. Play from `MainMenu.unity`.
+2. Complete InputMenu (nama, gender, tinggi, berat) → loading → SampleScene.
+3. Verify intro cutscene + backstory + sequential tutorial.
+4. Walk/run/jump; toggle camera **F** / **V**.
+5. Buy/eat or stash food; confirm money deduction and nutrient summary (P/L/G).
+6. Finish one NPC dialogue branch.
+7. Enter office (`WorkDoorInteractable`) and return.
+8. Enter gym, confirm trainer dialogue + daily lock (once per day).
+9. When health score is low, confirm `!!!` indicator and hospital visit (dr. Sri).
+10. Sleep at night; confirm day advance, daily evaluation, and wake message.
+11. Check Console for new errors.
 
-4. Verify interaction:
+**SampleScene shortcut:**
 
-- Interact with food (`E`) and complete buy/eat or stash flow.
-- Interact with NPC dialogue and finish one branch.
-
-5. Verify onboarding:
-
-- Intro cutscene plays.
-- Sequential tutorial appears after cutscene.
-
-6. Verify work flow:
-
-- Use `KantorDoor` logic path and validate office transition behavior.
-
-7. Verify gym flow:
-
-- Use `GymDoor` logic path and validate gym transition plus trainer dialogue flow.
-- Confirm gym can only be done once per day and resets after sleep.
-
-8. Check Console for new errors.
+1. Open `SampleScene.unity` → Play.
+2. Run steps 3–11 above (profile defaults apply via `PlayerData` / bootstrap).
 
 Catatan (ID): Checklist ini cukup untuk validasi cepat bahwa loop utama tetap aman.
 
 ### Common Errors and Quick Fixes
 
-1. Unity version mismatch:
-
-- Symptom: package/asset import issues.
-- Fix: use `6000.3.10f1` from `ProjectSettings/ProjectVersion.txt`.
-
-2. Package errors on first open:
-
-- Symptom: unresolved package or compile red errors.
-- Fix: open Package Manager, wait for restore, reimport if needed.
-
-3. Long compile delay:
-
-- Symptom: scripts not ready for Play.
-- Fix: wait until compile is idle; avoid editing while importing.
-
-4. Scene not loading:
-
-- Symptom: wrong/empty scene opens.
-- Fix: manually open `Assets/Scenes/SampleScene.unity`.
-
-5. Missing references after pull:
-
-- Symptom: null/missing component warnings.
-- Fix: close Unity, ensure all files including `.meta` are present, pull again, reopen.
-
-Catatan (ID): Mayoritas masalah teammate baru biasanya selesai dengan versi Unity yang tepat dan menunggu import selesai.
+1. **Unity version mismatch** — use `6000.3.10f1` from `ProjectSettings/ProjectVersion.txt`.
+2. **Package errors on first open** — open Package Manager, wait for restore, reimport if needed.
+3. **Long compile delay** — wait until compile is idle; avoid editing while importing.
+4. **Wrong scene opens** — use build-index scenes listed above.
+5. **Missing references after pull** — ensure `.meta` files are present, pull again, reopen Unity.
+6. **Broken player camera/rig** — run `HealthySim/Fix Player Camera And Rig Gizmos`.
+7. **Missing body models** — run `HealthySim/Setup Player Body Models`.
 
 ## Implemented Features (Verified)
 
-- Player movement and camera:
-  - Rigidbody-based movement in FixedUpdate
-  - Strict single jump (grounded-only consume)
-  - Step assist for curbs/stairs
-  - Movement energy drain rebalanced for 3m50s loop pacing
-  - Sprint drain now ramps up over time (no instant full-drain spike)
-  - Camera toggle and dialogue zoom behavior
-  - FPP camera uses direct input without spin (Minecraft-style feel)
-  - Mobile touch controls use prefab joystick under HUD_Canvas (left move joystick, right look swipe, top-right interact button) for Android and Editor force-test mode
-- Input and modal safety:
-  - Source-counted input locks in PlayerController
-  - Central modal authority via ModalStateManager
-  - Startup/scene-load modal reset
-- Interaction layer:
-  - Line-of-sight-based interactable targeting
-  - Prompt and world-bubble interaction cues
-  - Debounced E-trigger interaction flow
-- Food and stash:
-  - Food pickup choices, consume now, or save for session stash
-  - Food economy: each food has price, UI shows price, and purchase deducts player money
-  - Insufficient-money and action feedback is shown directly in Food menu panel
-  - FoodData nutrient schema now includes protein, fat, and sugar fields for gameplay balancing
-  - Food interaction detail line now shows compact nutrient summary: P/L/G values
-  - Placeholder food catalog generator now seeds healthy and less-healthy variants for restaurant-ready iteration
-  - Home food station mode now supports quick eat, quick drink, and simple meal prep to stash
-  - Home food station uses discounted home pricing (default multiplier `0.65`) while stash consumption remains free after prep
-  - Restaurant placeholder station now uses pricier outlet multiplier (default `1.25`) to create clear economy gap vs home station
-  - Runtime placeholder bootstrap now auto-creates `HomeFoodStation_Placeholder` in `SampleScene` when no home station exists yet
-  - Runtime bootstrap now enforces a clean food interaction set by keeping one restaurant pickup (prefers `Interactable_Food_Restaurant`) and removing extra `FoodPickupInteractable` duplicates
-  - Legacy `Interactable_FoodCube` is now fallback-only and is auto-removed when both restaurant pickup and home station already exist
-  - Editor setup menu `HealthSim/Setup/Ensure Home Food Station Placeholder` now creates a persistent placeholder in `SampleScene` so it is visible before Play and can be moved freely
-  - Food menu now includes a top-right `X` close button for faster dismiss
-  - Stash systems now auto-bootstrap if missing (SessionFoodStash + FoodStashMenuController) so meal prep and stash open flow stay available
-  - Session stash consume/remove/clear flows
-- Dialogue:
-  - Graph-based dialogue with choices and consequences
-  - Street and restaurant NPC routes wired via IDs/catalog
-  - Cinematic dialogue UI with choice cards
-- Work flow:
-  - Work door eligibility checks (hour 07.00-15.00 + energy)
-  - Office session flow with pre/post dialogue and payout logic
-  - Partial/fail outcomes for low-energy runs
-  - Safe migration note: WorkDoorInteractable now supports optional serialized manager references while preserving existing GameManager fallback behavior
-  - Gym door/session flow mirrors office contract (door gate -> session scene -> trainer dialogue -> progression apply -> return)
-  - Gym progression uses hidden PlayerStats fields (training adaptation and fatigue debt) without adding new HUD bars
-  - Sleep day-reset now clears gym daily lock and applies overnight fatigue recovery
-- Intro and tutorial onboarding:
-  - Intro cutscene sequence and completion events
-  - One-time character backstory dialogue box appears right after intro cutscene completion
-  - Backstory content now driven by CharacterData ScriptableObject variants
-  - Backstory title/body now prefers PlayerStats name (wired from PlayerData before intro)
-  - Sequential tutorial panel after intro
-  - Contextual tutorial toast queue (NPC/energy/food/work conditions)
-  - Sequential/contextual tutorial and work reminder are suppressed while cutscene is active
-  - Work reminder now appears only after cutscene and sequential tutorial have both finished
-  - Sequential tutorial first-show flow now uses a single pending request path with short startup visual lock to prevent initial flicker
-- Sleep loop and day transition:
-  - In-game day duration is configurable via `totalGameDuration` (default 230 seconds) and split proportionally across morning/afternoon/evening/night
-  - CurrentHour maps to 6.00-24.00 and time display uses HH.mm
-  - Sleep is night-gated and uses a confirmation step before transition
-  - Sleep reminder appears at 22.00 and re-prompts if dismissed
-  - Forced sleep triggers at 24.00 with a short fade + message
-  - Begadang penalty applies after forced sleep (energy 60% + movement drain 1.3x for that day)
-  - Sleep transition uses fade plus clock time-skip animation
-  - Sleep quality can be disturbed probabilistically based on recent work and food behavior
-  - Wake message summarizes day change and relevant warnings
-  - Aging progression triggers on wake at day 5 (Adult) and day 10 (Senior), with modal narrative notification
-  - Aging narrative now includes senior-female menopause variants and phase score context
-  - Phase modifiers now apply by age and gender (daily calories, movement drain, mood drain)
-  - Next-day movement drain now supports hidden gym-based sustainability modifier (`movementDrainModifier`, no HUD exposure)
-  - Late-wake consequence applies energy penalty + narrative warning only (no time cut, no period skip)
-- Bazaar event (new):
-  - Bazaar spawn check runs after sleep day-advance (eligible day 5/10/15...)
-  - Spawn chance defaults to 80% (configurable), hides when not active
-  - Bazaar interactable opens food menu with discounted prices
-  - Bazaar menu selects 10 foods + 3 drinks (no duplicates) from configured pool
-  - Bazaar object is a scene prefab for designer-friendly swapping
-  - SpawnPoint moved to (-71.42, 0.5, -50) in front of the blue house
-  - CameraSwitcher warning fixed in SampleScene
+### Main menu & player profile
+
+- Main menu with Play, Options (SFX/Music volume), Credits, Quit.
+- InputMenu multi-step form: name, gender, height, weight, BMI summary with color-coded category.
+- `PlayerData` persisted via `PlayerPrefs`; wired into `PlayerStats` on SampleScene bootstrap.
+- Async loading screen (`LoadingManager` + `SceneLoader`).
+
+### Player movement, camera & character models
+
+- Rigidbody movement in `FixedUpdate`, strict single jump, step assist.
+- Movement energy drain rebalanced (`movementDrainScale`, sprint ramp-up).
+- `CameraSystem` (Cinemachine 3): TPP/FPP toggle, dialogue zoom, startup cinematic, yaw recenter.
+- `CharacterModelSwapper`: 6 body variants (male/female × kurus/ideal/overweight) from BMI + gender.
+- Mixamo animation pipeline + editor menus under `HealthySim/Body Models/…`.
+
+### Input, modal safety & pause
+
+- Source-counted input locks in `PlayerController`.
+- Central modal authority via `ModalStateManager`.
+- `PauseMenuManager` (DontDestroyOnLoad): pause, options, return to MainMenu.
+- Mobile: prefab joystick under `HUD_Canvas`, look swipe, interact button.
+- `ProximityInteractButton`: canvas action button when near an interactable (mobile-friendly).
+
+### Interaction layer
+
+- `UniversalInteractionController` + line-of-sight targeting.
+- World interaction bubbles (`?` cue) + keyboard **E** on desktop.
+- `InteractableRegistry` + `IInteractable` contract.
+- `SceneLoaderInteractable` for house interior and other scene transitions via `FadeManager`.
+
+### Food, stash & bazaar
+
+- 27 `FoodData` assets (healthy / less-healthy) with price, protein, fat, sugar.
+- Buy/eat or stash flow; home station (discounted prep) vs restaurant (markup).
+- Daily nutrition tracking; `IsJunkFood` computed property.
+- Session stash consume/remove/clear.
+- `BazaarManager` (`Assets/Scripts/`): spawn on day 5/10/15… with configurable chance/discount.
+
+### Dialogue & NPCs
+
+- 39 dialogue graph assets (story, react, period, boss, restaurant, 10 city NPCs).
+- Cinematic dialogue UI with choice of choice cards.
+- City wandering NPCs (`NpcWanderController` + NavMesh) and restaurant NPC routes.
+- Editor setup: `HealthySim/City NPCs/…`.
+
+### Work & gym sessions
+
+- Work door: hour **07:00–15:00** + energy rules → `OfficeScene` → boss pre/post dialogue → payout.
+- Gym door: hour **06:00–22:00** + energy rules → `GymScene` → trainer dialogue → progression.
+- Gym faint warning when energy &lt; 20% (confirm/cancel).
+- Daily lock reset on sleep; hidden `movementDrainModifier` from gym adaptation/fatigue.
+
+### Health, hospital & ending
+
+- `DailyHealthEvaluator`: nightly diet/sleep/gym/work score delta at sleep.
+- `HealthAlertPanelController`: one-time notice before `!!!` world indicator (threshold 40).
+- `HospitalDoorInteractable` + `DoctorSriDialogueController`; `VisitedHospitalToday` flag.
+- `LifestyleMortalityEvaluator`: soft premature-death roll on sleep days 5–11 (youth protected).
+- `EndingManager`: day-12 ending (Good/Neutral/Bad) + recap → `CreditsController` → MainMenu.
+- Aging stages: Youth (1–4), Adult (5–9), Senior (10–12) with phase modifiers by gender.
+
+### Sleep loop & day transition
+
+- One in-game day ≈ **270 seconds** real-time (06:00–24:00, 4 periods).
+- Sleep confirm, 22:00 reminder, forced sleep at 24:00, begadang penalty.
+- Disturbed sleep from recent behavior; late-wake energy penalty (no time skip).
+- Bazaar spawn check after day advance.
+
+### Intro, tutorial & onboarding
+
+- Intro aerial cutscene + one-time backstory panel (`BackstoryDialogueController`).
+- Sequential tutorial + contextual toast queue; cutscene-gated reminders.
+- Work reminder after cutscene + sequential tutorial complete.
+
+### City ambience
+
+- `CityTrafficManager` + `TrafficRoute` + 7 vehicle loop (editor: `HealthySim/Traffic/…`).
 
 ## Character Variants
 
-Six CharacterData assets are available under `Assets/_Project/Data/Characters/`:
+Six `CharacterData` assets under `Assets/_Project/Data/Characters/Character Temp/`:
 
 | Asset file         | Name  | Gender    | BMI Type    |
 | ------------------ | ----- | --------- | ----------- |
@@ -256,87 +221,74 @@ Six CharacterData assets are available under `Assets/_Project/Data/Characters/`:
 | Char_Female_Normal | Ayu   | Perempuan | Normal      |
 | Char_Female_Gemuk  | Dina  | Perempuan | Overweight  |
 
-Backstory is read from `backstoryText` (AppendBackstory prioritizes it). Active variant is expected to be chosen by a main menu selector (not implemented yet). For quick testing, change `preferredCharacterDataAssetName` in BackstoryDialogueController.
-
-Ringkasan (ID): Fitur inti gameplay, dialog, kerja, onboarding, tidur, ekonomi makanan berharga, dan tuning energi movement sudah aktif. Alur harian sekarang lebih utuh dan saling terhubung.
+Active variant is driven by **InputMenu profile** (gender + BMI from height/weight) and resolved at runtime by `CharacterModelSwapper` + backstory text from matching `CharacterData`. For editor-only backstory testing, change `preferredCharacterDataAssetName` on `BackstoryDialogueController`.
 
 ## Quick Usage Notes
 
-- Controls:
-  - Move: W A S D
-  - Sprint: Left Shift
-  - Jump: Space
-  - Interact: E
-  - Camera mode: F or V
-  - Cursor cancel: Escape
-  - Debug lock reset: F8
-  - Mobile test mode: `MobileInputController.forceMobileUI = true` (default) to show touch controls in Editor
-- Recommended quick test:
+### Controls
 
-  1. Enter Play Mode in SampleScene
-  2. Verify move/run/jump/step behavior
-  3. Interact with food and test stash actions
-  4. Open NPC dialogue and complete one dialogue branch
-  5. Enter office flow and return to main scene
-  6. Enter gym flow and confirm trainer pre/post dialogue plus daily lock behavior
-  7. Interact with home food station and verify:
+| Action | Desktop | Mobile |
+| ------ | ------- | ------ |
+| Move | W A S D | Left joystick |
+| Sprint | Left Shift | — |
+| Jump | Space | — |
+| Interact | E | Proximity button / top-right interact |
+| Camera mode | F or V | Perspective toggle |
+| Pause | Pause button (HUD) | Pause button |
+| Cursor cancel | Escape | — |
+| Debug lock reset | F8 | — |
 
-  - quick drink action works
-  - meal prep stores food to stash and can be consumed later without extra cost
-  - home menu pricing is cheaper than normal food station pricing
-  - top-right `X` button closes food menu immediately
-  - only 2 food interaction points should remain in `SampleScene`: one restaurant pickup and one home station
-  - if both points already exist, `Interactable_FoodCube` should not persist
-  - if no home station object exists in `SampleScene`, a placeholder cube station appears automatically near player
-  - for permanent edit-mode placement, run `HealthSim/Setup/Ensure Home Food Station Placeholder`, then move the object as needed in Scene view
+Mobile test in Editor: `MobileInputController.forceMobileUI = true` (default).
 
-Ringkasan (ID): Untuk cek cepat, jalankan SampleScene lalu uji movement, interaksi makanan, dialog NPC, dan sesi kerja sekali.
+### Recommended quick test
 
-## Asset Swap Contract (Phase 1 - Safe)
+1. Play from MainMenu → complete InputMenu.
+2. Verify movement, food purchase/stash, one NPC dialogue.
+3. Complete one work session and one gym session.
+4. Visit hospital when health score is low.
+5. Sleep once and confirm day-2 bootstrap (time, stats, gym lock reset).
+
+## Asset Swap Contract (Phase 1 — Safe)
 
 Tujuan: memudahkan penggantian aset sementara ke aset final tanpa memutus alur gameplay.
 
-- Player contract:
-  - Tag tetap `Player`
-  - Komponen minimum: `PlayerController`, `Rigidbody`, `CapsuleCollider`, `Animator`, `UniversalInteractionController`
-  - Animator parameter minimum: `Speed`, `IsGrounded`, `IsJumping`
-- Office flow contract:
-  - Office scene memiliki `PlayerSpawnPoint`
-  - Boss office dapat ditemukan stabil (tag `NPCBoss` atau reference serialized)
-- Interactable contract:
-  - Interactable gameplay implement `IInteractable`
-  - Collider aktif dan terdaftar melalui `InteractableRegistry`
-- UI contract:
-  - `HUD_Canvas` tersedia saat runtime
-  - Dialog/food/stash/tutorial binding tidak boleh bergantung pada rename child tanpa update wiring
-  - Placeholder interactables now have prefab assets for designer-friendly swapping
+- **Player contract:** tag `Player`; minimum components `PlayerController`, `Rigidbody`, `CapsuleCollider`, `Animator`, `UniversalInteractionController`, `CharacterModelSwapper`; animator params `Speed`, `IsGrounded`, `IsJumping`.
+- **Office contract:** `PlayerSpawnPoint` in OfficeScene; boss resolvable via tag `NPCBoss` or serialized reference.
+- **Interactable contract:** implement `IInteractable`; active collider registered in `InteractableRegistry`.
+- **UI contract:** `HUD_Canvas` at runtime; do not rename bound children without updating scripts.
 
-Validator dan telemetry:
+Validator: `HealthSim/Validate/Swap Contract (Warning Only)` or `HealthSim/Validate/Core Loop Scene Contract`.
 
-- Gunakan menu editor: `HealthSim/Validate/Swap Contract (Warning Only)`
-- Fallback runtime tetap dipertahankan untuk kompatibilitas, tetapi sekarang mengeluarkan log peringatan agar gap kontrak cepat terlihat
+## Editor Menus (Common)
 
-Ringkasan (ID): Fase 1 tidak mengubah behavior gameplay. Fokusnya menambah pagar aman (kontrak + validator + telemetry) sebelum swap aset besar.
+| Menu prefix | Examples |
+| ----------- | -------- |
+| `HealthySim/` | Body models, camera fix, city NPCs, traffic, pause layout, narrative panels |
+| `HealthSim/` | Gym/work scene setup, home food station, UI panels, dialogue generator, validators |
+| `Tools/HealthySim/` | Food catalog generator, missing-script repair, StorySimV2 setup |
+
+## Related Documentation
+
+- `Assets/PROJECT_CONTEXT.md` — technical architecture snapshot (keep in sync with code).
+- `Assets/_Project/Dokumentasi_HealthSim_Skripsi.md` — full TA/skripsi technical reference.
+- `docs/Bab3-Implementasi-Sistem.md` — thesis code excerpts (Bab 3).
 
 ## Known Limitations and Risks
 
-- No automated PlayMode/regression tests yet
-- Food/stash still uses IMGUI-era menus, while dialogue/tutorial uses runtime canvas layout
-- Legacy NPCDialogue_Panel object still exists in SampleScene and can confuse scene editing
-- Runtime UI scaler is not fully unified across all runtime-created canvases
-  - Example: InteractionHintCanvas and IntroTextCanvas still use portrait-style reference sizing
-- TMP icon glyph fallback warnings still appear for some Unicode symbols in HUD/tutorial labels
-- Bazaar pool requires enough FoodData items (>=10 foods and >=3 drinks) to avoid short lists
-
-Ringkasan (ID): Risiko utama sekarang ada di konsistensi UI dan minimnya automated test. Struktur UI lama dan baru masih campur.
+- No automated PlayMode/regression tests yet.
+- Food/stash still uses IMGUI-era menus; dialogue/tutorial/ending use runtime canvas.
+- Legacy scene objects (e.g. old dialogue panel duplicates) may confuse Hierarchy editing.
+- Runtime canvas scaler not fully unified across all auto-generated UI roots.
+- TMP glyph fallback warnings for some Unicode symbols in HUD/tutorial labels.
+- `BazaarManager` lives outside `_Project/Scripts` — mind the split when refactoring.
+- Main menu `gameSceneName` must stay `InputMenu` in scene Inspector (not the C# default `GameScene`).
 
 ## Next Steps (Short)
 
-1. Unify UI architecture (migrate IMGUI food/stash into consistent canvas flow)
-2. Balance food price and value curves (healthy vs less-healthy) for stable economy pacing
-3. Add lightweight PlayMode smoke tests for movement, interaction, dialogue, sleep, and work loop
-4. Continue tuning movement-energy pacing from playtest feedback (walk/run drain feel)
-5. Remove or retire legacy scene objects that duplicate active systems
-6. Normalize canvas/scaler conventions for all runtime-created UI
+1. Unify food/stash UI into the same canvas design language as dialogue/tutorial.
+2. Balance food price/value curves and daily evaluator weights from playtest data.
+3. Add lightweight PlayMode smoke tests (movement, interact, sleep, work, ending).
+4. Continue movement-energy pacing calibration.
+5. Retire legacy duplicate scene objects and normalize canvas/scaler conventions.
 
-Ringkasan (ID): Fokus berikutnya adalah konsolidasi UI, menambah test otomatis ringan, dan merapikan debt teknis scene/UI.
+Ringkasan (ID): Fokus berikutnya — konsolidasi UI, test otomatis ringan, dan tuning ekonomi/kesehatan dari playtest.
