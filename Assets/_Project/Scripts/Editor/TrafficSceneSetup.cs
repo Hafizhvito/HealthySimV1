@@ -12,9 +12,14 @@ public static class TrafficSceneSetup
     private const string RouteName = "MainCityRoute";
     private const string VehiclesRootName = "Vehicles";
     private const int VehicleCount = 7;
-    private const float MaxSegmentLinkDistance = 24f;
-    private const float MinWaypointSpacing = 3f;
-    private const float CornerAxisThreshold = 4f;
+    private const float MinWaypointSpacing = 2.5f;
+    private const float AxisAlignEpsilon = 0.25f;
+    private const float MaxLaneConnectDistance = 80f;
+    private const float RoadSnapMaxDistance = 10f;
+    private const float RoadGraphAttachMaxDistance = 20f;
+    private const float MaxRoadGraphEdgeLength = 35f;
+    private const float RoadIntersectionClusterDistance = 12f;
+    private const float VehicleProbeRadius = 1.05f;
     private const float VehicleSpeed = 6f;
 
     private static readonly string[] VehiclePrefabPaths =
@@ -67,10 +72,11 @@ public static class TrafficSceneSetup
         EditorSceneManager.MarkSceneDirty(
             UnityEngine.SceneManagement.SceneManager.GetActiveScene());
 
-        int badSegments = LogDiagonalRouteSegments(routeRoot, MaxSegmentLinkDistance, CornerAxisThreshold);
+        int badSegments = LogNonAxisAlignedSegments(routeRoot);
+        int blockedSegments = LogBuildingBlockedSegments(routeRoot);
         Debug.Log(
             $"[Traffic] Route generated: {routePoints.Count} waypoints, length ~{route.TotalLength:0.#}m, " +
-            $"diagonalShortcuts={badSegments}.");
+            $"nonAxisSegments={badSegments}, buildingBlocked={blockedSegments}.");
     }
 
     [MenuItem("HealthySim/Traffic/Validate Traffic Route Segments")]
@@ -90,13 +96,14 @@ public static class TrafficSceneSetup
             return;
         }
 
-        int badSegments = LogDiagonalRouteSegments(routeRoot, MaxSegmentLinkDistance, CornerAxisThreshold);
-        if (badSegments == 0)
-            Debug.Log("[Traffic] Tidak ada segmen diagonal shortcut. Route mengikuti sumbu jalan.");
+        int badSegments = LogNonAxisAlignedSegments(routeRoot);
+        int blockedSegments = LogBuildingBlockedSegments(routeRoot);
+        if (badSegments == 0 && blockedSegments == 0)
+            Debug.Log("[Traffic] Route axis-aligned dan tidak terdeteksi memotong gedung.");
         else
             Debug.LogWarning(
-                $"[Traffic] {badSegments} segmen diagonal shortcut (> {MaxSegmentLinkDistance}m). " +
-                "Mobil bisa memotong blok di segmen ini.");
+                $"[Traffic] nonAxisSegments={badSegments}, buildingBlocked={blockedSegments}. " +
+                "Periksa RoadLane atau regenerate setelah layout jalan diperbaiki.");
     }
 
     [MenuItem("HealthySim/Traffic/2 - Setup City Traffic (7 Vehicles)")]
@@ -183,17 +190,35 @@ public static class TrafficSceneSetup
     {
         List<Transform> laneGroups = CollectLaneGroups(roadLaneRoot);
         List<List<Vector3>> lanePaths = new List<List<Vector3>>();
+        List<Vector3> allRoadPoints = new List<Vector3>();
+        List<int> roadLaneIndex = new List<int>();
+        List<int> roadOrderInLane = new List<int>();
 
         for (int i = 0; i < laneGroups.Count; i++)
         {
-            List<Vector3> lanePoints = DedupePoints(CollectRoadSurfacePoints(laneGroups[i]), 1.5f);
+            List<Vector3> lanePoints = DedupePoints(CollectRoadSurfacePoints(laneGroups[i]), 1.25f);
             lanePoints = SortPointsAlongLane(lanePoints);
-            if (lanePoints.Count >= 2)
-                lanePaths.Add(lanePoints);
+            lanePoints = SanitizePathAxisAlignment(lanePoints);
+            if (lanePoints.Count < 2)
+                continue;
+
+            int lanePathIndex = lanePaths.Count;
+            lanePaths.Add(lanePoints);
+
+            for (int order = 0; order < lanePoints.Count; order++)
+            {
+                allRoadPoints.Add(lanePoints[order]);
+                roadLaneIndex.Add(lanePathIndex);
+                roadOrderInLane.Add(order);
+            }
         }
 
-        List<Vector3> path = StitchLanePathsIntoLoop(lanePaths);
-        return DedupePoints(path, MinWaypointSpacing);
+        List<Vector3> path = ChainLanePathsByProximity(
+            lanePaths, allRoadPoints, roadLaneIndex, roadOrderInLane);
+        path = SanitizePathAxisAlignment(path);
+        path = SnapWaypointsToNearestRoad(path, allRoadPoints);
+        path = DedupePoints(path, MinWaypointSpacing);
+        return SanitizePathAxisAlignment(path);
     }
 
     private static List<Vector3> SortPointsAlongLane(List<Vector3> points)
@@ -231,42 +256,496 @@ public static class TrafficSceneSetup
         return points;
     }
 
-    private static List<Vector3> StitchLanePathsIntoLoop(List<List<Vector3>> lanePaths)
+    private static List<Vector3> ChainLanePathsByProximity(
+        List<List<Vector3>> lanePaths,
+        List<Vector3> roadPoints,
+        List<int> roadLaneIndex,
+        List<int> roadOrderInLane)
     {
         List<Vector3> path = new List<Vector3>();
         if (lanePaths.Count == 0)
             return path;
 
-        path.AddRange(lanePaths[0]);
+        List<List<Vector3>> remaining = new List<List<Vector3>>(lanePaths);
+        path.AddRange(remaining[0]);
+        remaining.RemoveAt(0);
 
-        for (int i = 1; i < lanePaths.Count; i++)
+        while (remaining.Count > 0)
         {
-            List<Vector3> segment = ChooseBestOrientation(path[path.Count - 1], lanePaths[i]);
-            AppendSegmentWithCorners(path, segment);
+            Vector3 tail = path[path.Count - 1];
+            int bestLane = -1;
+            bool bestReversed = false;
+            float bestScore = float.MaxValue;
+
+            for (int i = 0; i < remaining.Count; i++)
+            {
+                List<Vector3> lane = remaining[i];
+                if (lane.Count == 0)
+                    continue;
+
+                EvaluateLaneConnection(
+                    tail, lane, false, roadPoints, roadLaneIndex, roadOrderInLane,
+                    out float scoreForward, out _);
+                if (scoreForward < bestScore)
+                {
+                    bestScore = scoreForward;
+                    bestLane = i;
+                    bestReversed = false;
+                }
+
+                EvaluateLaneConnection(
+                    tail, lane, true, roadPoints, roadLaneIndex, roadOrderInLane,
+                    out float scoreReverse, out _);
+                if (scoreReverse < bestScore)
+                {
+                    bestScore = scoreReverse;
+                    bestLane = i;
+                    bestReversed = true;
+                }
+            }
+
+            if (bestLane < 0)
+                break;
+
+            float connectDist = Vector3.Distance(
+                tail,
+                bestReversed ? remaining[bestLane][remaining[bestLane].Count - 1] : remaining[bestLane][0]);
+
+            List<Vector3> nextLane = bestReversed
+                ? ReverseCopy(remaining[bestLane])
+                : new List<Vector3>(remaining[bestLane]);
+            remaining.RemoveAt(bestLane);
+
+            Vector3 connectPoint = nextLane[0];
+            List<Vector3> bridge = FindRoadGraphPath(
+                tail, connectPoint, roadPoints, roadLaneIndex, roadOrderInLane, logFallback: true);
+
+            if (bridge.Count <= 2 && connectDist > MaxLaneConnectDistance)
+            {
+                Debug.LogWarning(
+                    $"[Traffic] Lane jump {connectDist:0.#}m memakai fallback Manhattan. " +
+                    "Periksa konektivitas RoadLane.");
+            }
+
+            AppendBridgePath(path, bridge);
+            for (int i = 0; i < nextLane.Count; i++)
+            {
+                if (path.Count == 0 || Vector3.Distance(path[path.Count - 1], nextLane[i]) > AxisAlignEpsilon)
+                    path.Add(nextLane[i]);
+            }
         }
 
-        AppendClosingCorners(path);
+        if (path.Count >= 2)
+        {
+            List<Vector3> closingBridge = FindRoadGraphPath(
+                path[path.Count - 1], path[0], roadPoints, roadLaneIndex, roadOrderInLane, logFallback: true);
+            AppendBridgePath(path, closingBridge);
+        }
+
         return path;
     }
 
-    private static List<Vector3> ChooseBestOrientation(Vector3 tail, List<Vector3> lane)
+    private static void EvaluateLaneConnection(
+        Vector3 tail,
+        List<Vector3> lane,
+        bool reversed,
+        List<Vector3> roadPoints,
+        List<int> roadLaneIndex,
+        List<int> roadOrderInLane,
+        out float score,
+        out List<Vector3> bridge)
     {
-        if (lane.Count <= 1)
-            return new List<Vector3>(lane);
+        Vector3 connectPoint = reversed ? lane[lane.Count - 1] : lane[0];
+        bridge = FindRoadGraphPath(
+            tail, connectPoint, roadPoints, roadLaneIndex, roadOrderInLane, logFallback: false);
+        score = MeasurePolylineLength(bridge);
 
-        float forwardCost = EstimateConnectionCost(tail, lane[0]);
-        float reverseCost = EstimateConnectionCost(tail, lane[lane.Count - 1]);
-        return reverseCost < forwardCost ? ReverseCopy(lane) : new List<Vector3>(lane);
+        int startIdx = FindNearestRoadIndex(tail, roadPoints);
+        int goalIdx = FindNearestRoadIndex(connectPoint, roadPoints);
+        if (startIdx >= 0 && goalIdx >= 0)
+        {
+            int[] parent = BfsRoadGraph(startIdx, goalIdx, roadPoints, roadLaneIndex, roadOrderInLane);
+            if (parent[goalIdx] < 0)
+                score += 2000f;
+        }
+        else
+        {
+            score += 2000f;
+        }
+
+        if (!IsPolylineClearOfBuildings(bridge))
+            score += 500f;
+
+        float directDist = Vector3.Distance(tail, connectPoint);
+        if (directDist > MaxLaneConnectDistance)
+            score += 1000f;
     }
 
-    private static float EstimateConnectionCost(Vector3 from, Vector3 to)
+    private static void AppendBridgePath(List<Vector3> path, List<Vector3> bridge)
     {
+        if (bridge == null || bridge.Count == 0)
+            return;
+
+        int startIndex = 1;
+        if (bridge.Count == 1)
+            startIndex = 0;
+
+        for (int i = startIndex; i < bridge.Count; i++)
+        {
+            Vector3 point = bridge[i];
+            if (path.Count == 0 || Vector3.Distance(path[path.Count - 1], point) > AxisAlignEpsilon)
+                path.Add(point);
+        }
+    }
+
+    private static List<Vector3> FindRoadGraphPath(
+        Vector3 from,
+        Vector3 to,
+        List<Vector3> roadPoints,
+        List<int> roadLaneIndex,
+        List<int> roadOrderInLane,
+        bool logFallback)
+    {
+        if (roadPoints == null || roadPoints.Count == 0)
+            return BuildBestManhattanSegment(from, to);
+
+        int startIdx = FindNearestRoadIndex(from, roadPoints);
+        int goalIdx = FindNearestRoadIndex(to, roadPoints);
+        if (startIdx < 0 || goalIdx < 0)
+        {
+            if (logFallback)
+                Debug.LogWarning("[Traffic] Road graph attach gagal; fallback Manhattan singkat.");
+
+            return BuildBestManhattanSegment(from, to);
+        }
+
+        if (startIdx == goalIdx)
+            return new List<Vector3> { from, to };
+
+        int[] parent = BfsRoadGraph(startIdx, goalIdx, roadPoints, roadLaneIndex, roadOrderInLane);
+        if (parent[goalIdx] < 0)
+        {
+            if (logFallback)
+            {
+                Debug.LogWarning(
+                    $"[Traffic] Road graph tidak terhubung ({Vector3.Distance(from, to):0.#}m); fallback Manhattan.");
+            }
+
+            return BuildBestManhattanSegment(from, to);
+        }
+
+        List<Vector3> graphPath = ReconstructRoadGraphPath(parent, startIdx, goalIdx, roadPoints);
+        if (graphPath.Count == 0)
+            return BuildBestManhattanSegment(from, to);
+
+        graphPath[0] = from;
+        graphPath[graphPath.Count - 1] = to;
+        return SanitizePathAxisAlignment(graphPath);
+    }
+
+    private static int FindNearestRoadIndex(Vector3 point, List<Vector3> roadPoints)
+    {
+        int bestIndex = -1;
+        float bestDist = RoadGraphAttachMaxDistance;
+
+        for (int i = 0; i < roadPoints.Count; i++)
+        {
+            float dist = Vector3.Distance(
+                new Vector3(point.x, 0f, point.z),
+                new Vector3(roadPoints[i].x, 0f, roadPoints[i].z));
+
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
+    }
+
+    private static int[] BfsRoadGraph(
+        int start,
+        int goal,
+        List<Vector3> nodes,
+        List<int> laneIndex,
+        List<int> orderInLane)
+    {
+        int count = nodes.Count;
+        int[] parent = new int[count];
+        bool[] visited = new bool[count];
+
+        for (int i = 0; i < count; i++)
+            parent[i] = -1;
+
+        Queue<int> queue = new Queue<int>();
+        queue.Enqueue(start);
+        visited[start] = true;
+
+        while (queue.Count > 0)
+        {
+            int current = queue.Dequeue();
+            if (current == goal)
+                break;
+
+            for (int next = 0; next < count; next++)
+            {
+                if (visited[next] ||
+                    !AreRoadGraphNeighbors(current, next, nodes, laneIndex, orderInLane))
+                    continue;
+
+                visited[next] = true;
+                parent[next] = current;
+                queue.Enqueue(next);
+            }
+        }
+
+        return parent;
+    }
+
+    private static bool AreRoadGraphNeighbors(
+        int indexA,
+        int indexB,
+        List<Vector3> nodes,
+        List<int> laneIndex,
+        List<int> orderInLane)
+    {
+        Vector3 a = nodes[indexA];
+        Vector3 b = nodes[indexB];
+        float distance = Vector3.Distance(a, b);
+        if (distance <= RoadIntersectionClusterDistance)
+            return true;
+
+        if (laneIndex[indexA] == laneIndex[indexB] &&
+            Mathf.Abs(orderInLane[indexA] - orderInLane[indexB]) == 1)
+            return true;
+
+        if (distance > MaxRoadGraphEdgeLength)
+            return false;
+
+        return IsAxisAlignedSegment(a, b);
+    }
+
+    private static List<Vector3> ReconstructRoadGraphPath(int[] parent, int start, int goal, List<Vector3> nodes)
+    {
+        List<Vector3> path = new List<Vector3>();
+        int current = goal;
+        while (current >= 0)
+        {
+            path.Add(nodes[current]);
+            if (current == start)
+                break;
+
+            current = parent[current];
+        }
+
+        if (path.Count == 0 || Vector3.Distance(path[path.Count - 1], nodes[start]) > AxisAlignEpsilon)
+            return new List<Vector3>();
+
+        path.Reverse();
+        return path;
+    }
+
+    private static List<Vector3> SanitizePathAxisAlignment(List<Vector3> path)
+    {
+        if (path.Count < 2)
+            return path;
+
+        List<Vector3> result = new List<Vector3> { path[0] };
+        for (int i = 1; i < path.Count; i++)
+            ManhattanConnectIntoPath(result, result[result.Count - 1], path[i]);
+
+        return result;
+    }
+
+    private static void ManhattanConnectIntoPath(List<Vector3> path, Vector3 from, Vector3 to)
+    {
+        if (Vector3.Distance(from, to) <= AxisAlignEpsilon)
+            return;
+
+        List<Vector3> segment = BuildBestManhattanSegment(from, to);
+        for (int i = 1; i < segment.Count; i++)
+        {
+            Vector3 point = segment[i];
+            if (path.Count == 0 || Vector3.Distance(path[path.Count - 1], point) > AxisAlignEpsilon)
+                path.Add(point);
+        }
+    }
+
+    private static List<Vector3> BuildBestManhattanSegment(Vector3 from, Vector3 to)
+    {
+        List<Vector3> viaXFirst = BuildManhattanSegment(from, to, cornerViaXFirst: true);
+        List<Vector3> viaZFirst = BuildManhattanSegment(from, to, cornerViaXFirst: false);
+
+        bool viaXClear = IsPolylineClearOfBuildings(viaXFirst);
+        bool viaZClear = IsPolylineClearOfBuildings(viaZFirst);
+
+        if (viaXClear && !viaZClear)
+            return viaXFirst;
+        if (viaZClear && !viaXClear)
+            return viaZFirst;
+
+        float viaXLength = MeasurePolylineLength(viaXFirst);
+        float viaZLength = MeasurePolylineLength(viaZFirst);
+        return viaXLength <= viaZLength ? viaXFirst : viaZFirst;
+    }
+
+    private static List<Vector3> BuildManhattanSegment(Vector3 from, Vector3 to, bool cornerViaXFirst)
+    {
+        List<Vector3> segment = new List<Vector3> { from };
+
         float dx = Mathf.Abs(to.x - from.x);
         float dz = Mathf.Abs(to.z - from.z);
-        if (dx <= CornerAxisThreshold || dz <= CornerAxisThreshold)
-            return Vector3.Distance(from, to);
+        if (dx <= AxisAlignEpsilon || dz <= AxisAlignEpsilon)
+        {
+            segment.Add(to);
+            return segment;
+        }
 
-        return dx + dz;
+        Vector3 corner = cornerViaXFirst
+            ? new Vector3(to.x, from.y, from.z)
+            : new Vector3(from.x, from.y, to.z);
+
+        if (Vector3.Distance(from, corner) > AxisAlignEpsilon)
+            segment.Add(corner);
+
+        segment.Add(to);
+        return segment;
+    }
+
+    private static float MeasurePolylineLength(List<Vector3> points)
+    {
+        float length = 0f;
+        for (int i = 1; i < points.Count; i++)
+            length += Vector3.Distance(points[i - 1], points[i]);
+
+        return length;
+    }
+
+    private static bool IsPolylineClearOfBuildings(List<Vector3> points)
+    {
+        for (int i = 1; i < points.Count; i++)
+        {
+            if (IsSegmentBlockedByBuildings(points[i - 1], points[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsSegmentBlockedByBuildings(Vector3 from, Vector3 to)
+    {
+        Vector3 start = from + Vector3.up * 0.85f;
+        Vector3 end = to + Vector3.up * 0.85f;
+        Vector3 delta = end - start;
+        float distance = delta.magnitude;
+        if (distance <= AxisAlignEpsilon)
+            return false;
+
+        Vector3 direction = delta / distance;
+        if (Physics.SphereCast(start, VehicleProbeRadius, direction, out RaycastHit hit, distance))
+            return IsBuildingCollider(hit.collider);
+
+        return false;
+    }
+
+    private static bool IsBuildingCollider(Collider collider)
+    {
+        if (collider == null)
+            return false;
+
+        if (IsRoadRelatedCollider(collider) || IsTrafficRelatedCollider(collider))
+            return false;
+
+        Transform node = collider.transform;
+        while (node != null)
+        {
+            string lower = node.name.ToLowerInvariant();
+            if (lower.Contains("road") || lower.Contains("lane") || lower.Contains("sidewalk") ||
+                lower.Contains("ground") || lower.Contains("terrain") || lower.Contains("grass") ||
+                lower.Contains("garden") || lower.Contains("player") || lower.Contains("traffic"))
+                return false;
+
+            node = node.parent;
+        }
+
+        return true;
+    }
+
+    private static bool IsRoadRelatedCollider(Collider collider)
+    {
+        Transform node = collider.transform;
+        while (node != null)
+        {
+            string lower = node.name.ToLowerInvariant();
+            if (lower.Contains("roadobject") || lower.Contains("roadlane") || lower.Contains("sidewalk"))
+                return true;
+
+            node = node.parent;
+        }
+
+        return false;
+    }
+
+    private static bool IsTrafficRelatedCollider(Collider collider)
+    {
+        Transform node = collider.transform;
+        while (node != null)
+        {
+            if (string.Equals(node.name, TrafficRootName, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            node = node.parent;
+        }
+
+        return false;
+    }
+
+    private static List<Vector3> SnapWaypointsToNearestRoad(List<Vector3> path, List<Vector3> roadPoints)
+    {
+        if (path.Count == 0 || roadPoints.Count == 0)
+            return path;
+
+        List<Vector3> snapped = new List<Vector3>(path.Count);
+        for (int i = 0; i < path.Count; i++)
+            snapped.Add(SnapPointToNearestRoad(path[i], roadPoints));
+
+        return snapped;
+    }
+
+    private static Vector3 SnapPointToNearestRoad(Vector3 point, List<Vector3> roadPoints)
+    {
+        Vector3 best = point;
+        float bestDist = RoadSnapMaxDistance;
+
+        for (int i = 0; i < roadPoints.Count; i++)
+        {
+            Vector3 candidate = roadPoints[i];
+            float dist = Vector3.Distance(
+                new Vector3(point.x, 0f, point.z),
+                new Vector3(candidate.x, 0f, candidate.z));
+
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                best = new Vector3(candidate.x, candidate.y, candidate.z);
+            }
+        }
+
+        if (Physics.Raycast(best + Vector3.up * 40f, Vector3.down, out RaycastHit hit, 80f))
+        {
+            if (IsRoadRelatedCollider(hit.collider))
+                best.y = hit.point.y + 0.05f;
+        }
+
+        return best;
+    }
+
+    private static bool IsAxisAlignedSegment(Vector3 a, Vector3 b)
+    {
+        float dx = Mathf.Abs(b.x - a.x);
+        float dz = Mathf.Abs(b.z - a.z);
+        return dx <= AxisAlignEpsilon || dz <= AxisAlignEpsilon;
     }
 
     private static List<Vector3> ReverseCopy(List<Vector3> points)
@@ -278,59 +757,12 @@ public static class TrafficSceneSetup
         return reversed;
     }
 
-    private static void AppendSegmentWithCorners(List<Vector3> path, List<Vector3> segment)
-    {
-        if (segment.Count == 0)
-            return;
-
-        AddCornerWaypoints(path, path[path.Count - 1], segment[0]);
-        path.AddRange(segment);
-    }
-
-    private static void AppendClosingCorners(List<Vector3> path)
-    {
-        if (path.Count < 2)
-            return;
-
-        AddCornerWaypoints(path, path[path.Count - 1], path[0]);
-    }
-
-    private static void AddCornerWaypoints(List<Vector3> path, Vector3 from, Vector3 to)
-    {
-        float dx = Mathf.Abs(to.x - from.x);
-        float dz = Mathf.Abs(to.z - from.z);
-        if (dx <= CornerAxisThreshold || dz <= CornerAxisThreshold)
-            return;
-
-        Vector3 cornerViaX = new Vector3(to.x, from.y, from.z);
-        Vector3 cornerViaZ = new Vector3(from.x, from.y, to.z);
-
-        float viaXLength = Vector3.Distance(from, cornerViaX) + Vector3.Distance(cornerViaX, to);
-        float viaZLength = Vector3.Distance(from, cornerViaZ) + Vector3.Distance(cornerViaZ, to);
-        Vector3 corner = viaXLength <= viaZLength ? cornerViaX : cornerViaZ;
-
-        if (Vector3.Distance(from, corner) >= 0.5f)
-            path.Add(corner);
-    }
-
-    private static Transform FindTrafficRouteRoot()
-    {
-        Transform trafficRoot = FindByName(TrafficRootName)?.transform;
-        return trafficRoot != null ? trafficRoot.Find(RouteName) : null;
-    }
-
-    private static int LogDiagonalRouteSegments(
-        Transform routeRoot,
-        float maxAllowedDistance,
-        float axisThreshold)
+    private static int LogNonAxisAlignedSegments(Transform routeRoot)
     {
         if (routeRoot == null)
             return 0;
 
-        List<Vector3> points = new List<Vector3>();
-        for (int i = 0; i < routeRoot.childCount; i++)
-            points.Add(routeRoot.GetChild(i).position);
-
+        List<Vector3> points = CollectRoutePointPositions(routeRoot);
         if (points.Count < 2)
             return 0;
 
@@ -340,15 +772,12 @@ public static class TrafficSceneSetup
             int next = (i + 1) % points.Count;
             Vector3 a = points[i];
             Vector3 b = points[next];
-            float dx = Mathf.Abs(b.x - a.x);
-            float dz = Mathf.Abs(b.z - a.z);
-            float distance = Vector3.Distance(a, b);
-            if (dx <= axisThreshold || dz <= axisThreshold || distance <= maxAllowedDistance)
+            if (IsAxisAlignedSegment(a, b))
                 continue;
 
             badSegments++;
             Debug.LogWarning(
-                $"[Traffic] Shortcut diagonal {distance:0.#}m: Waypoint_{i + 1:000} -> Waypoint_{next + 1:000} " +
+                $"[Traffic] Non-axis segment {Vector3.Distance(a, b):0.#}m: Waypoint_{i + 1:000} -> Waypoint_{next + 1:000} " +
                 $"({a.x:0.#}, {a.z:0.#}) -> ({b.x:0.#}, {b.z:0.#})",
                 routeRoot.GetChild(i).gameObject);
         }
@@ -356,6 +785,45 @@ public static class TrafficSceneSetup
         return badSegments;
     }
 
+    private static int LogBuildingBlockedSegments(Transform routeRoot)
+    {
+        if (routeRoot == null)
+            return 0;
+
+        List<Vector3> points = CollectRoutePointPositions(routeRoot);
+        if (points.Count < 2)
+            return 0;
+
+        int blockedSegments = 0;
+        for (int i = 0; i < points.Count; i++)
+        {
+            int next = (i + 1) % points.Count;
+            if (!IsSegmentBlockedByBuildings(points[i], points[next]))
+                continue;
+
+            blockedSegments++;
+            Debug.LogWarning(
+                $"[Traffic] Building overlap: Waypoint_{i + 1:000} -> Waypoint_{next + 1:000}",
+                routeRoot.GetChild(i).gameObject);
+        }
+
+        return blockedSegments;
+    }
+
+    private static List<Vector3> CollectRoutePointPositions(Transform routeRoot)
+    {
+        List<Vector3> points = new List<Vector3>();
+        for (int i = 0; i < routeRoot.childCount; i++)
+            points.Add(routeRoot.GetChild(i).position);
+
+        return points;
+    }
+
+    private static Transform FindTrafficRouteRoot()
+    {
+        Transform trafficRoot = FindByName(TrafficRootName)?.transform;
+        return trafficRoot != null ? trafficRoot.Find(RouteName) : null;
+    }
     private static List<Transform> CollectLaneGroups(Transform roadLaneRoot)
     {
         List<Transform> groups = new List<Transform>();
@@ -401,15 +869,23 @@ public static class TrafficSceneSetup
                 continue;
 
             Bounds bounds = renderer.bounds;
-            Vector3 center = bounds.center;
-            center.y = bounds.min.y + 0.05f;
-
             bool isLongZ = bounds.size.z > bounds.size.x;
-            float laneOffset = (isLongZ ? bounds.size.x : bounds.size.z) * 0.18f;
-            Vector3 offsetDir = isLongZ ? Vector3.right : Vector3.forward;
-            center += offsetDir * laneOffset;
+            float primaryLength = isLongZ ? bounds.size.z : bounds.size.x;
+            int samples = Mathf.Max(1, Mathf.CeilToInt(primaryLength / 8f));
 
-            points.Add(center);
+            for (int sample = 0; sample < samples; sample++)
+            {
+                float t = samples == 1 ? 0.5f : sample / (float)(samples - 1);
+                Vector3 center = bounds.center;
+                center.y = bounds.min.y + 0.05f;
+
+                if (isLongZ)
+                    center.z = bounds.min.z + bounds.size.z * t;
+                else
+                    center.x = bounds.min.x + bounds.size.x * t;
+
+                points.Add(center);
+            }
         }
 
         return points;

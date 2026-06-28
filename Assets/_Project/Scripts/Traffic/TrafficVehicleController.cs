@@ -7,7 +7,10 @@ public class TrafficVehicleController : MonoBehaviour
     [SerializeField] private TrafficRoute route;
     [SerializeField] private float speed = 6f;
     [SerializeField] private float groundClearance = 0.15f;
-    [SerializeField] private float rotationLerp = 12f;
+    [SerializeField] private float lookAheadDistance = 5f;
+    [SerializeField] private float maxTurnDegreesPerSecond = 110f;
+    [SerializeField] private float cornerTurnBoost = 1.3f;
+    [SerializeField] private float cornerAngleThreshold = 35f;
     [SerializeField] private float routeProgress;
 
     private Rigidbody body;
@@ -82,21 +85,44 @@ public class TrafficVehicleController : MonoBehaviour
 
     private void ApplyRoutePosition()
     {
-        route.Sample(routeProgress, out Vector3 targetPosition, out Vector3 forward);
+        route.Sample(routeProgress, out Vector3 targetPosition, out Vector3 segmentForward);
         targetPosition.y += groundClearance;
 
-        Vector3 flatForward = forward;
-        flatForward.y = 0f;
-        if (flatForward.sqrMagnitude < 0.0001f)
-            flatForward = transform.forward;
+        Vector3 flatForward = GetLookAheadForward(targetPosition, segmentForward);
+        Quaternion targetRotation = Quaternion.LookRotation(flatForward, Vector3.up);
 
-        Quaternion targetRotation = Quaternion.LookRotation(flatForward.normalized, Vector3.up);
-        Quaternion smoothedRotation = Quaternion.Slerp(
+        float turnRate = maxTurnDegreesPerSecond;
+        float cornerAngle = Vector3.Angle(body.rotation * Vector3.forward, flatForward);
+        if (cornerAngle >= cornerAngleThreshold)
+            turnRate *= cornerTurnBoost;
+
+        Quaternion smoothedRotation = Quaternion.RotateTowards(
             body.rotation,
             targetRotation,
-            rotationLerp * Time.fixedDeltaTime);
+            turnRate * Time.fixedDeltaTime);
 
         body.MovePosition(targetPosition);
         body.MoveRotation(smoothedRotation);
+    }
+
+    private Vector3 GetLookAheadForward(Vector3 currentPosition, Vector3 segmentForward)
+    {
+        Vector3 flatSegmentForward = segmentForward;
+        flatSegmentForward.y = 0f;
+
+        if (flatSegmentForward.sqrMagnitude < 0.0001f)
+            flatSegmentForward = transform.forward;
+
+        flatSegmentForward.Normalize();
+
+        float aheadDistance = Mathf.Clamp(lookAheadDistance, 1f, Mathf.Max(1f, route.TotalLength * 0.1f));
+        route.Sample(routeProgress + aheadDistance, out Vector3 aheadPosition, out _);
+
+        Vector3 lookDirection = aheadPosition - currentPosition;
+        lookDirection.y = 0f;
+        if (lookDirection.sqrMagnitude < 0.01f)
+            return flatSegmentForward;
+
+        return lookDirection.normalized;
     }
 }
