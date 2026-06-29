@@ -75,7 +75,7 @@ public class GymProgressionSystem : MonoBehaviour
     {
         if (_instance != null && _instance != this)
         {
-            Destroy(gameObject);
+            Destroy(this);
             return;
         }
 
@@ -285,6 +285,37 @@ public class GymProgressionSystem : MonoBehaviour
             return true;
 
         return progression != null && progression.HasTrainedToday;
+    }
+
+    /// <summary>
+    /// Gym lives on the same persistent host as <see cref="WorkSessionManager"/> (MobileJoystickUI),
+    /// not on GameManager — avoids duplicate singleton destroying the manager host.
+    /// </summary>
+    public static GymProgressionSystem EnsureExists()
+    {
+        if (Instance != null)
+            return Instance;
+
+        GameObject host = null;
+        if (WorkSessionManager.Instance != null)
+            host = WorkSessionManager.Instance.gameObject;
+        else
+        {
+            GameObject managerObj = GameObject.Find("GameManager");
+            if (managerObj == null)
+            {
+                managerObj = new GameObject("GameManager");
+                Object.DontDestroyOnLoad(managerObj);
+            }
+
+            host = managerObj;
+        }
+
+        GymProgressionSystem existing = host.GetComponent<GymProgressionSystem>();
+        if (existing != null)
+            return existing;
+
+        return host.AddComponent<GymProgressionSystem>();
     }
 
     public GymTier GetCurrentTier()

@@ -150,7 +150,7 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
             return;
         }
 
-        Debug.Log($"[NPCRestoran] Pesanan {food.foodName} (Rp{chargedPrice}) via dialog.");
+        Debug.Log($"[NPCRestoran] Pesanan {food.foodName} ({CurrencyFormatter.Format(chargedPrice)}) via dialog.");
     }
 
     public void ApplyConsequence(DialogueConsequence consequence)
@@ -335,7 +335,7 @@ public class NpcRestaurantInteractable : MonoBehaviour, IInteractable, IDialogue
             });
 
             menuNode.choices.Add(CreateChoice(
-                $"Pesen {food.foodName} (Rp{price})",
+                $"Pesen {food.foodName} ({CurrencyFormatter.Format(price)})",
                 pickId,
                 0f, 0f, 1f));
         }

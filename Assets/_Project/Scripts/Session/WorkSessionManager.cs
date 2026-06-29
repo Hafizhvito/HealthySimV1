@@ -6,9 +6,9 @@ public class WorkSessionManager : MonoBehaviour
     public static WorkSessionManager Instance => _instance;
 
     [Header("Base Pay")]
-    [SerializeField] private int _basePayPagi = 200;
-    [SerializeField] private int _basePaySiang = 150;
-    [SerializeField] private int _basePaySore = 150;
+    [SerializeField] private int _basePayPagi = 280;
+    [SerializeField] private int _basePaySiang = 210;
+    [SerializeField] private int _basePaySore = 210;
 
     [Header("Energy Rules")]
     [SerializeField] private float _energyDrainFull = 0.20f;
@@ -32,7 +32,7 @@ public class WorkSessionManager : MonoBehaviour
     {
         if (_instance != null && _instance != this)
         {
-            Destroy(gameObject);
+            Destroy(this);
             return;
         }
 
@@ -141,6 +141,7 @@ public class WorkSessionManager : MonoBehaviour
         PendingSession = null;
         LastSession = data;
         HasWorkedToday = true;
+        stats?.MarkWorkCompletedToday();
     }
 
     public static void SyncGameClockAfterWork(WorkSessionData data)
@@ -204,6 +205,7 @@ public class WorkSessionManager : MonoBehaviour
         HasWorkedToday = false;
         PendingSession = null;
         _lastObservedGameTime = TimeManager.Instance != null ? TimeManager.Instance.CurrentTime : -1f;
+        ResolvePlayerStats()?.ResetWorkCompletedForNewDay();
     }
 
     public void ResetForNewSession()
@@ -213,6 +215,23 @@ public class WorkSessionManager : MonoBehaviour
         LastSession = null;
         LastSessionHadBonus = false;
         _lastObservedGameTime = -1f;
+        ResolvePlayerStats()?.ResetWorkCompletedForNewDay();
+    }
+
+    public static bool DidWorkToday(WorkSessionManager work, PlayerStats stats)
+    {
+        if (stats != null && stats.WorkCompletedToday)
+            return true;
+
+        return work != null && work.HasWorkedToday;
+    }
+
+    private static PlayerStats ResolvePlayerStats()
+    {
+        if (PlayerStats.Instance != null)
+            return PlayerStats.Instance;
+
+        return FindFirstObjectByType<PlayerStats>();
     }
 
     private static WorkPeriod MapWorkPeriod(TimeManager.TimePeriod source)
@@ -230,15 +249,14 @@ public class WorkSessionManager : MonoBehaviour
 
     private int GetBasePay(WorkPeriod period)
     {
-        switch (period)
+        int assetPay = period switch
         {
-            case WorkPeriod.Pagi:
-                return _basePayPagi;
-            case WorkPeriod.Siang:
-                return _basePaySiang;
-            default:
-                return _basePaySore;
-        }
+            WorkPeriod.Pagi => _basePayPagi,
+            WorkPeriod.Siang => _basePaySiang,
+            _ => _basePaySore
+        };
+
+        return EconomyConstants.ScalePrice(assetPay);
     }
 
     private static float ResolveWorkEndHour(WorkSessionData data)

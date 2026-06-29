@@ -563,7 +563,7 @@ public class WorkReminderUI : MonoBehaviour
         hudMoneyIndicator = CreateTmp("MoneyHUDIndicator", parent, 19f, FontStyles.Bold, new Color32(255, 232, 150, 255));
         ApplyReadableHudText(hudMoneyIndicator);
         ConfigureMoneyIndicatorLayout();
-        hudMoneyIndicator.text = "Saldo · Rp0";
+        hudMoneyIndicator.text = "Saldo · " + CurrencyFormatter.Format(0);
     }
 
     private void ConfigureMoneyIndicatorLayout()
@@ -640,7 +640,7 @@ public class WorkReminderUI : MonoBehaviour
             return;
 
         int money = PlayerStats.Instance != null ? Mathf.Max(0, PlayerStats.Instance.Money) : 0;
-        hudMoneyIndicator.text = string.Format("Saldo · Rp{0:N0}", money);
+        hudMoneyIndicator.text = "Saldo · " + CurrencyFormatter.Format(money);
         hudMoneyIndicator.color = new Color32(255, 232, 150, 255);
     }
 

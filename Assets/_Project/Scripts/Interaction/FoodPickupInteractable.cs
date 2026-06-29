@@ -171,7 +171,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
             );
         }
     
-        Debug.Log($"[Interaction] {food.foodName} dibeli Rp{chargedPrice}. " +
+        Debug.Log($"[Interaction] {food.foodName} dibeli {CurrencyFormatter.Format(chargedPrice)}. " +
                 $"Energi +{food.energyRestored}, Kalori +{food.calories}, " +
                 $"Mood {food.moodEffect:+0.##;-0.##;0}");
     
@@ -206,7 +206,7 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
 
         int stashCount = foodStash != null ? foodStash.Count : 0;
         Debug.Log(saved
-            ? $"[Interaction] {food.foodName} dibeli Rp{chargedPrice} dan disimpan ke stash sesi. Total stash: {stashCount}."
+            ? $"[Interaction] {food.foodName} dibeli {CurrencyFormatter.Format(chargedPrice)} dan disimpan ke stash sesi. Total stash: {stashCount}."
             : $"[Interaction] Gagal simpan {food.foodName} (stash tidak tersedia).");
 
         return saved;
@@ -249,12 +249,17 @@ public class FoodPickupInteractable : MonoBehaviour, IInteractable
 
         if (PlayerStats.Instance.Money < price)
         {
-            Debug.LogWarning($"[Interaction] Uang tidak cukup untuk membeli {food.foodName}. Butuh Rp{price}, uang sekarang Rp{PlayerStats.Instance.Money}.");
+            Debug.LogWarning($"[Interaction] Uang tidak cukup untuk membeli {food.foodName}. Butuh {CurrencyFormatter.Format(price)}, uang sekarang {CurrencyFormatter.Format(PlayerStats.Instance.Money)}.");
             return false;
         }
 
         PlayerStats.Instance.SpendMoney(price);
         return true;
+    }
+
+    public void ConfigureOutletPriceMultiplier(float multiplier)
+    {
+        outletPriceMultiplier = Mathf.Clamp(multiplier, 0.5f, 2f);
     }
 
     public int GetDisplayPrice(FoodData food)

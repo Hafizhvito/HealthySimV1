@@ -32,6 +32,18 @@ public static class PhaseReviewBuilder
         return result;
     }
 
+    public static string FormatActivityRecapLine(
+        string label,
+        int doneDays,
+        int skippedDays,
+        int totalDays,
+        string doneUnit,
+        string bulletPrefix = "• ")
+    {
+        int days = Mathf.Max(1, totalDays);
+        return $"{bulletPrefix}{label}: {doneDays} hari {doneUnit}, {skippedDays} hari bolos (dari {days} hari)";
+    }
+
     private static string BuildSummaryLine(PhaseReviewInput input)
     {
         string fromLabel = PlayerStats.GetAgeStageLabelIndonesia(input.previousStage);
@@ -45,20 +57,11 @@ public static class PhaseReviewBuilder
     {
         var snap = input.snapshot;
         int days = Mathf.Max(1, snap.daysInPhase);
-        var lines = new System.Collections.Generic.List<string>();
 
-        if (snap.trainedGymDays > 0)
-        {
-            string gymLabel = (float)snap.trainedGymDays / days >= 0.6f
-                ? "Berolahraga rutin di gym"
-                : "Berolahraga di gym";
-            lines.Add($"• {gymLabel} ({snap.trainedGymDays} dari {days} hari)");
-        }
-
-        if (lines.Count == 0)
-            return string.Empty;
-
-        return "Catatan aktivitas:\n" + string.Join("\n", lines);
+        return "Catatan aktivitas:\n"
+            + FormatActivityRecapLine("Gym", snap.trainedGymDays, snap.skippedGymDays, days, "latihan")
+            + "\n"
+            + FormatActivityRecapLine("Kerja", snap.workedDays, snap.skippedWorkDays, days, "kerja");
     }
 
     private static string BuildIssuesList(PhaseReviewInput input)
@@ -82,13 +85,6 @@ public static class PhaseReviewBuilder
             issueCount++;
         }
 
-        if (snap.skippedGymDays > 0 && (float)snap.skippedGymDays / days >= 0.4f)
-        {
-            sb.Append(IssuePrefix(issueCount));
-            sb.Append($"Jarang berolahraga ({snap.skippedGymDays} dari {days} hari tanpa gym)");
-            issueCount++;
-        }
-
         if (snap.overworkedDays > 0 && (float)snap.overworkedDays / days >= 0.3f)
         {
             sb.Append(IssuePrefix(issueCount));
@@ -100,13 +96,6 @@ public static class PhaseReviewBuilder
         {
             sb.Append(IssuePrefix(issueCount));
             sb.Append($"Tidur sering terganggu ({snap.disturbedSleepDays} hari)");
-            issueCount++;
-        }
-
-        if (snap.skippedWorkDays > 0 && (float)snap.skippedWorkDays / days >= 0.4f)
-        {
-            sb.Append(IssuePrefix(issueCount));
-            sb.Append($"Sering absen kerja ({snap.skippedWorkDays} hari). Tekanan finansial naik");
             issueCount++;
         }
 

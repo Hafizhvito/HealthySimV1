@@ -285,7 +285,7 @@ public class WorkSessionController : MonoBehaviour
             {
                 nodeId = "node_0",
                 fallbackLine = "Nah begini! Kerjamu rapi, cepat, dan minim revisi. Ini standar yang aku suka.",
-                npcFollowUpText = $"Gaji hari ini Rp{pay}. Pertahankan, bonus bakal rutin.",
+                npcFollowUpText = $"Gaji hari ini {CurrencyFormatter.Format(pay)}. Pertahankan, bonus bakal rutin.",
                 choices = new List<DialogueChoiceData>(),
                 isConversationEnd = true,
                 isTerminal = true
@@ -310,7 +310,7 @@ public class WorkSessionController : MonoBehaviour
             {
                 nodeId = "node_0",
                 fallbackLine = "Saya udah bilang, kualitasmu drop di tengah shift. Jam kerja terpaksa saya stop.",
-                npcFollowUpText = $"Kerjaan beres {completion}%. Gaji kamu hari ini Rp{pay}, dipotong karena performa turun. Besok datang lebih fit.",
+                npcFollowUpText = $"Kerjaan beres {completion}%. Gaji kamu hari ini {CurrencyFormatter.Format(pay)}, dipotong karena performa turun. Besok datang lebih fit.",
                 choices = new List<DialogueChoiceData>(),
                 isConversationEnd = true,
                 isTerminal = true

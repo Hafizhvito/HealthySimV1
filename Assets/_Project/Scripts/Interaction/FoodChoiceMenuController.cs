@@ -107,7 +107,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         Debug.Log($"[FoodMenu] Dibuka: {currentLocationName} ({currentFoods.Count} item)");
     }
 
-    public void OpenHomeMenu(string locationName, List<FoodData> foods, float priceMultiplier = 0.65f)
+    public void OpenHomeMenu(string locationName, List<FoodData> foods, float priceMultiplier = EconomyConstants.HomePriceMultiplier)
     {
         OpenMenu(locationName, foods);
 
@@ -208,7 +208,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         GUILayout.Space(8f);
         int money = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0;
         LabelOutlined(currentLocationName, headerTitleStyle);
-        LabelOutlined($"{currentFoods.Count} item tersedia  •  Saldo Rp{money}", headerMetaStyle);
+        LabelOutlined($"{currentFoods.Count} item tersedia  •  Saldo {CurrencyFormatter.Format(money)}", headerMetaStyle);
         DrawPanelStatus();
 
         GUILayout.Space(8f);
@@ -320,7 +320,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         GUILayout.EndVertical();
 
         GUILayout.BeginVertical(GUILayout.Width(menuLayout.Metrics.ActionColumnWidth));
-        LabelOutlined($"Rp{price}", priceStyle, GUILayout.Height(actionButtonHeight * 0.55f));
+        LabelOutlined(CurrencyFormatter.Format(price), priceStyle, GUILayout.Height(actionButtonHeight * 0.55f));
 
         if (OutlinedButtonScrollSafe(eatLabel, actionButtonStyle, GUILayout.Height(actionButtonHeight)))
             EatFood(food);
@@ -366,7 +366,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         if (SessionFoodStash.Instance != null)
         {
             SessionFoodStash.Instance.AddToStash(food);
-            Debug.Log($"[FoodMenu] Dibeli dan disimpan: {food.foodName} (Rp{GetDisplayPrice(food)})");
+            Debug.Log($"[FoodMenu] Dibeli dan disimpan: {food.foodName} ({CurrencyFormatter.Format(GetDisplayPrice(food))})");
             string stashMessage = isHomeFoodMode
                 ? $"Meal prep tersimpan: {food.foodName}."
                 : $"{food.foodName} disimpan ke stash.";
@@ -409,7 +409,7 @@ public class FoodChoiceMenuController : MonoBehaviour
         if (StoryManager.Instance != null)
             StoryManager.Instance.OnFoodEaten(food);
 
-        Debug.Log($"[FoodMenu] Dibeli dan dimakan: {food.foodName} (Rp{GetDisplayPrice(food)})");
+        Debug.Log($"[FoodMenu] Dibeli dan dimakan: {food.foodName} ({CurrencyFormatter.Format(GetDisplayPrice(food))})");
         ShowPanelStatus($"Kamu makan {food.foodName}.", false, 1.2f);
         CloseMenu();
     }
@@ -432,8 +432,8 @@ public class FoodChoiceMenuController : MonoBehaviour
 
         if (PlayerStats.Instance.Money < price)
         {
-            Debug.LogWarning($"[FoodMenu] Uang tidak cukup untuk membeli {food.foodName}. Butuh Rp{price}, uang sekarang Rp{PlayerStats.Instance.Money}.");
-            ShowPanelStatus($"Uang tidak cukup. Butuh Rp{price}.", true);
+            Debug.LogWarning($"[FoodMenu] Uang tidak cukup untuk membeli {food.foodName}. Butuh {CurrencyFormatter.Format(price)}, uang sekarang {CurrencyFormatter.Format(PlayerStats.Instance.Money)}.");
+            ShowPanelStatus($"Uang tidak cukup. Butuh {CurrencyFormatter.Format(price)}.", true);
             return false;
         }
 

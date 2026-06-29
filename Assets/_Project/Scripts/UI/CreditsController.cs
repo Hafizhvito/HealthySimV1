@@ -65,7 +65,7 @@ public class CreditsController : MonoBehaviour
 
         // Institusi
         ( "Universitas YARSI",                          26f, FontStyles.Bold,   6f  ),
-        ( "Teknik Informatika  2025",                   22f, FontStyles.Normal, 80f ),
+        ( "Teknik Informatika  2026",                   22f, FontStyles.Normal, 80f ),
 
         // Penutup
         ( "Terima kasih sudah bermain.",                34f, FontStyles.Bold,   0f  ),

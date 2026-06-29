@@ -337,7 +337,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         }
 
         // ── Snapshot data sebelum tidur ──────────────────────
-        bool workedYesterday   = workSessionManager != null && workSessionManager.HasWorkedToday;
+        bool workedYesterday   = WorkSessionManager.DidWorkToday(workSessionManager, playerStats);
         bool trainedYesterday  = GymProgressionSystem.DidTrainToday(gymProgressionSystem, playerStats);
         GymSessionData lastGymAtSleepStart = gymProgressionSystem != null ? gymProgressionSystem.LastSession : null;
         WorkSessionData lastWorkAtSleepStart = workSessionManager != null ? workSessionManager.LastSession : null;
@@ -902,11 +902,7 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private GymProgressionSystem ResolveGymProgressionSystem()
     {
         if (gymProgressionSystemOverride != null) return gymProgressionSystemOverride;
-        if (GymProgressionSystem.Instance != null) return GymProgressionSystem.Instance;
-        GameObject managerObj = GameObject.Find("GameManager");
-        if (managerObj == null) return null;
-        GymProgressionSystem existing = managerObj.GetComponent<GymProgressionSystem>();
-        return existing != null ? existing : managerObj.AddComponent<GymProgressionSystem>();
+        return GymProgressionSystem.EnsureExists();
     }
 
     // ── Sleep logic helpers ──────────────────────────────────
@@ -993,7 +989,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
     private float BuildCurrentDisturbanceChancePreview()
     {
         WorkSessionManager workSessionManager = ResolveWorkSessionManager();
-        bool workedYesterday    = workSessionManager != null && workSessionManager.HasWorkedToday;
+        PlayerStats playerStats = ResolvePlayerStats();
+        bool workedYesterday    = WorkSessionManager.DidWorkToday(workSessionManager, playerStats);
         bool overworkedYesterday = workedYesterday && DidOverworkYesterday(workSessionManager);
         bool poorDietYesterday  = HasPoorDietPattern();
         return CalculateSleepDisturbanceChance(workedYesterday, overworkedYesterday, poorDietYesterday);
@@ -1024,7 +1021,8 @@ public class SleepBedInteractable : MonoBehaviour, IInteractable
         if (!enableLateWakePenalty) return 0f;
 
         bool highSugarPattern = HasHighRecentSugarIntake();
-        bool overworkPattern  = workSessionManager != null && workSessionManager.HasWorkedToday && DidOverworkYesterday(workSessionManager);
+        bool overworkPattern  = WorkSessionManager.DidWorkToday(workSessionManager, playerStats)
+            && DidOverworkYesterday(workSessionManager);
         bool highFatigueDebt  = gymProgressionSystem != null && playerStats != null && playerStats.FatigueDebt >= highFatigueDebtThreshold;
         bool lowEnergyAtSleep = energyBeforeSleep <= lowEnergySleepPenaltyThreshold;
 

@@ -13,7 +13,7 @@ public class HomeFoodStationInteractable : MonoBehaviour, IInteractable
     [SerializeField] private bool filterByTime = true;
 
     [Header("Home Pricing")]
-    [SerializeField] [Range(0.25f, 1f)] private float homePriceMultiplier = 0.65f;
+    [SerializeField] [Range(0.25f, 1f)] private float homePriceMultiplier = EconomyConstants.HomePriceMultiplier;
 
     [Header("Optional References")]
     [SerializeField] private FoodCatalogProvider foodCatalogProviderOverride;

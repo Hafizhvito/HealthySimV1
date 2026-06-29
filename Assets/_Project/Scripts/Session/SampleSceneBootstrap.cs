@@ -100,11 +100,20 @@ public class SampleSceneBootstrap : MonoBehaviour
             float savedWeight  = PlayerData.BeratBadan  > 0 ? PlayerData.BeratBadan  : 65f;
             PlayerStats.Instance.SetPlayerData(savedName, savedHeight, savedWeight);
             PlayerStats.Instance.SetGender(ResolvePlayerGender(PlayerData.JenisKelamin));
+
+            if (!SpawnPlayerManager.IsReturningFromSubSceneLoad())
+                PlayerStats.Instance.EnsureStartingMoneyForNewRun();
         }
 
         EnsurePlayerCharacterSwapper();
 
         yield return EnsurePlayerSpawnedBeforeIntro();
+
+        if (PlayerStats.Instance != null && !SpawnPlayerManager.IsReturningFromSubSceneLoad())
+            PlayerStats.Instance.EnsureStartingMoneyForNewRun();
+
+        GymProgressionSystem.EnsureExists();
+
         yield return RunIntroSequence();
         _sceneEntryRoutine = null;
     }
@@ -162,9 +171,11 @@ public class SampleSceneBootstrap : MonoBehaviour
         EnsureComponent<SessionFoodStash>(manager);
         EnsureComponent<ModalStateManager>(manager);
         EnsureComponent<WorkReminderUI>(manager);
-        EnsureComponent<TimeManager>(manager);
-        EnsureComponent<WorkSessionManager>(manager);
-        EnsureComponent<GymProgressionSystem>(manager);
+        if (TimeManager.Instance == null)
+            EnsureComponent<TimeManager>(manager);
+        if (WorkSessionManager.Instance == null)
+            EnsureComponent<WorkSessionManager>(manager);
+        GymProgressionSystem.EnsureExists();
         EnsureComponent<SessionTimeSkipPresenter>(manager);
         EnsureComponent<ClockAnimationUI>(manager);
         EnsureComponent<HealthAlertPanelController>(manager);
@@ -323,6 +334,8 @@ public class SampleSceneBootstrap : MonoBehaviour
             }
         }
 
+        ConfigureRestaurantEconomy();
+
         bool hasFoodSetup = FindFirstObjectByType<FoodPickupInteractable>() != null
             && FindFirstObjectByType<HomeFoodStationInteractable>() != null;
 
@@ -416,6 +429,26 @@ public class SampleSceneBootstrap : MonoBehaviour
         FieldInfo field = typeof(SpawnPointID).GetField("spawnID", BindingFlags.NonPublic | BindingFlags.Instance);
         if (field != null)
             field.SetValue(newSpawnId, "spawnpoint");
+    }
+
+    private void ConfigureRestaurantEconomy()
+    {
+        FoodPickupInteractable[] foodPoints = FindObjectsByType<FoodPickupInteractable>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < foodPoints.Length; i++)
+        {
+            FoodPickupInteractable pickup = foodPoints[i];
+            if (pickup == null)
+                continue;
+
+            if (!string.Equals(pickup.gameObject.name, "Interactable_Food_Restaurant", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            pickup.ConfigureOutletPriceMultiplier(EconomyConstants.RestaurantPriceMultiplier);
+            Debug.Log($"[SampleSceneBootstrap] Restoran price multiplier = {EconomyConstants.RestaurantPriceMultiplier:0.##}.");
+        }
     }
 
     private void WirePlaceholderDialogueAssignments()

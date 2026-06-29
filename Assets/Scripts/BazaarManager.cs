@@ -8,7 +8,7 @@ public class BazaarManager : MonoBehaviour
     [SerializeField] private float spawnChance = 0.8f;
     [SerializeField] private int bazaarIntervalDays = 5;
     [SerializeField] private Vector3 bazaarSpawnPosition = new Vector3(-53f, 1f, 37f);
-    [SerializeField] private float bazaarDiscountMultiplier = 0.5f;
+    [SerializeField] private float bazaarDiscountMultiplier = EconomyConstants.BazaarDiscountMultiplier;
     [SerializeField] private FoodData[] bazaarFoodPool;
     [SerializeField] private string bazaarObjectName = "Interactable_Bazaar";
 

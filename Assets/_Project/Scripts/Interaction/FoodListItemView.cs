@@ -57,7 +57,7 @@ public class FoodListItemView : MonoBehaviour
             foodNameText.text = food.foodName;
 
         if (categoryText != null)
-            categoryText.text = $"{food.category}  •  Rp{food.GetEffectivePrice()}";
+            categoryText.text = $"{food.category}  •  {CurrencyFormatter.Format(food.GetEffectivePrice())}";
 
         if (caloriesText != null)
             caloriesText.text = $"{food.calories:0} kcal";

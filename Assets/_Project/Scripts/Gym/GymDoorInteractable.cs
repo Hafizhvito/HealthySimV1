@@ -150,18 +150,7 @@ public class GymDoorInteractable : MonoBehaviour, IInteractable
         if (gymProgressionOverride != null)
             return gymProgressionOverride;
 
-        if (GymProgressionSystem.Instance != null)
-            return GymProgressionSystem.Instance;
-
-        GameObject managerObj = GameObject.Find("GameManager");
-        if (managerObj == null)
-        {
-            managerObj = new GameObject("GameManager");
-            Debug.LogWarning("[GymDoorInteractable] GameManager tidak ditemukan. Membuat fallback runtime.");
-        }
-
-        GymProgressionSystem existing = managerObj.GetComponent<GymProgressionSystem>();
-        return existing != null ? existing : managerObj.AddComponent<GymProgressionSystem>();
+        return GymProgressionSystem.EnsureExists();
     }
 
     private FadeManager ResolveFadeManager()

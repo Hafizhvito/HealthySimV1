@@ -46,6 +46,7 @@ public class HUDManager : MonoBehaviour
     [SerializeField] private Color caloriesLowColor = new Color(0.36f, 0.86f, 0.47f);
     [SerializeField] private Color caloriesMidColor = new Color(0.98f, 0.78f, 0.28f);
     [SerializeField] private Color caloriesHighColor = new Color(0.98f, 0.45f, 0.32f);
+    [SerializeField] private Color caloriesOverLimitColor = new Color(0.92f, 0.22f, 0.20f);
 
     [Header("Time")]
     [SerializeField] private TextMeshProUGUI periodText;
@@ -219,7 +220,7 @@ public class HUDManager : MonoBehaviour
             caloriesBarFill.fillMethod = Image.FillMethod.Horizontal;
             caloriesBarFill.fillOrigin = 0;
             caloriesBarFill.fillAmount = 1f;
-            SetCaloriesFillVisible(false);
+            SetCaloriesFillVisible(false, false);
             caloriesFillBaseScale = caloriesBarFill.rectTransform.localScale;
             EnsureCaloriesFillPivot();
 
@@ -492,7 +493,10 @@ public class HUDManager : MonoBehaviour
 
         float maxCalories = ResolveCaloriesMax();
         float currentCalories = Mathf.Max(0f, playerStats.TotalCalories);
-        float targetFillAmount = Mathf.Clamp01(currentCalories / maxCalories);
+        bool overDailyLimit = currentCalories > maxCalories + 0.01f;
+        float targetFillAmount = overDailyLimit
+            ? 1f
+            : Mathf.Clamp01(currentCalories / maxCalories);
         bool hasCalories = currentCalories >= caloriesVisibleThreshold;
 
         caloriesVisualPercent = Mathf.Lerp(
@@ -519,14 +523,14 @@ public class HUDManager : MonoBehaviour
 
             if (hasCalories)
             {
-                caloriesBarFill.color = GetCaloriesColor(caloriesVisualPercent);
-                SetCaloriesFillVisible(true);
+                caloriesBarFill.color = GetCaloriesBarColor(caloriesVisualPercent, overDailyLimit);
+                SetCaloriesFillVisible(true, overDailyLimit);
             }
             else
             {
                 fillScale.x = 0f;
                 caloriesBarFill.rectTransform.localScale = fillScale;
-                SetCaloriesFillVisible(false);
+                SetCaloriesFillVisible(false, false);
             }
         }
 
@@ -542,8 +546,20 @@ public class HUDManager : MonoBehaviour
                 playerStats.TotalCalories,
                 playerStats.DailyCalorieTarget
             );
-            ApplyCaloriesTextStyle(hasCalories, caloriesVisualPercent);
+            ApplyCaloriesTextStyle(hasCalories, caloriesVisualPercent, overDailyLimit);
         }
+    }
+
+    private Color GetCaloriesBarColor(float percent, bool overDailyLimit)
+    {
+        if (overDailyLimit)
+        {
+            Color over = caloriesOverLimitColor;
+            over.a = 0.95f;
+            return over;
+        }
+
+        return GetCaloriesColor(percent);
     }
 
     private void EnsureCaloriesFillPivot()
@@ -554,17 +570,19 @@ public class HUDManager : MonoBehaviour
         caloriesBarFill.rectTransform.pivot = new Vector2(0f, 0.5f);
         caloriesFillPivotInitialized = true;
     }
-    private void SetCaloriesFillVisible(bool visible)
+    private void SetCaloriesFillVisible(bool visible, bool overDailyLimit)
     {
         if (caloriesBarFill == null)
             return;
 
-        Color color = visible ? GetCaloriesColor(caloriesVisualPercent) : caloriesBarFill.color;
+        Color color = visible
+            ? GetCaloriesBarColor(caloriesVisualPercent, overDailyLimit)
+            : caloriesBarFill.color;
         color.a = visible ? 0.92f : 0f;
         caloriesBarFill.color = color;
     }
 
-    private void ApplyCaloriesTextStyle(bool hasCalories, float fillPercent)
+    private void ApplyCaloriesTextStyle(bool hasCalories, float fillPercent, bool overDailyLimit)
     {
         if (caloriesText == null)
             return;
@@ -575,6 +593,12 @@ public class HUDManager : MonoBehaviour
         if (!hasCalories)
         {
             caloriesText.color = new Color(0.93f, 0.95f, 0.98f, 1f);
+            return;
+        }
+
+        if (overDailyLimit)
+        {
+            caloriesText.color = caloriesOverLimitColor;
             return;
         }
 

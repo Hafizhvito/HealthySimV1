@@ -823,25 +823,37 @@ public class EndingManager : MonoBehaviour
         sections.Add(sectionA.ToString());
 
         var sectionB = new System.Text.StringBuilder();
+        int activityDays = Mathf.Max(1, stats.TotalDaysEvaluated);
+        sectionB.Append("Aktivitas:");
+        sectionB.Append("\n- ");
+        sectionB.Append(PhaseReviewBuilder.FormatActivityRecapLine(
+            "Gym",
+            stats.TrainedGymDays,
+            stats.SkippedGymDays,
+            activityDays,
+            "latihan",
+            bulletPrefix: string.Empty));
+        sectionB.Append("\n- ");
+        sectionB.Append(PhaseReviewBuilder.FormatActivityRecapLine(
+            "Kerja",
+            stats.WorkedDays,
+            stats.SkippedWorkDays,
+            activityDays,
+            "kerja",
+            bulletPrefix: string.Empty));
+
         if (stats.SkippedGymDays > 5)
-        {
-            sectionB.Append($"! Sering melewatkan gym ({stats.SkippedGymDays} hari)");
             warningCount++;
-        }
         if (stats.SkippedWorkDays > 3)
-        {
-            if (sectionB.Length > 0) sectionB.Append("\n");
-            sectionB.Append($"! Sering absen kerja ({stats.SkippedWorkDays} hari)");
             warningCount++;
-        }
+
         if (stats.OverworkedDays > 3)
         {
-            if (sectionB.Length > 0) sectionB.Append("\n");
-            sectionB.Append("! Terlalu sering memaksakan diri bekerja");
+            sectionB.Append($"\n! Terlalu sering memaksakan diri bekerja ({stats.OverworkedDays} hari)");
             warningCount++;
         }
-        if (sectionB.Length > 0)
-            sections.Add("Aktivitas:\n" + sectionB.ToString());
+
+        sections.Add(sectionB.ToString());
 
         var sectionC = new System.Text.StringBuilder();
         if (stats.DisturbedSleepDays > 3)
