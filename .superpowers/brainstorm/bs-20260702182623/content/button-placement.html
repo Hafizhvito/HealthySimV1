@@ -1,0 +1,143 @@
+<h2>Posisi Tombol FPP/TPP</h2>
+<p class="subtitle">Tombol toggle kamera mau diletakkan di mana relatif terhadap tombol Settings (ikon gear)?</p>
+
+<style>
+  .hud-preview {
+    background: #1a1e28;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 16px 0;
+    position: relative;
+    height: 200px;
+    border: 1px solid #333;
+  }
+  .hud-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .corner-btns {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .btn-mock {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: bold;
+    border: 2px solid rgba(255,255,255,0.15);
+  }
+  .btn-settings {
+    background: #2ecc71;
+    color: #0a1010;
+    font-size: 18px;
+  }
+  .btn-cam {
+    background: rgba(20, 30, 50, 0.92);
+    color: #e8f0ff;
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .btn-cam-highlight {
+    background: rgba(30, 80, 160, 0.85);
+    color: #cce0ff;
+  }
+  .hud-bars {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .bar {
+    height: 10px;
+    border-radius: 5px;
+    background: #58d268;
+    width: 140px;
+  }
+  .bar-cal { background: #3a7fd5; width: 110px; }
+  .hud-time {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10,14,20,0.85);
+    border-radius: 8px;
+    padding: 6px 20px;
+    font-size: 13px;
+    color: #fff;
+    text-align: center;
+  }
+</style>
+
+<div class="options">
+  <div class="option" data-choice="left-of-settings" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Kiri dari Settings</h3>
+      <p>Tombol kamera langsung di sebelah kiri tombol gear. Paling dekat, mudah dijangkau.</p>
+      <div class="hud-preview">
+        <div class="hud-bars">
+          <div class="bar"></div>
+          <div class="bar bar-cal"></div>
+        </div>
+        <div class="hud-time">Senin · Pagi<br><small style="color:#ffe096">07:00</small></div>
+        <div class="corner-btns">
+          <div class="btn-mock btn-cam btn-cam-highlight">TPP<br>→FPP</div>
+          <div class="btn-mock btn-settings">⚙</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="left-gap" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Kiri dengan gap kecil</h3>
+      <p>Ada sedikit jarak antara tombol kamera dan settings supaya tidak terlihat menumpuk.</p>
+      <div class="hud-preview">
+        <div class="hud-bars">
+          <div class="bar"></div>
+          <div class="bar bar-cal"></div>
+        </div>
+        <div class="hud-time">Senin · Pagi<br><small style="color:#ffe096">07:00</small></div>
+        <div class="corner-btns">
+          <div class="btn-mock btn-cam btn-cam-highlight">TPP<br>→FPP</div>
+          <div style="width:16px"></div>
+          <div class="btn-mock btn-settings">⚙</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="below-settings" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Di bawah Settings</h3>
+      <p>Tombol kamera ditumpuk vertikal di bawah gear, supaya kolom kanan tetap rapi.</p>
+      <div class="hud-preview">
+        <div class="hud-bars">
+          <div class="bar"></div>
+          <div class="bar bar-cal"></div>
+        </div>
+        <div class="hud-time">Senin · Pagi<br><small style="color:#ffe096">07:00</small></div>
+        <div style="position:absolute;top:16px;right:16px;display:flex;flex-direction:column;gap:10px;align-items:flex-end;">
+          <div class="btn-mock btn-settings">⚙</div>
+          <div class="btn-mock btn-cam btn-cam-highlight">TPP<br>→FPP</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

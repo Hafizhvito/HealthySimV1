@@ -7,10 +7,8 @@ public class BazaarInteractable : MonoBehaviour, IInteractable
     private const string ModalKey = "bazaar_menu";
 
     private FoodData[] foodPool;
-    private float discountMultiplier = 0.5f;
+    private float discountMultiplier = EconomyConstants.BazaarDiscountMultiplier;
     private Collider cachedCollider;
-    [SerializeField] private int foodCount = 10;
-    [SerializeField] private int drinkCount = 3;
 
     private void Awake()
     {
@@ -32,7 +30,7 @@ public class BazaarInteractable : MonoBehaviour, IInteractable
     public void Initialize(FoodData[] pool, float discount)
     {
         foodPool = pool;
-        discountMultiplier = discount;
+        discountMultiplier = Mathf.Clamp(discount, 0.05f, 1f);
     }
 
     public string GetInteractionText() => "Tekan E untuk buka Bazaar Sehat";
@@ -66,49 +64,14 @@ public class BazaarInteractable : MonoBehaviour, IInteractable
         if (foodPool == null || foodPool.Length == 0)
             return choices;
 
-        List<FoodData> foods = new List<FoodData>();
-        List<FoodData> drinks = new List<FoodData>();
-
         for (int i = 0; i < foodPool.Length; i++)
         {
             FoodData item = foodPool[i];
-            if (item == null)
-                continue;
-
-            if (item.category == FoodData.FoodCategory.Minuman)
-                drinks.Add(item);
-            else
-                foods.Add(item);
-        }
-
-        int pickedFoods = AddRandomSelection(choices, foods, Mathf.Max(0, foodCount));
-        int pickedDrinks = AddRandomSelection(choices, drinks, Mathf.Max(0, drinkCount));
-
-        if (pickedFoods < foodCount || pickedDrinks < drinkCount)
-        {
-            Debug.LogWarning($"[BazaarInteractable] Pool kurang. foods={pickedFoods}/{foodCount} drinks={pickedDrinks}/{drinkCount}.");
+            if (item != null)
+                choices.Add(item);
         }
 
         return BuildDiscountedClones(choices);
-    }
-
-    private int AddRandomSelection(List<FoodData> output, List<FoodData> source, int count)
-    {
-        if (output == null || source == null || count <= 0)
-            return 0;
-
-        List<FoodData> shuffled = new List<FoodData>(source);
-        for (int i = 0; i < shuffled.Count; i++)
-        {
-            int j = Random.Range(i, shuffled.Count);
-            (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
-        }
-
-        int take = Mathf.Min(count, shuffled.Count);
-        for (int i = 0; i < take; i++)
-            output.Add(shuffled[i]);
-
-        return take;
     }
 
     private List<FoodData> BuildDiscountedClones(List<FoodData> selected)
@@ -140,8 +103,8 @@ public class BazaarInteractable : MonoBehaviour, IInteractable
             clone.availableEvening = original.availableEvening;
             clone.availableNight = original.availableNight;
 
-            int discountedPrice = Mathf.RoundToInt(original.GetEffectivePrice() * discountMultiplier);
-            clone.price = Mathf.Max(0, discountedPrice);
+            int discountedAssetPrice = Mathf.Max(1, Mathf.RoundToInt(original.GetAssetPrice() * discountMultiplier));
+            clone.price = discountedAssetPrice;
 
             discounted.Add(clone);
         }

@@ -438,16 +438,20 @@ public class MobileInputController : MonoBehaviour
         Vector2 swipeNormalized = lookSwipeZone != null ? lookSwipeZone.ConsumeOutput() : Vector2.zero;
         LookDelta = swipeNormalized;
 
-        if (cameraSystem != null && !cameraSystem.IsFirstPerson
-            && swipeNormalized.sqrMagnitude > 0.0000001f)
+        if (cameraSystem != null && swipeNormalized.sqrMagnitude > 0.0000001f)
         {
-            cameraSystem.NotifyManualLook();
-            cameraSystem.AddMobileTppLookInput(swipeNormalized, lookSensitivity, dualTouchLookGain);
+            if (cameraSystem.IsFirstPerson)
+            {
+                cameraSystem.AddMobileFppLookInput(swipeNormalized, lookSensitivity);
+            }
+            else
+            {
+                cameraSystem.NotifyManualLook();
+                cameraSystem.AddMobileTppLookInput(swipeNormalized, lookSensitivity, dualTouchLookGain);
+            }
         }
 
         bool cameraMovedThisFrame = UpdateCameraMovedLatch();
-        if (cameraSystem != null && cameraSystem.IsFirstPerson)
-            ApplyLookInput(LookDelta, lookSensitivity);
 
         UpdateDualTouchTestLatches(cameraMovedThisFrame);
         UpdateDualTouchDiagnostics();

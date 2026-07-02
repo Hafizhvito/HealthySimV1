@@ -1,0 +1,162 @@
+<h2>Style Tombol FPP/TPP — Final</h2>
+<p class="subtitle">Style A dengan visual yang match tombol Settings (rounded, background gelap, bold + outline). Pilih warna aksen yang cocok.</p>
+
+<style>
+  .scene-mock {
+    background: #111520;
+    border-radius: 14px;
+    padding: 18px;
+    position: relative;
+    height: 180px;
+    border: 1px solid #2a3040;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  /* Mock HUD bars top-left */
+  .mock-bars { position: absolute; top: 16px; left: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .bar { height: 10px; border-radius: 5px; width: 130px; }
+  .bar-e { background: #58d268; }
+  .bar-c { background: #3a7fd5; width: 100px; }
+  /* Mock time center */
+  .mock-time {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(10,14,20,0.88); border-radius: 8px;
+    padding: 5px 18px; font-size: 12px; color: #fff; text-align: center;
+    border: 1px solid rgba(255,255,255,0.08);
+    white-space: nowrap;
+  }
+  /* Top-right button group */
+  .btn-group { position: absolute; top: 14px; right: 14px; display: flex; gap: 12px; align-items: center; }
+
+  /* Settings button — existing style (green rounded) */
+  .btn-settings {
+    width: 60px; height: 60px; border-radius: 16px;
+    background: #2ecc71; display: flex; align-items: center; justify-content: center;
+    font-size: 24px; border: 2px solid rgba(255,255,255,0.18);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+
+  /* Camera toggle button — base */
+  .btn-cam {
+    width: 60px; height: 60px; border-radius: 16px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; border: 2px solid rgba(255,255,255,0.18);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    font-family: sans-serif; font-weight: 800;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1);
+    cursor: default;
+  }
+  .btn-mode { font-size: 15px; letter-spacing: 0.5px; }
+  .btn-arrow { font-size: 10px; opacity: 0.75; letter-spacing: 0.3px; }
+
+  /* Variant backgrounds */
+  .cam-dark      { background: rgba(10, 18, 35, 0.92); }
+  .cam-blue      { background: rgba(15, 40, 90, 0.92); border-color: rgba(80,140,255,0.35); }
+  .cam-green-dim { background: rgba(10, 40, 20, 0.92); border-color: rgba(60,200,100,0.30); }
+
+  /* Color variants for text */
+  .text-white  { color: #f0f4ff; }
+  .text-yellow { color: #ffe070; }
+  .text-cyan   { color: #70e8ff; }
+
+  .cam-blue .btn-mode   { color: #aacfff; }
+  .cam-blue .btn-arrow  { color: #6090cc; }
+  .cam-green-dim .btn-mode  { color: #90ffb8; }
+  .cam-green-dim .btn-arrow { color: #50a870; }
+  .cam-dark .btn-mode   { color: #f0f4ff; }
+  .cam-dark .btn-arrow  { color: #8899bb; }
+
+  /* FPP state variants */
+  .cam-dark-fpp      { background: rgba(10, 18, 35, 0.92); border-color: rgba(255,210,80,0.4); }
+  .cam-blue-fpp      { background: rgba(15, 40, 90, 0.92); border-color: rgba(80,200,255,0.5); }
+  .cam-green-fpp     { background: rgba(10, 40, 20, 0.92); border-color: rgba(80,255,140,0.5); }
+
+  .pair { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .pair-label { font-size: 11px; color: #556070; text-transform: uppercase; letter-spacing: 0.8px; min-width: 80px; }
+  .arrow-sep { font-size: 14px; color: #3a4a60; }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="dark-match" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Match HUD panel — Netral gelap (rekomendasiku)</h3>
+      <p>Background sama persis dengan panel HUD (dark navy), teks putih bold. Paling konsisten dengan seluruh elemen HUD.</p>
+      <div class="scene-mock">
+        <div class="mock-bars"><div class="bar bar-e"></div><div class="bar bar-c"></div></div>
+        <div class="mock-time">Senin · Pagi &nbsp; <span style="color:#ffe096">07:00</span></div>
+        <div class="btn-group">
+          <div class="btn-cam cam-dark">
+            <span class="btn-mode">TPP</span>
+            <span class="btn-arrow">→ FPP</span>
+          </div>
+          <div style="width:12px"></div>
+          <div class="btn-settings">⚙</div>
+        </div>
+      </div>
+      <div class="pair">
+        <span class="pair-label">TPP aktif:</span>
+        <div class="btn-cam cam-dark" style="width:54px;height:54px;border-radius:14px"><span class="btn-mode">TPP</span><span class="btn-arrow">→ FPP</span></div>
+        <span class="arrow-sep">tap</span>
+        <div class="btn-cam cam-dark cam-dark-fpp" style="width:54px;height:54px;border-radius:14px"><span class="btn-mode" style="color:#ffe070">FPP</span><span class="btn-arrow" style="color:#aa8830">→ TPP</span></div>
+        <span class="pair-label" style="margin-left:4px">FPP aktif</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="blue-accent" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Dark navy + aksen biru</h3>
+      <p>Background dark navy, teks biru muda saat TPP. Saat FPP border cyan menyala. Membedakan dari settings tapi tetap satu keluarga warna.</p>
+      <div class="scene-mock">
+        <div class="mock-bars"><div class="bar bar-e"></div><div class="bar bar-c"></div></div>
+        <div class="mock-time">Senin · Pagi &nbsp; <span style="color:#ffe096">07:00</span></div>
+        <div class="btn-group">
+          <div class="btn-cam cam-blue">
+            <span class="btn-mode">TPP</span>
+            <span class="btn-arrow">→ FPP</span>
+          </div>
+          <div style="width:12px"></div>
+          <div class="btn-settings">⚙</div>
+        </div>
+      </div>
+      <div class="pair">
+        <span class="pair-label">TPP aktif:</span>
+        <div class="btn-cam cam-blue" style="width:54px;height:54px;border-radius:14px"><span class="btn-mode">TPP</span><span class="btn-arrow">→ FPP</span></div>
+        <span class="arrow-sep">tap</span>
+        <div class="btn-cam cam-blue cam-blue-fpp" style="width:54px;height:54px;border-radius:14px"><span class="btn-mode" style="color:#70e8ff">FPP</span><span class="btn-arrow" style="color:#4090aa">→ TPP</span></div>
+        <span class="pair-label" style="margin-left:4px">FPP aktif</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="green-match-settings" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Match warna Settings — Hijau</h3>
+      <p>Tombol kamera ikut warna hijau Settings saat aktif FPP. Saat TPP gelap netral. Terasa seperti "satu suite" tombol.</p>
+      <div class="scene-mock">
+        <div class="mock-bars"><div class="bar bar-e"></div><div class="bar bar-c"></div></div>
+        <div class="mock-time">Senin · Pagi &nbsp; <span style="color:#ffe096">07:00</span></div>
+        <div class="btn-group">
+          <div class="btn-cam cam-dark">
+            <span class="btn-mode">TPP</span>
+            <span class="btn-arrow">→ FPP</span>
+          </div>
+          <div style="width:12px"></div>
+          <div class="btn-settings">⚙</div>
+        </div>
+      </div>
+      <div class="pair">
+        <span class="pair-label">TPP aktif:</span>
+        <div class="btn-cam cam-dark" style="width:54px;height:54px;border-radius:14px"><span class="btn-mode">TPP</span><span class="btn-arrow">→ FPP</span></div>
+        <span class="arrow-sep">tap</span>
+        <div class="btn-cam" style="width:54px;height:54px;border-radius:14px;background:#2ecc71;border-color:rgba(255,255,255,0.25)"><span class="btn-mode" style="color:#fff">FPP</span><span class="btn-arrow" style="color:rgba(255,255,255,0.7)">→ TPP</span></div>
+        <span class="pair-label" style="margin-left:4px">FPP aktif</span>
+      </div>
+    </div>
+  </div>
+
+</div>

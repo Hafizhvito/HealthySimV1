@@ -1,0 +1,186 @@
+<h2>Tampilan Tombol FPP/TPP</h2>
+<p class="subtitle">Bagaimana tombol menampilkan mode aktif dan aksi toggle? Semua pakai style HUD yang sama (dark panel, font bold, outline).</p>
+
+<style>
+  .preview-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn-state {
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255,255,255,0.18);
+    font-weight: bold;
+    font-family: sans-serif;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    cursor: default;
+    flex-shrink: 0;
+  }
+
+  /* Style A — teks dua baris: label mode + label tujuan */
+  .btn-a {
+    width: 64px; height: 64px;
+    flex-direction: column;
+    font-size: 12px;
+    line-height: 1.3;
+    text-align: center;
+    gap: 1px;
+  }
+  .btn-a .mode { font-size: 14px; color: #ffe096; }
+  .btn-a .arrow { font-size: 10px; color: #aac4ff; opacity: 0.85; }
+  .btn-a-tpp { background: rgba(10,20,40,0.90); }
+  .btn-a-fpp { background: rgba(10,40,20,0.90); border-color: rgba(80,255,120,0.3); }
+  .btn-a-fpp .mode { color: #7affb0; }
+
+  /* Style B — ikon kamera + badge text kecil */
+  .btn-b {
+    width: 64px; height: 64px;
+    flex-direction: column;
+    font-size: 11px;
+    gap: 3px;
+  }
+  .btn-b .icon { font-size: 22px; line-height: 1; }
+  .btn-b .badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.15);
+    color: #e0eaff;
+    letter-spacing: 0.5px;
+  }
+  .btn-b-fpp .badge { background: rgba(80,200,120,0.25); color: #90ffbc; }
+
+  /* Style C — pill toggle, TPP | FPP */
+  .btn-c {
+    height: 48px;
+    width: 100px;
+    border-radius: 24px;
+    padding: 0;
+    overflow: hidden;
+    flex-direction: row;
+    font-size: 13px;
+    border: none;
+    gap: 0;
+  }
+  .btn-c .seg {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 12px;
+    font-weight: bold;
+    color: rgba(255,255,255,0.45);
+  }
+  .btn-c .seg.active {
+    background: rgba(46,180,100,0.85);
+    color: #fff;
+  }
+  .btn-c-tpp { background: rgba(10,20,40,0.90); }
+  .btn-c-fpp { background: rgba(10,20,40,0.90); }
+
+  .state-label {
+    font-size: 11px;
+    color: #7890a8;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 4px;
+    text-align: center;
+  }
+  .state-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .divider-arrow {
+    font-size: 20px;
+    color: #4a6080;
+    padding: 0 4px;
+    margin-top: 8px;
+  }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="style-a-text" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Teks mode + arah (rekomendasiku)</h3>
+      <p>Tombol menampilkan mode aktif sekarang di atas, dan tujuan toggle di bawah. Paling informatif, langsung jelas.</p>
+      <div class="preview-row">
+        <div class="state-pair">
+          <div class="btn-state btn-a btn-a-tpp" style="display:flex">
+            <span class="mode">TPP</span>
+            <span class="arrow">→ FPP</span>
+          </div>
+          <div class="state-label">saat TPP aktif</div>
+        </div>
+        <div class="divider-arrow">tap →</div>
+        <div class="state-pair">
+          <div class="btn-state btn-a btn-a-fpp" style="display:flex">
+            <span class="mode">FPP</span>
+            <span class="arrow">→ TPP</span>
+          </div>
+          <div class="state-label">saat FPP aktif</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="style-b-icon" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Ikon kamera + badge label</h3>
+      <p>Ikon 📷 atau 👁 di atas, badge kecil TPP/FPP di bawah. Terasa lebih "game-y".</p>
+      <div class="preview-row">
+        <div class="state-pair">
+          <div class="btn-state btn-b btn-b-tpp" style="background:rgba(10,20,40,0.90);display:flex">
+            <span class="icon">📷</span>
+            <span class="badge">TPP</span>
+          </div>
+          <div class="state-label">saat TPP aktif</div>
+        </div>
+        <div class="divider-arrow">tap →</div>
+        <div class="state-pair">
+          <div class="btn-state btn-b btn-b-fpp" style="background:rgba(10,20,40,0.90);display:flex">
+            <span class="icon">👁</span>
+            <span class="badge">FPP</span>
+          </div>
+          <div class="state-label">saat FPP aktif</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="style-c-pill" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Pill toggle TPP | FPP</h3>
+      <p>Satu tombol berbentuk pill dengan dua segmen. Segmen aktif highlight hijau. Terasa seperti toggle switch.</p>
+      <div class="preview-row">
+        <div class="state-pair">
+          <div class="btn-state btn-c btn-c-tpp" style="display:flex">
+            <div class="seg active">TPP</div>
+            <div class="seg">FPP</div>
+          </div>
+          <div class="state-label">saat TPP aktif</div>
+        </div>
+        <div class="divider-arrow">tap →</div>
+        <div class="state-pair">
+          <div class="btn-state btn-c btn-c-fpp" style="display:flex">
+            <div class="seg">TPP</div>
+            <div class="seg active">FPP</div>
+          </div>
+          <div class="state-label">saat FPP aktif</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

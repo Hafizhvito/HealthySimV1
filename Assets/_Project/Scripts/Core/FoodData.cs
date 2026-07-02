@@ -59,20 +59,24 @@ public class FoodData : ScriptableObject
         };
     }
 
+    public int GetAssetPrice()
+    {
+        if (price > 0)
+            return price;
+
+        return category switch
+        {
+            FoodCategory.Minuman => isHealthy ? 14 : 18,
+            FoodCategory.Buah => isHealthy ? 12 : 16,
+            FoodCategory.MakananRingan => isHealthy ? 16 : 21,
+            FoodCategory.Dessert => isHealthy ? 18 : 24,
+            FoodCategory.FastFood => isHealthy ? 24 : 33,
+            _ => isHealthy ? 24 : 31
+        };
+    }
+
     public int GetEffectivePrice()
     {
-        int assetPrice = price > 0
-            ? price
-            : category switch
-            {
-                FoodCategory.Minuman => isHealthy ? 14 : 18,
-                FoodCategory.Buah => isHealthy ? 12 : 16,
-                FoodCategory.MakananRingan => isHealthy ? 16 : 21,
-                FoodCategory.Dessert => isHealthy ? 18 : 24,
-                FoodCategory.FastFood => isHealthy ? 24 : 33,
-                _ => isHealthy ? 24 : 31
-            };
-
-        return EconomyConstants.ScalePrice(assetPrice);
+        return EconomyConstants.ScalePrice(GetAssetPrice());
     }
 }

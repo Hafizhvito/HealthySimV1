@@ -1,11 +1,12 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class BazaarManager : MonoBehaviour
 {
     public static BazaarManager Instance { get; private set; }
 
-    [SerializeField] private float spawnChance = 0.8f;
+    [SerializeField] private float spawnChance = 1f;
     [SerializeField] private int bazaarIntervalDays = 5;
     [SerializeField] private Vector3 bazaarSpawnPosition = new Vector3(-53f, 1f, 37f);
     [SerializeField] private float bazaarDiscountMultiplier = EconomyConstants.BazaarDiscountMultiplier;
@@ -14,8 +15,8 @@ public class BazaarManager : MonoBehaviour
 
     private GameObject bazaarCubeObject;
     private BazaarInteractable bazaarInteractable;
-    private bool bazaarActiveToday = false;
-    private int lastSpawnDay = -1;
+    private bool bazaarActiveToday;
+    private bool usingScenePlacedBazaar;
     private TimeManager timeManager;
 
     private void Awake()
@@ -28,18 +29,16 @@ public class BazaarManager : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
-
-        if (Application.isPlaying)
-        {
-            ResolveBazaarObject();
-            HideBazaarObject();
-        }
+        spawnChance = 1f;
+        bazaarDiscountMultiplier = EconomyConstants.BazaarDiscountMultiplier;
+        EnsureBazaarFoodPool();
     }
 
     private void OnEnable()
     {
         SceneManager.sceneLoaded += HandleSceneLoaded;
         TryBindTimeManager();
+        SyncBazaarForCurrentDay();
     }
 
     private void OnDisable()
@@ -50,37 +49,43 @@ public class BazaarManager : MonoBehaviour
 
     public void TrySpawnBazaar(int dayNumber)
     {
-        HideBazaarObject();
-        bazaarActiveToday = false;
-
-        if (bazaarIntervalDays <= 0)
+        if (!IsEligibleDay(dayNumber))
+        {
+            bazaarActiveToday = false;
+            HideBazaarObject();
             return;
+        }
 
-        if (dayNumber < bazaarIntervalDays)
+        if (spawnChance < 1f && Random.value > spawnChance)
+        {
+            bazaarActiveToday = false;
+            HideBazaarObject();
             return;
+        }
 
-        if (dayNumber % bazaarIntervalDays != 0)
-            return;
-
-        if (dayNumber == lastSpawnDay)
-            return;
-
-        if (Random.value > spawnChance)
+        if (bazaarActiveToday && IsBazaarObjectVisible())
             return;
 
         ResolveBazaarObject();
+        bool createdRuntime = false;
         if (bazaarCubeObject == null)
+        {
             bazaarCubeObject = CreateRuntimeBazaarObject();
+            createdRuntime = bazaarCubeObject != null;
+        }
 
         if (bazaarCubeObject == null)
             return;
 
-        bazaarCubeObject.transform.position = bazaarSpawnPosition;
-        bazaarCubeObject.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
+        if (createdRuntime || !usingScenePlacedBazaar)
+        {
+            bazaarCubeObject.transform.position = bazaarSpawnPosition;
+            bazaarCubeObject.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
 
-        Renderer renderer = bazaarCubeObject.GetComponent<Renderer>();
-        if (renderer != null)
-            renderer.material.color = new Color(0.95f, 0.82f, 0.12f);
+            Renderer renderer = bazaarCubeObject.GetComponent<Renderer>();
+            if (renderer != null)
+                renderer.material.color = new Color(0.95f, 0.82f, 0.12f);
+        }
 
         if (bazaarInteractable == null)
             bazaarInteractable = bazaarCubeObject.GetComponent<BazaarInteractable>();
@@ -88,12 +93,39 @@ public class BazaarManager : MonoBehaviour
         if (bazaarInteractable == null)
             bazaarInteractable = bazaarCubeObject.AddComponent<BazaarInteractable>();
 
+        EnsureBazaarFoodPool();
         bazaarInteractable.Initialize(bazaarFoodPool, bazaarDiscountMultiplier);
         bazaarCubeObject.SetActive(true);
 
         bazaarActiveToday = true;
-        lastSpawnDay = dayNumber;
-        Debug.Log($"[BazaarManager] Bazaar spawned on day {dayNumber}.");
+        Debug.Log($"[BazaarManager] Bazaar aktif hari {dayNumber} di {bazaarCubeObject.transform.position} ({bazaarFoodPool?.Length ?? 0} item, diskon {bazaarDiscountMultiplier:P0}).");
+    }
+
+    private void EnsureBazaarFoodPool()
+    {
+        FoodCatalogProvider provider = GetComponent<FoodCatalogProvider>();
+        if (provider == null)
+            provider = FindFirstObjectByType<FoodCatalogProvider>();
+
+        if (provider == null)
+            return;
+
+        List<FoodData> catalog = provider.GetFoods();
+        if (catalog == null || catalog.Count == 0)
+            return;
+
+        List<FoodData> healthyCatalog = new List<FoodData>();
+        for (int i = 0; i < catalog.Count; i++)
+        {
+            FoodData food = catalog[i];
+            if (food != null && food.isHealthy)
+                healthyCatalog.Add(food);
+        }
+
+        if (healthyCatalog.Count == 0)
+            return;
+
+        bazaarFoodPool = healthyCatalog.ToArray();
     }
 
     private void HideBazaarObject()
@@ -103,15 +135,30 @@ public class BazaarManager : MonoBehaviour
             target.SetActive(false);
     }
 
+    private bool IsBazaarObjectVisible()
+    {
+        ResolveBazaarObject();
+        return bazaarCubeObject != null && bazaarCubeObject.activeInHierarchy;
+    }
+
     private void ResolveBazaarObject()
     {
         if (bazaarCubeObject != null)
             return;
 
         bazaarCubeObject = FindBazaarObjectInScene();
+        if (bazaarCubeObject == null)
+            return;
 
-        if (bazaarCubeObject != null)
-            bazaarInteractable = bazaarCubeObject.GetComponent<BazaarInteractable>();
+        usingScenePlacedBazaar = true;
+        bazaarInteractable = bazaarCubeObject.GetComponent<BazaarInteractable>();
+    }
+
+    private void ClearBazaarObjectReference()
+    {
+        bazaarCubeObject = null;
+        bazaarInteractable = null;
+        usingScenePlacedBazaar = false;
     }
 
     private GameObject FindBazaarObjectInScene()
@@ -131,6 +178,7 @@ public class BazaarManager : MonoBehaviour
 
     private GameObject CreateRuntimeBazaarObject()
     {
+        usingScenePlacedBazaar = false;
         GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Cube);
         obj.name = string.IsNullOrWhiteSpace(bazaarObjectName) ? "Interactable_Bazaar" : bazaarObjectName;
         return obj;
@@ -138,9 +186,9 @@ public class BazaarManager : MonoBehaviour
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        ResolveBazaarObject();
-        HideBazaarObject();
+        ClearBazaarObjectReference();
         TryBindTimeManager();
+        SyncBazaarForCurrentDay();
     }
 
     private void TryBindTimeManager()
@@ -165,11 +213,18 @@ public class BazaarManager : MonoBehaviour
 
     private void HandleDayChanged(int dayNumber, string dayName)
     {
-        if (!IsEligibleDay(dayNumber))
-        {
-            bazaarActiveToday = false;
-            HideBazaarObject();
-        }
+        SyncBazaarForCurrentDay();
+    }
+
+    private void SyncBazaarForCurrentDay()
+    {
+        if (timeManager == null)
+            timeManager = FindFirstObjectByType<TimeManager>();
+
+        if (timeManager == null)
+            return;
+
+        TrySpawnBazaar(timeManager.CurrentDayNumber);
     }
 
     private bool IsEligibleDay(int dayNumber)
