@@ -351,18 +351,7 @@ public class PlayerController : MonoBehaviour
     void Rotate()
     {
         if (cameraSystem != null && cameraSystem.IsFirstPerson)
-        {
-            Vector3 lookForward = cachedCameraForward;
-            if (lookForward.sqrMagnitude < 0.0001f)
-                return;
-
-            Quaternion targetRotation = Quaternion.LookRotation(lookForward);
-            rb.MoveRotation(Quaternion.Slerp(
-                rb.rotation,
-                targetRotation,
-                rotationSpeed * Time.fixedDeltaTime));
             return;
-        }
 
         if (desiredMoveDir.sqrMagnitude < rotationInputThreshold * rotationInputThreshold)
             return;

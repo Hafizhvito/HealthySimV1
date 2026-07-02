@@ -90,6 +90,10 @@ public class CameraToggleButton : MonoBehaviour
         if (cameraSystem == null)
             cameraSystem = FindFirstObjectByType<CameraSystem>();
 
+        // Clear pending swipe delta before switching mode to avoid a phantom look jump.
+        if (MobileInputController.Instance != null)
+            MobileInputController.Instance.ResetSwipeOnToggle();
+
         if (cameraSystem != null)
             cameraSystem.TogglePerspectiveFromMobile();
     }

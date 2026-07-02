@@ -50,9 +50,9 @@ public class CameraSystem : MonoBehaviour
 
     [Header("Look Input (FPP)")]
     [Tooltip("Mouse/touch look speed in first-person. Lower = less slippery.")]
-    [SerializeField] [Range(0.05f, 3f)] private float fppMouseLookSensitivity = 0.4f;
-    [Tooltip("Smoothing for FPP look. 8 = responsive without floatiness.")]
-    [SerializeField] [Range(0f, 20f)] private float fppLookSmoothing = 8f;
+    [SerializeField] [Range(0.05f, 3f)] private float fppMouseLookSensitivity = 0.25f;
+    [Tooltip("Smoothing for FPP look. Lower = smoother but laggier. 4-6 is buttery smooth.")]
+    [SerializeField] [Range(0f, 20f)] private float fppLookSmoothing = 5f;
     [Tooltip("Mobile swipe sensitivity for FPP look (separate from desktop mouse).")]
     [SerializeField] [Range(0.02f, 1f)] private float fppMobileSensitivity = 0.18f;
     [SerializeField] private float fppPitchMin = -60f;
@@ -511,6 +511,21 @@ public class CameraSystem : MonoBehaviour
 
     void SetTPP()
     {
+        if (isFirstPerson && orbitalFollow != null)
+        {
+            float bodyYaw = playerRoot != null ? playerRoot.eulerAngles.y : 0f;
+            float panYaw = fppPanTilt != null ? fppPanTilt.PanAxis.Value : 0f;
+            float totalYaw = bodyYaw + panYaw;
+
+            if (playerRoot != null)
+                playerRoot.eulerAngles = new Vector3(playerRoot.eulerAngles.x, totalYaw, playerRoot.eulerAngles.z);
+
+            InputAxis yaw = orbitalFollow.HorizontalAxis;
+            yaw.Value = totalYaw;
+            orbitalFollow.HorizontalAxis = yaw;
+            lastTppYaw = totalYaw;
+        }
+
         tppCamera.Priority = activePriority;
         fppCamera.Priority = inactivePriority;
         isFirstPerson = false;
@@ -518,7 +533,11 @@ public class CameraSystem : MonoBehaviour
         UnlockCursor();
 
         smoothedLookDelta = Vector2.zero;
-        SetInputControllersEnabled(tppEnabled: true, fppEnabled: false);
+
+        bool mobilePlatform = Application.isMobilePlatform
+            || (MobileInputController.Instance != null && MobileInputController.Instance.IsTouchUiEnabled);
+        SetInputControllersEnabled(tppEnabled: !mobilePlatform, fppEnabled: false);
+
         StartTransition(TransitionDirection.ToTPP);
     }
 
@@ -536,18 +555,18 @@ public class CameraSystem : MonoBehaviour
 
     void SetFPP()
     {
-        // Align playerRoot yaw to current TPP orbital yaw so FPP camera
-        // faces the same direction — prevents the "jump" on transition.
         if (orbitalFollow != null && playerRoot != null)
         {
             float tppYaw = orbitalFollow.HorizontalAxis.Value;
-            Vector3 euler = playerRoot.eulerAngles;
-            playerRoot.eulerAngles = new Vector3(euler.x, tppYaw, euler.z);
+            playerRoot.eulerAngles = new Vector3(playerRoot.eulerAngles.x, tppYaw, playerRoot.eulerAngles.z);
         }
 
-        // Reset FPP pitch to 0 so we always start from a neutral tilt.
         if (fppPanTilt != null)
         {
+            InputAxis pan = fppPanTilt.PanAxis;
+            pan.Value = 0f;
+            fppPanTilt.PanAxis = pan;
+
             InputAxis tilt = fppPanTilt.TiltAxis;
             tilt.Value = 0f;
             fppPanTilt.TiltAxis = tilt;
@@ -614,6 +633,12 @@ public class CameraSystem : MonoBehaviour
         if (normalizedScreenDelta.sqrMagnitude <= 0.0000001f)
             return;
 
+        if (transitionRoutine != null)
+        {
+            StopCoroutine(transitionRoutine);
+            transitionRoutine = null;
+        }
+
         float gain = 360f * Mathf.Max(0.25f, gainMultiplier) * Mathf.Max(0.01f, sensitivity);
         float yawDegrees = normalizedScreenDelta.x * gain;
         float pitchDegrees = normalizedScreenDelta.y * gain;
@@ -622,19 +647,34 @@ public class CameraSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Mobile swipe look in first-person mode. Delta is screen-normalized per frame.
-    /// Y is already flipped by the swipe zone (positive = look up).
+    /// Mobile swipe look in first-person mode. Same gain as TPP, applied directly (no heavy smoothing).
     /// </summary>
-    public void AddMobileFppLookInput(Vector2 normalizedScreenDelta, float sensitivity)
+    public void AddMobileFppLookInput(Vector2 normalizedScreenDelta, float sensitivity, float gainMultiplier)
     {
         if (!isFirstPerson) return;
         if (ModalStateManager.Instance != null && ModalStateManager.Instance.IsAnyModalOpen) return;
-        if (normalizedScreenDelta.sqrMagnitude <= 0.0000001f) return;
 
-        float gain     = 360f * Mathf.Max(0.01f, fppMobileSensitivity) * Mathf.Max(0.01f, sensitivity);
-        float yawDeg   =  normalizedScreenDelta.x * gain;
-        float pitchDeg = -normalizedScreenDelta.y * gain;  // invert: swipe up → look up
+        if (normalizedScreenDelta.sqrMagnitude <= 0.0000001f)
+        {
+            smoothedLookDelta *= 0.75f;
+            if (smoothedLookDelta.sqrMagnitude > 0.01f)
+                ApplyFppLookInput(smoothedLookDelta.x, smoothedLookDelta.y);
+            else
+                smoothedLookDelta = Vector2.zero;
+            return;
+        }
 
+        if (transitionRoutine != null)
+        {
+            StopCoroutine(transitionRoutine);
+            transitionRoutine = null;
+        }
+
+        float gain = 360f * Mathf.Max(0.25f, gainMultiplier) * Mathf.Max(0.01f, sensitivity);
+        float yawDeg = normalizedScreenDelta.x * gain;
+        float pitchDeg = -normalizedScreenDelta.y * gain;
+
+        smoothedLookDelta = new Vector2(yawDeg, pitchDeg);
         ApplyFppLookInput(yawDeg, pitchDeg);
     }
 
@@ -646,19 +686,16 @@ public class CameraSystem : MonoBehaviour
 
     private void ApplyFppLookInput(float yawDelta, float pitchDelta)
     {
-        if (playerRoot != null && Mathf.Abs(yawDelta) > 0.000001f)
-            playerRoot.Rotate(Vector3.up, yawDelta, Space.World);
-
         if (fppPanTilt == null)
             return;
+
+        InputAxis pan = fppPanTilt.PanAxis;
+        pan.Value += yawDelta;
+        fppPanTilt.PanAxis = pan;
 
         InputAxis tilt = fppPanTilt.TiltAxis;
         tilt.Value = Mathf.Clamp(tilt.Value - pitchDelta, fppPitchMin, fppPitchMax);
         fppPanTilt.TiltAxis = tilt;
-
-        InputAxis pan = fppPanTilt.PanAxis;
-        pan.Value = 0f;
-        fppPanTilt.PanAxis = pan;
     }
 
     private void ApplyTppLookInput(float yawDelta, float pitchDelta)

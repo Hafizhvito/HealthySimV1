@@ -40,7 +40,8 @@ public class MobileInputController : MonoBehaviour
     private static readonly Vector2 MoveKnobSize = new Vector2(90f, 90f);
 
     private static readonly Vector2 SwipeZoneAnchorMin = new Vector2(0.45f, 0f);
-    private static readonly Vector2 SwipeZoneAnchorMax = new Vector2(0.88f, 0.9f);
+    // Full right side — UI buttons intercept their own taps via EventSystem raycast priority.
+    private static readonly Vector2 SwipeZoneAnchorMax = new Vector2(1.0f, 1.0f);
 
     private static readonly Vector2 PerspectiveButtonAnchor = new Vector2(1f, 0f);
     private static readonly Vector2 PerspectiveButtonPivot = new Vector2(1f, 0f);
@@ -438,13 +439,13 @@ public class MobileInputController : MonoBehaviour
         Vector2 swipeNormalized = lookSwipeZone != null ? lookSwipeZone.ConsumeOutput() : Vector2.zero;
         LookDelta = swipeNormalized;
 
-        if (cameraSystem != null && swipeNormalized.sqrMagnitude > 0.0000001f)
+        if (cameraSystem != null)
         {
             if (cameraSystem.IsFirstPerson)
             {
-                cameraSystem.AddMobileFppLookInput(swipeNormalized, lookSensitivity);
+                cameraSystem.AddMobileFppLookInput(swipeNormalized, lookSensitivity, dualTouchLookGain);
             }
-            else
+            else if (swipeNormalized.sqrMagnitude > 0.0000001f)
             {
                 cameraSystem.NotifyManualLook();
                 cameraSystem.AddMobileTppLookInput(swipeNormalized, lookSensitivity, dualTouchLookGain);
@@ -1312,6 +1313,14 @@ public class MobileInputController : MonoBehaviour
         dualTouchOverlayRoot.SetActive(true);
     }
 
+    /// <summary>Call this before toggling perspective to clear any pending swipe delta.</summary>
+    public void ResetSwipeOnToggle()
+    {
+        if (lookSwipeZone != null)
+            lookSwipeZone.ForceReset();
+        LookDelta = Vector2.zero;
+    }
+
     internal void TogglePerspectivePressed()
     {
         if (cameraSystem == null)
@@ -1319,6 +1328,9 @@ public class MobileInputController : MonoBehaviour
 
         if (cameraSystem == null)
             return;
+
+        // Clear any accumulated swipe so the mode-switch doesn't carry stale look delta.
+        ResetSwipeOnToggle();
 
         cameraSystem.TogglePerspectiveFromMobile();
         RefreshPerspectiveToggleLabel(force: true);
@@ -1394,8 +1406,14 @@ public class MobileInputController : MonoBehaviour
             float screenW = Mathf.Max(1f, Screen.width);
             float screenH = Mathf.Max(1f, Screen.height);
             pendingLookDelta = new Vector2(rawDelta.x / screenW, -rawDelta.y / screenH);
-            float threshold = owner != null ? owner.axisDominanceThreshold : 0.35f;
-            pendingLookDelta = ApplyAxisDominance(pendingLookDelta, threshold);
+
+            bool isFpp = owner != null && owner.cameraSystem != null && owner.cameraSystem.IsFirstPerson;
+            if (!isFpp)
+            {
+                float threshold = owner != null ? owner.axisDominanceThreshold : 0.35f;
+                pendingLookDelta = ApplyAxisDominance(pendingLookDelta, threshold);
+            }
+
             swipePrevPosition = eventData.position;
         }
 
