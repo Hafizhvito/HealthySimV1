@@ -1,0 +1,10 @@
+# ninja log v5
+28	3695	8040931938751607	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	f12337740a9890a0
+37	3724	8040931938842598	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	5841b974a8a440ab
+1	3735	8040931939140159	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	206a84afef0fbedd
+244	3757	8040931939388677	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	70ef4120b8d52735
+11	3819	8040931940017534	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	e6084d2f668e559b
+95	4120	8040931943000796	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	1f5588b2dca96068
+47	4270	8040931944526666	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	844c31b797ea8ab
+19	4469	8040931946471098	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	e319e3a330540c49
+4470	4752	8040931949384836	C:/Users/Alvin/TA/HealthySimV1/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/6k406b1t/obj/arm64-v8a/libgame.so	b2c4e0f6356c0ee7

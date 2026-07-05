@@ -1,0 +1,5 @@
+C:/Users/Alvin/TA/HealthySimV1/.utmp/RelWithDebInfo/6k406b1t/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Users/Alvin/TA/HealthySimV1/.utmp/RelWithDebInfo/6k406b1t/arm64-v8a/CMakeFiles/rebuild_cache.dir
+C:/Users/Alvin/TA/HealthySimV1/.utmp/RelWithDebInfo/6k406b1t/arm64-v8a/GameActivity/CMakeFiles/game.dir
+C:/Users/Alvin/TA/HealthySimV1/.utmp/RelWithDebInfo/6k406b1t/arm64-v8a/GameActivity/CMakeFiles/edit_cache.dir
+C:/Users/Alvin/TA/HealthySimV1/.utmp/RelWithDebInfo/6k406b1t/arm64-v8a/GameActivity/CMakeFiles/rebuild_cache.dir
