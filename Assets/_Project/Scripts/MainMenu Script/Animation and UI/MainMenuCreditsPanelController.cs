@@ -338,7 +338,7 @@ public class MainMenuCreditsPanelController : MonoBehaviour
         return
             "<size=125%><b>HealthSim</b></size>\n" +
             "Simulasi Gizi Berbasis Mobile untuk Edukasi Perilaku Hidup Sehat\n\n" +
-            "HealthSim adalah game simulasi edukasi yang membantu kamu memahami dampak pola makan, aktivitas fisik, dan istirahat terhadap kesehatan jangka panjang. Setiap keputusan dalam game mencerminkan realita kehidupan nyata.\n\n" +
+            "HealthSim adalah serious game di bidang kesehatan yang membantu kamu memahami dampak pola makan, aktivitas fisik, dan istirahat terhadap kesehatan jangka panjang. Setiap keputusan dalam game mencerminkan realita kehidupan nyata.\n\n" +
             "<i>Dikembangkan sebagai Proyek Akhir Teknik Informatika, Universitas YARSI, 2026</i>\n\n" +
             "────────────────────────\n\n" +
             "<b>Tim HealthVerse</b>\n" +
@@ -346,12 +346,13 @@ public class MainMenuCreditsPanelController : MonoBehaviour
             "Alvin Dimas Lunardi\n" +
             "Aditya Budi Listianto\n\n" +
             "────────────────────────\n\n" +
-            "<b>Pembimbing</b>\n" +
-            "Paramaresthi Windriyani, S.Kom., M.Eng.\n" +
-            "Irwandi M. Zen, Lc., M.A.\n\n" +
+            "<b>Pembimbing Ilmu</b>\n" +
+            "Paramaresthi Windriyani, S.Kom., M.Eng.\n\n" +
             "<b>Validator Medis</b>\n" +
             "dr. Sri Wuryanti, MS, Sp.GK\n" +
             "Spesialis Gizi Klinik, RS YARSI\n\n" +
+            "<b>Kepala Program Studi</b>\n" +
+            "Elah Suherlan, M.Si.\n\n" +
             "────────────────────────\n\n" +
             "<b>Credits</b>\n" +
             "3D Characters dibuat dengan Tripo3D\n" +
