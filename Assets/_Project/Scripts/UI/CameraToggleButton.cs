@@ -24,11 +24,8 @@ public class CameraToggleButton : MonoBehaviour
 
     private void Awake()
     {
-        EnsureBindings();
-        ApplyBorrowedSprite();
-        BindButton();
-        CameraToggleButtonUi.ApplyVisuals(background, modeLabel, arrowLabel, false, menuGreenColor);
-        lastFpp = false;
+        // FPP/TPP toggle removed from HUD; use mobile bottom button or keyboard F/V.
+        gameObject.SetActive(false);
     }
 
     private void ApplyBorrowedSprite()
