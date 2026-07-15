@@ -710,7 +710,7 @@ public class CameraSystem : MonoBehaviour
         InputAxis pitch = orbitalFollow.VerticalAxis;
 
         yaw.Value += yawDelta;
-        pitch.Value = Mathf.Clamp(pitch.Value + -pitchDelta, pitch.Range.x, pitch.Range.y);
+        pitch.Value = Mathf.Clamp(pitch.Value + pitchDelta, pitch.Range.x, pitch.Range.y);
 
         orbitalFollow.HorizontalAxis = yaw;
         orbitalFollow.VerticalAxis = pitch;
